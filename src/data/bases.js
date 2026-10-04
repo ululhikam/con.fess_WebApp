@@ -1,0 +1,32 @@
+﻿// src/data/bases.js
+// Centralized data untuk semua Base yang tersedia di platform
+
+export const ALL_BASES = [
+  { name: 'Unair Menfess',       handle: '@unermenfess',      initial: 'UM',  color: '#0038FF', category: 'Kampus', members: '12.4k' },
+  { name: 'ITS Fess',            handle: '@fess10nopember',   initial: 'ITS', color: '#FF0055', category: 'Kampus', members: '8.9k'  },
+  { name: 'UGM Fess',            handle: '@fessugm',          initial: 'UGM', color: '#FF6D00', category: 'Kampus', members: '21.3k' },
+  { name: 'uny.fess',            handle: '@unyfess',          initial: 'UNY', color: '#00B2FF', category: 'Kampus', members: '6.1k'  },
+  { name: 'Menfess UNESA',       handle: '@menfessunesa',     initial: 'UN',  color: '#00C853', category: 'Kampus', members: '9.7k'  },
+  { name: 'UNS Menfess',         handle: '@unsmenfess',       initial: 'UNS', color: '#7000FF', category: 'Kampus', members: '5.5k'  },
+  { name: 'Fess Veteran Jatim',  handle: '@fessveteranjatim', initial: 'VJ',  color: '#7000FF', category: 'Kampus', members: '3.2k'  },
+  { name: 'UTM Menfess',         handle: '@utm_menfess',      initial: 'UTM', color: '#0038FF', category: 'Kampus', members: '2.8k'  },
+  { name: 'UNEJMenfess',         handle: '@unejmenfess',      initial: 'UNJ', color: '#FF0055', category: 'Kampus', members: '4.0k'  },
+  { name: 'KLE Comenfess',       handle: '@klecomenfess',     initial: 'KL',  color: '#F59E0B', category: 'Kampus', members: '7.2k'  },
+  { name: 'Darmenfess',          handle: '@darmenfess',       initial: 'DM',  color: '#00B2FF', category: 'Kampus', members: '5.1k'  },
+  { name: 'Tera Menfess',        handle: '@teramenfess',      initial: 'TM',  color: '#EC4899', category: 'Kampus', members: '3.9k'  },
+  { name: 'Surabaya Fess',       handle: '@surabayafess',     initial: 'SBY', color: '#EF4444', category: 'Kota',   members: '18.6k' },
+  { name: 'Jogja Fess',          handle: '@jogjafess',        initial: 'JGA', color: '#8B5CF6', category: 'Kota',   members: '14.2k' },
+  { name: 'Jakarta Confess',     handle: '@jktconfess',       initial: 'JKT', color: '#F97316', category: 'Kota',   members: '32.5k' },
+  { name: 'Malang Fess',         handle: '@malangfess',       initial: 'MLG', color: '#06B6D4', category: 'Kota',   members: '9.3k'  },
+  { name: 'Bandung Fess',        handle: '@bandungfess',      initial: 'BDG', color: '#10B981', category: 'Kota',   members: '22.1k' },
+  { name: 'Anime & Manga Fess',  handle: '@anifess',          initial: 'ANI', color: '#EC4899', category: 'Hobi',   members: '11.4k' },
+  { name: 'Gaming Fess',         handle: '@gamingfess',       initial: 'GMF', color: '#6366F1', category: 'Hobi',   members: '8.7k'  },
+  { name: 'Film & Series Fess',  handle: '@filmfess',         initial: 'FF',  color: '#D97706', category: 'Hobi',   members: '6.8k'  },
+  { name: 'Musik Fess',          handle: '@musikfess',        initial: 'MF',  color: '#7C3AED', category: 'Hobi',   members: '10.1k' },
+  { name: 'Random Fess',         handle: '@randomfess',       initial: 'RF',  color: '#64748B', category: 'Umum',   members: '45.2k' },
+  { name: 'Rahasia Fess',        handle: '@rahasiafess',      initial: 'RS',  color: '#1E293B', category: 'Umum',   members: '28.9k' },
+]
+
+export const BASE_CATEGORIES = ['Semua', 'Kampus', 'Kota', 'Hobi', 'Umum']
+
+export const FEED_CATEGORIES = ['Semua', 'Kampus', 'Kota', 'Hobi']
