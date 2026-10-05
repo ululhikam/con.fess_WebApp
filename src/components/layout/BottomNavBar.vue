@@ -1,10 +1,15 @@
 ﻿<template>
   <nav class="app-bottom-navbar" aria-label="Navigasi utama">
     <div class="bottom-nav-inner">
+      <!--
+        Layout is a 5-column grid: tab | tab | [+] | tab | tab.
+        Giving the FAB its own `auto` track keeps it on the exact horizontal
+        midpoint no matter how wide an individual tab label renders — with a
+        plain flex row, the wider "Aktivitas" label pushed it off-centre.
+      -->
       <template v-for="(item, index) in ITEMS" :key="item.key">
-        <!-- Center FAB sits between Search and Aktivitas -->
         <button
-          v-if="index === FAB_AFTER"
+          v-if="index === FAB_BEFORE"
           type="button"
           class="bottom-center-fab"
           title="Kirim Menfess"
@@ -45,8 +50,12 @@ const ITEMS = [
   { key: 'akun', label: 'Akun', icon: UserRound },
 ];
 
-/** The compose FAB is rendered right after this index. */
-const FAB_AFTER = 1;
+/**
+ * Index of the item the compose FAB is injected before.
+ * `2` → Home, Search, **[+]**, Aktivitas, Akun (FAB dead-centre).
+ * Inserting before index `1` would push it left of centre, next to Home.
+ */
+const FAB_BEFORE = 2;
 
 defineProps({ active: { type: String, default: 'home' } });
 defineEmits(['navChange', 'openCompose']);
@@ -70,9 +79,9 @@ defineEmits(['navChange', 'openCompose']);
 .bottom-nav-inner {
   max-width: 540px;
   margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr));
   align-items: center;
-  justify-content: space-around;
 }
 
 .bottom-nav-tab {
@@ -80,6 +89,7 @@ defineEmits(['navChange', 'openCompose']);
   flex-direction: column;
   align-items: center;
   gap: 3px;
+  width: 100%;
   background: transparent;
   border: none;
   color: var(--shell-text-muted);
@@ -88,7 +98,6 @@ defineEmits(['navChange', 'openCompose']);
   padding: 4px 12px;
   border-radius: 12px;
   transition: color 0.2s ease;
-  flex: 1;
 }
 
 .bottom-nav-tab:hover {
@@ -126,7 +135,6 @@ defineEmits(['navChange', 'openCompose']);
   box-shadow: 0 8px 20px var(--shadow-color);
   cursor: pointer;
   transition: transform 0.2s ease;
-  flex-shrink: 0;
 }
 
 .bottom-center-fab:hover {
