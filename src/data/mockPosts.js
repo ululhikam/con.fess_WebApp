@@ -1,16 +1,33 @@
 ﻿// src/data/mockPosts.js
-// Sample feed posts data untuk mock/development
+// Mock feed data. In production this is replaced by an API call — the shape
+// is intentionally identical so swapping the source is a one-line change in
+// src/composables/useFeedPosts.js.
 
-export const MOCK_FEED_POSTS = [
+/**
+ * @typedef {Object} FeedPost
+ * @property {number} id
+ * @property {string} handle
+ * @property {string} time
+ * @property {'Cerita'|'Tanya'} tag
+ * @property {string} content
+ * @property {number} likes
+ * @property {boolean} isLiked
+ * @property {string} avatarBg
+ * @property {string} avatarText
+ */
+
+/** @type {FeedPost[]} */
+export const FEED_POSTS = [
   {
     id: 1,
     handle: '@klecomenfess',
     time: 'baru saja',
     tag: 'Cerita',
-    content: 'buat yang kemarin main futsal, pakai jersey krem, dan posturnya tinggi... jujur senyum kamu manis banget kak, asli bikin deg-degan 🙈🫣✨',
+    content:
+      'buat yang kemarin main futsal, pakai jersey krem, dan posturnya tinggi... jujur senyum kamu manis banget kak, asli bikin deg-degan 🙈🫣✨',
     likes: 12,
     isLiked: false,
-    avatarBg: '#F59E0B',
+    avatarBg: '#0038FF',
     avatarText: 'KL',
   },
   {
@@ -21,7 +38,7 @@ export const MOCK_FEED_POSTS = [
     content: 'pogung?namamu paling unik cwemuu pasti bykk yaa!!??',
     likes: 8,
     isLiked: false,
-    avatarBg: '#FF6D00',
+    avatarBg: '#7000FF',
     avatarText: 'UGM',
   },
   {
@@ -32,7 +49,7 @@ export const MOCK_FEED_POSTS = [
     content: 'min, kasi tau anak TF25 NIM 56, kamu manis bgt kaya gulali warna wari 😸😼',
     likes: 19,
     isLiked: false,
-    avatarBg: '#EC4899',
+    avatarBg: '#FF0055',
     avatarText: 'TM',
   },
   {
@@ -51,10 +68,17 @@ export const MOCK_FEED_POSTS = [
     handle: '@unermenfess',
     time: '4 mnt',
     tag: 'Cerita',
-    content: 'semangat uas buat anak unair angkatan 23, perjalanan masih panjang tapi kita pasti bisa!',
+    content:
+      'semangat uas buat anak unair angkatan 23, perjalanan masih panjang tapi kita pasti bisa!',
     likes: 34,
     isLiked: false,
-    avatarBg: '#0038FF',
+    avatarBg: '#00C853',
     avatarText: 'UM',
   },
-]
+];
+
+/** Trending/base tags used by the "Aktivitas" tab filters. */
+export const ACTIVITY_FILTERS = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'balasan', label: 'Balasan' },
+];

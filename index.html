@@ -1,18 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="id" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#0038FF" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="description"
+      content="FessHub — platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI."
+    />
     <title>FessHub - Auto-Base Social Platform & Anon Engine</title>
-    <!-- Google Fonts: Silkscreen (Pixel), Orbitron (Cyber), Inter (Sans) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@700;800;900&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Google Fonts: Poppins (single source of truth) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <!--
+      Theme bootstrap — runs BEFORE first paint so there is no flash of the
+      wrong theme (FOUC). Mirrors src/composables/useTheme.js.
+      Modes: 'system' (default) | 'dark' | 'light'
+    -->
+    <script>
+      (function () {
+        var el = document.documentElement;
+        var mode = null;
+        try {
+          mode = localStorage.getItem('fess_theme');
+        } catch (e) {}
+        if (mode !== 'dark' && mode !== 'light') {
+          mode =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+        }
+        el.setAttribute('data-theme', mode);
+      })();
+    </script>
   </head>
   <body class="cyber-dark-body">
     <div id="app"></div>

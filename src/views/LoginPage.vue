@@ -1,230 +1,211 @@
 <template>
-  <div class="base-club-auth">
-    <div class="auth-grid-overlay"></div>
+  <AuthShell logo-word="CONFESS" subtitle="Masuk ke Akun Base & Portal Admin">
+    <!-- Role quick-switcher -->
+    <div class="role-selector-pills" role="radiogroup" aria-label="Pilih peran masuk">
+      <button
+        v-for="role in ROLES"
+        :key="role"
+        type="button"
+        role="radio"
+        :aria-checked="selectedRole === role"
+        :class="['role-pill-btn', selectedRole === role ? roleClass(role) : '']"
+        @click="selectedRole = role"
+      >
+        {{ role === 'User' ? 'User / Anon' : role }}
+      </button>
+    </div>
 
-    <div class="auth-card-container">
-      <!-- Speech Bubble Logo Header -->
-      <div class="text-center mb-6">
-        <router-link to="/" class="brand-logo inline-block">
-          <div class="speech-bubble-logo">
-            <span class="logo-base">BASE</span>
-            <span class="logo-club">CONFESS</span>
-          </div>
-        </router-link>
-        <p class="auth-subtitle mt-2">Masuk ke Akun Base & Portal Admin</p>
-      </div>
-
-      <!-- Main Login Card -->
-      <div class="auth-white-card">
-        <!-- Role Quick Switcher Pills (Super Admin Removed) -->
-        <div class="role-selector-pills">
-          <button 
-            type="button"
-            @click="selectedRole = 'User'"
-            :class="['role-pill-btn', selectedRole === 'User' ? 'active-user' : '']"
-          >
-            User / Anon
-          </button>
-          <button 
-            type="button"
-            @click="selectedRole = 'Base Admin'"
-            :class="['role-pill-btn', selectedRole === 'Base Admin' ? 'active-mod' : '']"
-          >
-            Base Admin
-          </button>
-        </div>
-
-        <!-- Role Badge Indicator Banner -->
-        <div class="role-banner-indicator mb-4" :class="bannerClass">
-          <div>
-            <div class="font-bold text-xs">{{ roleBannerTitle }}</div>
-            <div class="text-xs opacity-90">{{ roleBannerDesc }}</div>
-          </div>
-        </div>
-
-        <!-- Standard Credentials Login Form -->
-        <form @submit.prevent="handleLogin" class="auth-form">
-          <div class="form-group">
-            <label class="form-label">Email atau Username Base</label>
-            <input 
-              v-model="username" 
-              type="text" 
-              class="base-input" 
-              placeholder="contoh: alexdev@base.eth"
-              required 
-            />
-          </div>
-
-          <div class="form-group">
-            <div class="flex justify-between items-center mb-1">
-              <label class="form-label">Kata Sandi</label>
-              <a href="#" class="text-xs text-blue text-decoration-none font-bold">Lupa Sandi?</a>
-            </div>
-            <input 
-              v-model="password" 
-              type="password" 
-              class="base-input" 
-              placeholder="••••••••••••"
-              required 
-            />
-          </div>
-
-          <button type="submit" class="btn-submit-blue mt-2">
-            MASUK SEBAGAI {{ selectedRole.toUpperCase() }} →
-          </button>
-        </form>
-
-        <div class="divider">
-          <span>ATAU MASUK DENGAN</span>
-        </div>
-
-        <!-- Google Login Only -->
-        <div class="social-login-single">
-          <button @click="handleGoogleLogin" type="button" class="btn-google">
-            <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.15C3.25 21.3 7.31 24 12 24z"/>
-              <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.27C.46 8.2.0 10.05.0 12s.46 3.8 1.27 5.42l4.01-3.15z"/>
-              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.58l4.01 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-            </svg>
-            <span>Lanjutkan dengan Google</span>
-          </button>
-        </div>
-
-        <div class="card-footer text-center mt-6 text-xs text-muted">
-          Belum punya akun Base? 
-          <router-link to="/register" class="text-blue font-bold">Buat Akun Base Confess</router-link>
-        </div>
+    <!-- What this role gets -->
+    <div class="role-banner mb-4" :class="bannerClass">
+      <span class="role-banner__icon" aria-hidden="true">
+        <component :is="bannerIcon" :size="18" :stroke-width="2.2" />
+      </span>
+      <div>
+        <div class="role-banner__title">{{ roleBannerTitle }}</div>
+        <div class="role-banner__desc">{{ roleBannerDesc }}</div>
       </div>
     </div>
-  </div>
+
+    <form class="auth-form" novalidate @submit.prevent="handleLogin">
+      <FormField
+        id="login-identifier"
+        v-model="form.values.identifier"
+        label="Email atau Username Base"
+        placeholder="contoh: alexdev@base.eth"
+        autocomplete="username"
+        required
+        :error="fieldError('identifier')"
+        @blur="touch('identifier')"
+      />
+
+      <FormField
+        id="login-password"
+        v-model="form.values.password"
+        label="Kata Sandi"
+        type="password"
+        placeholder="••••••••••••"
+        autocomplete="current-password"
+        required
+        :error="fieldError('password')"
+        @blur="touch('password')"
+      >
+        <template #aside>
+          <a href="#" class="auth-link text-xs font-bold">Lupa Sandi?</a>
+        </template>
+      </FormField>
+
+      <p v-if="form.submitError" class="form-alert" role="alert">
+        {{ form.submitError }}
+      </p>
+
+      <button type="submit" class="btn-submit-blue mt-2" :disabled="form.submitting">
+        <Loader2 v-if="form.submitting" class="spin" :size="16" aria-hidden="true" />
+        <template v-else>
+          MASUK SEBAGAI {{ selectedRole.toUpperCase() }}
+          <ArrowRight :size="15" aria-hidden="true" />
+        </template>
+      </button>
+    </form>
+
+    <div class="auth-divider" role="separator">
+      <span>ATAU MASUK DENGAN</span>
+    </div>
+
+    <div class="social-login">
+      <button type="button" class="btn-google" @click="handleGoogleLogin">
+        <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="#4285F4"
+            d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.15C3.25 21.3 7.31 24 12 24z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.27C.46 8.2.0 10.05.0 12s.46 3.8 1.27 5.42l4.01-3.15z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.58l4.01 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+          />
+        </svg>
+        <span>Lanjutkan dengan Google</span>
+      </button>
+    </div>
+
+    <p class="auth-footer mt-6 text-xs text-muted">
+      Belum punya akun Base?
+      <router-link :to="registerTarget" class="auth-link font-bold"
+        >Buat Akun Base Confess</router-link
+      >
+    </p>
+  </AuthShell>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/authStore'
+/**
+ * LoginPage — sign-in screen.
+ * • Layout/branding come from <AuthShell>/<AuthLogo>.
+ * • Field markup comes from <FormField>.
+ * • Validation lives in useValidatedForm (not in this component).
+ */
+import { ref, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { ArrowRight, Loader2, ShieldCheck, UserRound } from 'lucide-vue-next';
 
-const router = useRouter()
-const authStore = useAuthStore()
+import AuthShell from '../components/auth/AuthShell.vue';
+import FormField from '../components/auth/FormField.vue';
+import { useAuthStore } from '../stores/authStore';
+import { useValidatedForm, rules } from '../composables/useValidatedForm';
 
-const username = ref('user@base.eth')
-const password = ref('password123')
-const selectedRole = ref('User')
+const ROLES = ['User', 'Base Admin'];
 
-const roleBannerTitle = computed(() => {
-  if (selectedRole.value === 'Base Admin') return 'Portal Admin Base'
-  return 'Pengirim Anonim & User'
-})
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+const selectedRole = ref('User');
 
-const roleBannerDesc = computed(() => {
-  if (selectedRole.value === 'Base Admin') return 'Kelola & moderasi postingan confession serta statistik komunitas.'
-  return 'Kirim confession anonim, beri tanggapan & kumpulkan poin reward.'
-})
+/**
+ * Return the user to the page that triggered the login, but only allow
+ * same-origin paths (`/feed`, `/profile`, …) — never `//evil.com`.
+ */
+function safeRedirect() {
+  const target = route.query.redirect;
+  return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
+    ? target
+    : null;
+}
 
-const bannerClass = computed(() => {
-  if (selectedRole.value === 'Base Admin') return 'banner-mod'
-  return 'banner-user'
-})
+/* ---------- validation ---------- */
+const form = useValidatedForm({
+  identifier: {
+    initial: 'user@base.eth',
+    rules: [rules.required(), rules.minLength(3, 'Minimal 3 karakter')],
+  },
+  password: {
+    initial: 'password123',
+    rules: [rules.required(), rules.minLength(8, 'Minimal 8 karakter')],
+  },
+});
 
-function handleLogin() {
-  authStore.login(selectedRole.value)
-  redirectRole(selectedRole.value)
+const touch = (name) => {
+  form.touched[name] = true;
+  form.validateField(name);
+};
+
+/** Show an error only after the field has been touched. */
+const fieldError = (name) => (form.touched[name] ? form.errors[name] : '');
+
+/* ---------- role banner ---------- */
+const roleBannerTitle = computed(() =>
+  selectedRole.value === 'Base Admin' ? 'Portal Admin Base' : 'Pengirim Anonim & User',
+);
+
+const roleBannerDesc = computed(() =>
+  selectedRole.value === 'Base Admin'
+    ? 'Kelola & moderasi postingan confession serta statistik komunitas.'
+    : 'Kirim confession anonim, beri tanggapan & kumpulkan poin reward.',
+);
+
+const bannerClass = computed(() =>
+  selectedRole.value === 'Base Admin' ? 'role-banner--mod' : 'role-banner--user',
+);
+
+const bannerIcon = computed(() => (selectedRole.value === 'Base Admin' ? ShieldCheck : UserRound));
+
+const roleClass = (role) => (role === 'User' ? 'active-user' : 'active-mod');
+
+/* ---------- actions ---------- */
+function redirectRole(role) {
+  const target = safeRedirect();
+  if (target) return router.push(target);
+  router.push(role === 'Base Admin' ? '/base-admin' : '/feed');
+}
+
+async function handleLogin() {
+  const ok = await form.submit(() => authStore.login(selectedRole.value));
+  if (ok) redirectRole(selectedRole.value);
 }
 
 function handleGoogleLogin() {
-  authStore.login(selectedRole.value)
-  redirectRole(selectedRole.value)
+  authStore.login(selectedRole.value);
+  redirectRole(selectedRole.value);
 }
 
-function redirectRole(role) {
-  if (role === 'Base Admin') {
-    router.push('/base-admin')
-  } else {
-    router.push('/feed')
-  }
-}
+/** Deep-link to register still has to honour the original destination. */
+const registerTarget = computed(() => ({ path: '/register', query: route.query }));
 </script>
 
 <style scoped>
-.base-club-auth {
-  min-height: 100vh;
-  background-color: #0B39FA;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 20px;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  color: #ffffff;
-}
-
-.auth-grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 44px 44px;
-  pointer-events: none;
-}
-
-.auth-card-container {
-  width: 100%;
-  max-width: 440px;
-  position: relative;
-  z-index: 10;
-}
-
-.brand-logo {
-  text-decoration: none;
-}
-
-.speech-bubble-logo {
-  background: #ffffff;
-  color: #000000;
-  padding: 8px 20px;
-  border-radius: 18px 18px 18px 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 900;
-  font-size: 18px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-
-.logo-base {
-  color: #000000;
-}
-
-.logo-club {
-  background: #BAFF00;
-  color: #000000;
-  padding: 3px 10px;
-  border-radius: 99px;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.auth-subtitle {
-  font-size: 13.5px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 600;
-}
-
-.auth-white-card {
-  background: #ffffff;
-  border-radius: 28px;
-  padding: 32px 28px;
-  color: #111827;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
-}
-
+/* ---------- role picker ---------- */
 .role-selector-pills {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
-  background: #F3F4F6;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
   padding: 4px;
   border-radius: 14px;
   margin-bottom: 16px;
@@ -234,123 +215,139 @@ function redirectRole(role) {
   border: none;
   background: transparent;
   padding: 10px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 800;
   border-radius: 10px;
   cursor: pointer;
-  color: #6B7280;
-  transition: all 0.2s ease;
+  color: var(--text-muted);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .role-pill-btn.active-user {
-  background: #0B39FA;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(11, 57, 250, 0.3);
+  background: var(--brand-blue);
+  color: var(--brand-blue-ink);
+  box-shadow: 0 4px 12px var(--neon-blue-glow);
 }
 
 .role-pill-btn.active-mod {
-  background: #7000FF;
-  color: #ffffff;
+  background: var(--shell-sub-accent);
+  color: var(--text-on-accent);
   box-shadow: 0 4px 12px rgba(112, 0, 255, 0.3);
 }
 
-.role-banner-indicator {
-  padding: 12px 16px;
-  border-radius: 14px;
+/* ---------- role banner ---------- */
+.role-banner {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  /* Fallback for browsers without color-mix() */
+  background: var(--bg-surface-2);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-color: color-mix(in srgb, currentColor 28%, transparent);
 }
 
-.banner-user {
-  background: #EEF2FF;
-  color: #0B39FA;
-  border: 1px solid #C7D2FE;
+.role-banner--user {
+  color: var(--brand-blue);
+}
+.role-banner--mod {
+  color: var(--shell-sub-accent);
 }
 
-.banner-mod {
-  background: #F3E8FF;
-  color: #6B21A8;
-  border: 1px solid #E9D5FF;
+.role-banner__icon {
+  display: flex;
+  flex-shrink: 0;
 }
 
+.role-banner__title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.role-banner__desc {
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+/* ---------- form ---------- */
 .auth-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-label {
+.form-alert {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger-text);
   font-size: 12.5px;
-  font-weight: 800;
-  color: #374151;
-  margin-bottom: 6px;
-}
-
-.base-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1.5px solid #E5E7EB;
-  border-radius: 14px;
-  font-size: 14px;
   font-weight: 600;
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.base-input:focus {
-  border-color: #0B39FA;
 }
 
 .btn-submit-blue {
   width: 100%;
-  background: #0B39FA;
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--brand-blue);
+  color: var(--brand-blue-ink);
   border: none;
   padding: 14px;
   border-radius: 14px;
+  font-family: inherit;
   font-weight: 800;
   font-size: 14px;
   letter-spacing: 0.5px;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
-  box-shadow: 0 6px 20px rgba(11, 57, 250, 0.3);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+  box-shadow: 0 6px 20px var(--neon-blue-glow);
 }
 
-.btn-submit-blue:hover {
-  background: #0425BD;
+.btn-submit-blue:hover:not(:disabled) {
   transform: translateY(-1px);
 }
+.btn-submit-blue:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
 
-.divider {
+/* ---------- divider & social ---------- */
+.auth-divider {
   display: flex;
   align-items: center;
   text-align: center;
   margin: 20px 0;
-  color: #9CA3AF;
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1px;
 }
 
-.divider::before,
-.divider::after {
+.auth-divider::before,
+.auth-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
-.divider span {
+.auth-divider span {
   padding: 0 10px;
 }
 
-.social-login-single {
+.social-login {
   display: flex;
   justify-content: center;
 }
@@ -361,48 +358,49 @@ function redirectRole(role) {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: #FFFFFF;
-  border: 1.5px solid #E5E7EB;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-subtle);
   border-radius: 14px;
   padding: 12px 20px;
+  font-family: inherit;
   font-weight: 800;
   font-size: 14px;
-  color: #1F2937;
+  color: var(--text-main);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn-google:hover {
-  background: #F9FAFB;
-  border-color: #D1D5DB;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  background: var(--bg-surface-2);
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
-.card-footer {
+.auth-footer {
   font-size: 13px;
-  color: #6B7280;
+  text-align: center;
+  color: var(--text-muted);
 }
 
-.text-blue {
-  color: #0B39FA;
+.auth-link {
+  color: var(--brand-blue);
   text-decoration: none;
 }
-
-.text-blue:hover {
+.auth-link:hover {
   text-decoration: underline;
 }
 
-.mb-6 { margin-bottom: 1.5rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mb-1 { margin-bottom: 0.25rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-6 { margin-top: 1.5rem; }
-.inline-block { display: inline-block; }
-.text-center { text-align: center; }
-.font-bold { font-weight: 700; }
-.text-xs { font-size: 0.75rem; }
-.opacity-90 { opacity: 0.9; }
-.flex { display: flex; }
-.justify-between { justify-content: space-between; }
-.items-center { align-items: center; }
+/* ---------- misc ---------- */
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 </style>

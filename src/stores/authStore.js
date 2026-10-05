@@ -1,25 +1,36 @@
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
+
+/** Safe JSON parse — returns null for missing or corrupt payloads. */
+function readJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Plain string values (tokens) are stored unencoded. */
+const readToken = () => localStorage.getItem('fess_token');
 
 export const useAuthStore = defineStore('auth', {
+  /**
+   * No implicit session: both values come straight from storage, so the
+   * `requiresAuth` / `roles` route guards actually mean something.
+   * Signing in is the only way to populate them (see `login()`).
+   */
   state: () => ({
-    user: JSON.parse(localStorage.getItem('fess_user')) || {
-      id: 'usr_7721',
-      username: 'Alex_Dev99',
-      handle: '@alexdev',
-      role: 'Super Admin', // 'Super Admin' | 'Base Admin' | 'User'
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-      level: 42,
-      bio: 'Fullstack Dev & Auto-Base Enthusiast ⚡ Building anonymous tools.',
-      badges: ['CHIEF ADMIN', 'EARLY ADOPTER', 'BUG HUNTER'],
-      managedBases: ['@codememfess', '@indiegamedev']
-    },
-    token: localStorage.getItem('fess_token') || 'mock_jwt_token_9981'
+    user: readJson('fess_user'),
+    token: readToken(),
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
     isSuperAdmin: (state) => state.user?.role === 'Super Admin',
-    isBaseAdmin: (state) => state.user?.role === 'Base Admin' || state.user?.role === 'Super Admin',
-    isRegularUser: (state) => state.user?.role === 'User'
+    isBaseAdmin: (state) => ['Base Admin', 'Super Admin'].includes(state.user?.role),
+    isRegularUser: (state) => state.user?.role === 'User',
+    /** Safe accessor — never assume `user` exists. */
+    displayName: (state) => state.user?.username ?? 'Anonim',
+    initials: (state) => (state.user?.username ?? 'AN').slice(0, 2).toUpperCase(),
   },
   actions: {
     login(role = 'User') {
@@ -29,49 +40,52 @@ export const useAuthStore = defineStore('auth', {
           username: 'SuperAdmin_GodMode',
           handle: '@superadmin',
           role: 'Super Admin',
-          avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
+          avatar:
+            'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
           level: 99,
           bio: 'Root Administrator of FessHub & AnonBase Engine.',
           badges: ['ROOT SUPER ADMIN', 'FOUNDER'],
-          managedBases: ['@all_bases']
+          managedBases: ['@all_bases'],
         },
         'Base Admin': {
           id: 'usr_base_mod',
           username: 'BaseModerator_Code',
           handle: '@code_mod',
           role: 'Base Admin',
-          avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
+          avatar:
+            'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
           level: 28,
           bio: 'Official moderator for @codememfess base.',
           badges: ['BASE MODERATOR', 'VERIFIED ADMIN'],
-          managedBases: ['@codememfess']
+          managedBases: ['@codememfess'],
         },
-        'User': {
+        User: {
           id: 'usr_anon_99',
           username: 'Anon_ShadowX',
           handle: '@anon_shadow',
           role: 'User',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+          avatar:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
           level: 14,
           bio: 'Secret sender & casual reader.',
           badges: ['ANON SENDER', 'MEMBER'],
-          managedBases: []
-        }
-      }
+          managedBases: [],
+        },
+      };
 
-      this.user = mockUsers[role] || mockUsers['User']
-      this.token = 'mock_jwt_token_' + Date.now()
-      localStorage.setItem('fess_user', JSON.stringify(this.user))
-      localStorage.setItem('fess_token', this.token)
+      this.user = mockUsers[role] || mockUsers['User'];
+      this.token = 'mock_jwt_token_' + Date.now();
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+      localStorage.setItem('fess_token', this.token);
     },
     switchRole(role) {
-      this.login(role)
+      this.login(role);
     },
     logout() {
-      this.user = null
-      this.token = null
-      localStorage.removeItem('fess_user')
-      localStorage.removeItem('fess_token')
-    }
-  }
-})
+      this.user = null;
+      this.token = null;
+      localStorage.removeItem('fess_user');
+      localStorage.removeItem('fess_token');
+    },
+  },
+});

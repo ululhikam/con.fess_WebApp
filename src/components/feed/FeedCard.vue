@@ -1,9 +1,9 @@
 ﻿<template>
-  <div class="feed-card">
-    <div class="card-header-row">
+  <article class="feed-card">
+    <header class="card-header-row">
       <div class="user-meta-box">
         <div class="avatar-circle" :style="{ background: post.avatarBg }">
-          <img v-if="post.avatarImg" :src="post.avatarImg" alt="avatar" />
+          <img v-if="post.avatarImg" :src="post.avatarImg" alt="" />
           <span v-else>{{ post.avatarText }}</span>
         </div>
         <div class="user-handle-box">
@@ -11,64 +11,64 @@
           <span class="post-time">• {{ post.time }}</span>
         </div>
       </div>
+
       <span :class="['tag-badge', post.tag === 'Tanya' ? 'tag-tanya' : 'tag-cerita']">
-        📌 {{ post.tag || 'Cerita' }}
+        <Pin :size="12" /> {{ post.tag || 'Cerita' }}
       </span>
-    </div>
+    </header>
 
     <div class="card-body-text">
       <p class="post-body-content">{{ post.content }}</p>
     </div>
 
-    <div class="card-action-bar">
-      <button class="action-btn" title="Komentar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-        </svg>
+    <footer class="card-action-bar">
+      <button class="action-btn" type="button" title="Komentar" aria-label="Komentar">
+        <MessageCircle :size="18" />
       </button>
 
-      <button class="action-btn quote-btn" title="Quote">
-        <span>⁹⁹</span>
+      <button class="action-btn" type="button" title="Kutip" aria-label="Kutip">
+        <Quote :size="18" />
       </button>
 
       <button
-        @click="$emit('like', post.id)"
+        type="button"
         :class="['action-btn', post.isLiked ? 'liked' : '']"
-        title="Suka"
+        :aria-pressed="post.isLiked"
+        :aria-label="post.isLiked ? 'Batal suka' : 'Suka'"
+        @click="$emit('like', post.id)"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" :fill="post.isLiked ? '#EF4444' : 'none'" :stroke="post.isLiked ? '#EF4444' : 'currentColor'" stroke-width="2">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-        </svg>
-        <span v-if="post.likes" class="like-count">{{ post.likes }}</span>
+        <Heart :size="18" :fill="post.isLiked ? 'currentColor' : 'none'" />
+        <span v-if="post.likes" class="like-count">{{ formatCompact(post.likes) }}</span>
       </button>
 
-      <button class="action-btn" title="Simpan">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <polyline points="19 12 12 19 5 12"/>
-        </svg>
+      <button class="action-btn" type="button" title="Simpan" aria-label="Simpan">
+        <Bookmark :size="18" />
       </button>
 
-      <button class="action-btn ml-auto" title="Bagikan">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/>
-          <line x1="12" y1="2" x2="12" y2="15"/>
-        </svg>
+      <button class="action-btn action-btn--end" type="button" title="Bagikan" aria-label="Bagikan">
+        <Share2 :size="18" />
       </button>
-    </div>
-  </div>
+    </footer>
+  </article>
 </template>
 
 <script setup>
-defineProps({ post: { type: Object, required: true } })
-defineEmits(['like'])
+/**
+ * FeedCard — a single confession in the timeline.
+ * Presentational only: it receives `post` and emits `like`; all state lives
+ * in src/composables/useFeedPosts.js.
+ */
+import { Pin, MessageCircle, Quote, Heart, Bookmark, Share2 } from 'lucide-vue-next';
+import { formatCompact } from '../../utils/format';
+
+defineProps({ post: { type: Object, required: true } });
+defineEmits(['like']);
 </script>
 
 <style scoped>
 .feed-card {
-  background: #14141C;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
   border-radius: 20px;
   padding: 18px;
 }
@@ -80,13 +80,18 @@ defineEmits(['like'])
   margin-bottom: 12px;
 }
 
-.user-meta-box { display: flex; align-items: center; gap: 10px; }
+.user-meta-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 
 .avatar-circle {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  color: #fff;
+  color: var(--text-on-accent);
   font-weight: 900;
   font-size: 11px;
   display: flex;
@@ -96,46 +101,93 @@ defineEmits(['like'])
   flex-shrink: 0;
 }
 
-.avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-.handle-title { font-weight: 800; font-size: 14px; }
-.post-time { font-size: 12px; color: rgba(255,255,255,0.45); margin-left: 6px; }
+.handle-title {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--shell-text);
+}
+
+.post-time {
+  font-size: 12px;
+  color: var(--shell-text-dim);
+  margin-left: 6px;
+}
 
 .tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   font-weight: 800;
   padding: 3px 10px;
   border-radius: 99px;
+  flex-shrink: 0;
 }
-.tag-cerita { background: rgba(11,57,250,0.2); border: 1px solid rgba(11,57,250,0.35); color: #7BA7FF; }
-.tag-tanya  { background: rgba(112,0,255,0.2); border: 1px solid rgba(112,0,255,0.35); color: #C084FC; }
 
-.card-body-text { margin-bottom: 14px; }
-.post-body-content { font-size: 14.5px; line-height: 1.65; color: rgba(255,255,255,0.9); margin: 0; white-space: pre-line; }
+.tag-cerita {
+  background: var(--tag-cerita-bg);
+  color: var(--tag-cerita-fg);
+}
+.tag-tanya {
+  background: var(--tag-tanya-bg);
+  color: var(--tag-tanya-fg);
+}
+
+.card-body-text {
+  margin-bottom: 14px;
+}
+
+.post-body-content {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--shell-text);
+  opacity: 0.92;
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 
 .card-action-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  gap: 28px;
+  border-top: 1px solid var(--shell-border);
   padding-top: 12px;
 }
 
 .action-btn {
   background: transparent;
   border: none;
-  color: rgba(255,255,255,0.45);
+  color: var(--shell-text-muted);
   cursor: pointer;
-  padding: 6px 10px;
-  border-radius: 10px;
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 13px;
-  transition: all 0.15s;
+  padding: 0;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
 }
-.action-btn:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.action-btn.liked { color: #EF4444; }
-.like-count { font-size: 12px; font-weight: 700; }
-.ml-auto { margin-left: auto; }
+
+.action-btn:hover {
+  color: var(--shell-text);
+  transform: translateY(-1px);
+}
+.action-btn.liked {
+  color: var(--danger-text);
+}
+.action-btn--end {
+  margin-left: auto;
+}
+
+.like-count {
+  font-size: 12px;
+  font-weight: 700;
+}
 </style>

@@ -1,145 +1,173 @@
 <template>
-  <div class="base-club-auth">
-    <div class="auth-grid-overlay"></div>
+  <AuthShell logo-word="CLUB" subtitle="Create your Base Account & Join Creator Engine">
+    <h1 class="auth-card-title text-center">Create Base Account</h1>
+    <p class="auth-card-desc text-center text-xs text-muted mb-6">
+      Join thousands of creators sending confessions &amp; earning $CLUB
+    </p>
 
-    <div class="auth-card-container">
-      <!-- Logo Header -->
-      <div class="text-center mb-6">
-        <router-link to="/" class="brand-logo inline-block">
-          <div class="speech-bubble-logo">
-            <span class="logo-base">BASE</span>
-            <span class="logo-club">CLUB</span>
-          </div>
-        </router-link>
-        <p class="auth-subtitle mt-2">Create your Base Account & Join Creator Engine</p>
-      </div>
+    <form class="auth-form" novalidate @submit.prevent="handleRegister">
+      <FormField
+        id="register-handle"
+        v-model="form.values.handle"
+        label="Desired Creator Handle / Alias"
+        placeholder="e.g. @anon_creator"
+        autocomplete="username"
+        required
+        :error="fieldError('handle')"
+        :hint="form.values.handle ? handleHint : ''"
+        @blur="touch('handle')"
+      />
 
-      <!-- Main Register White Card -->
-      <div class="auth-white-card">
-        <h2 class="card-title text-center mb-1">Create Base Account</h2>
-        <p class="card-desc text-center text-xs text-muted mb-6">Join thousands of creators sending confessions & earning $CLUB</p>
+      <FormField
+        id="register-email"
+        v-model="form.values.email"
+        label="Email Address"
+        type="email"
+        placeholder="creator@baseclub.eth"
+        autocomplete="email"
+        required
+        :error="fieldError('email')"
+        @blur="touch('email')"
+      />
 
-        <form @submit.prevent="handleRegister" class="auth-form">
-          <div class="form-group">
-            <label class="form-label">Desired Creator Handle / Alias</label>
-            <input v-model="username" type="text" class="base-input" placeholder="e.g. @anon_creator" required />
-          </div>
+      <FormField
+        id="register-password"
+        v-model="form.values.password"
+        label="Password"
+        type="password"
+        placeholder="••••••••••••"
+        autocomplete="new-password"
+        required
+        hint="Minimal 8 karakter"
+        :error="fieldError('password')"
+        @blur="touch('password')"
+      />
 
-          <div class="form-group">
-            <label class="form-label">Email Address</label>
-            <input v-model="email" type="email" class="base-input" placeholder="creator@baseclub.eth" required />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Password</label>
-            <input v-model="password" type="password" class="base-input" placeholder="••••••••••••" required />
-          </div>
-
-          <button type="submit" class="btn-submit-lime mt-2">
-            CREATE ACCOUNT & ENTER BASE →
-          </button>
-        </form>
-
-        <div class="card-footer text-center mt-6 text-xs text-muted">
-          Already have an account? 
-          <router-link to="/login" class="text-blue font-bold">Log in here</router-link>
+      <!-- Live strength meter: gives feedback instead of only rejecting -->
+      <div class="strength" aria-live="polite">
+        <div class="strength__bars" aria-hidden="true">
+          <span
+            v-for="index in 4"
+            :key="index"
+            class="strength__bar"
+            :class="{ 'is-on': index <= strength.score }"
+            :data-level="strength.level"
+          />
         </div>
+        <span class="strength__label" :data-level="strength.level">
+          Kekuatan sandi: {{ strength.label }}
+        </span>
       </div>
-    </div>
-  </div>
+
+      <p v-if="form.submitError" class="form-alert" role="alert">
+        {{ form.submitError }}
+      </p>
+
+      <button type="submit" class="btn-submit-lime mt-2" :disabled="form.submitting">
+        <Loader2 v-if="form.submitting" class="spin" :size="16" aria-hidden="true" />
+        <template v-else>
+          CREATE ACCOUNT &amp; ENTER BASE
+          <ArrowRight :size="15" aria-hidden="true" />
+        </template>
+      </button>
+    </form>
+
+    <p class="auth-footer mt-6 text-xs text-muted">
+      Already have an account?
+      <router-link :to="loginTarget" class="auth-link font-bold">Log in here</router-link>
+    </p>
+  </AuthShell>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/authStore'
+/**
+ * RegisterPage — sign-up screen.
+ * Shares <AuthShell>/<FormField> with LoginPage; validation and submit
+ * lifecycle come from useValidatedForm so neither view reimplements them.
+ */
+import { computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { ArrowRight, Loader2 } from 'lucide-vue-next';
 
-const router = useRouter()
-const authStore = useAuthStore()
+import AuthShell from '../components/auth/AuthShell.vue';
+import FormField from '../components/auth/FormField.vue';
+import { useAuthStore } from '../stores/authStore';
+import { useValidatedForm, rules } from '../composables/useValidatedForm';
 
-const username = ref('')
-const email = ref('')
-const password = ref('')
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
 
-const handleRegister = () => {
-  authStore.login('User')
-  router.push('/feed')
+/** Only same-origin paths may be used as a post-auth destination. */
+function safeRedirect() {
+  const target = route.query.redirect;
+  return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
+    ? target
+    : null;
+}
+
+/** Keep the original destination when hopping back to the login screen. */
+const loginTarget = computed(() => ({ path: '/login', query: route.query }));
+
+const form = useValidatedForm({
+  handle: {
+    initial: '',
+    rules: [rules.required('Alias wajib diisi'), rules.minLength(3, 'Minimal 3 karakter')],
+  },
+  email: {
+    initial: '',
+    rules: [rules.required('Email wajib diisi'), rules.email()],
+  },
+  password: {
+    initial: '',
+    rules: [rules.required('Sandi wajib diisi'), rules.minLength(8, 'Minimal 8 karakter')],
+  },
+});
+
+const touch = (name) => {
+  form.touched[name] = true;
+  form.validateField(name);
+};
+
+const fieldError = (name) => (form.touched[name] ? form.errors[name] : '');
+
+const handleHint = computed(() =>
+  form.values.handle.startsWith('@')
+    ? 'Bagus — awalan @ akan ditambahkan otomatis.'
+    : 'Boleh tanpa @.',
+);
+
+/** Rough 0-4 strength score — pure, so it can be unit tested. */
+const strength = computed(() => {
+  const value = form.values.password;
+  let score = 0;
+  if (value.length >= 8) score++;
+  if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
+  if (/\d/.test(value)) score++;
+  if (/[^A-Za-z0-9]/.test(value)) score++;
+  if (!value) score = 0;
+
+  const labels = ['Kosong', 'Lemah', 'Sedang', 'Kuat', 'Sangat kuat'];
+  return { score, label: labels[score], level: Math.max(0, score - 1) };
+});
+
+async function handleRegister() {
+  const ok = await form.submit(() => authStore.login('User'));
+  if (!ok) return;
+  router.push(safeRedirect() ?? '/feed');
 }
 </script>
 
 <style scoped>
-.base-club-auth {
-  min-height: 100vh;
-  background-color: #0038FF;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 20px;
-  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
-  color: #ffffff;
-}
-
-.auth-grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 44px 44px;
-  pointer-events: none;
-}
-
-.auth-card-container {
-  width: 100%;
-  max-width: 440px;
-  position: relative;
-  z-index: 10;
-}
-
-.brand-logo {
-  text-decoration: none;
-}
-
-.speech-bubble-logo {
-  background: #ffffff;
-  color: #000000;
-  padding: 8px 18px;
-  border-radius: 18px 18px 18px 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 900;
-  font-size: 18px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-}
-
-.logo-club {
-  background: #9EFF00;
-  color: #000;
-  padding: 3px 10px;
-  border-radius: 99px;
-  font-size: 14px;
-}
-
-.auth-subtitle {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.85);
-  font-weight: 500;
-}
-
-.auth-white-card {
-  background: #ffffff;
-  border-radius: 28px;
-  padding: 32px 28px;
-  color: #111827;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
-}
-
-.card-title {
+.auth-card-title {
+  margin: 0;
   font-size: 20px;
   font-weight: 900;
-  color: #000;
+  color: var(--text-main);
+}
+
+.auth-card-desc {
+  margin: 4px 0 0;
 }
 
 .auth-form {
@@ -148,64 +176,111 @@ const handleRegister = () => {
   gap: 16px;
 }
 
-.form-group {
+/* ---------- password strength ---------- */
+.strength {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: -6px;
 }
 
-.form-label {
-  font-size: 12px;
+.strength__bars {
+  display: flex;
+  gap: 5px;
+}
+
+.strength__bar {
+  height: 4px;
+  flex: 1;
+  border-radius: var(--radius-pill);
+  background: var(--border-subtle);
+  transition: background 0.2s ease;
+}
+
+.strength__bar.is-on {
+  background: var(--text-muted);
+}
+.strength__bar.is-on[data-level='1'] {
+  background: var(--danger);
+}
+.strength__bar.is-on[data-level='2'] {
+  background: var(--warning);
+}
+.strength__bar.is-on[data-level='3'] {
+  background: var(--neon-blue);
+}
+.strength__bar.is-on[data-level='4'] {
+  background: var(--success);
+}
+
+.strength__label {
+  font-size: 11.5px;
   font-weight: 700;
-  color: #374151;
+  color: var(--text-muted);
 }
 
-.base-input {
-  background: #F9FAFB;
-  border: 1.5px solid #E5E7EB;
+/* ---------- alerts ---------- */
+.form-alert {
+  margin: 0;
+  padding: 10px 14px;
   border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  color: #111827;
-  width: 100%;
-  box-sizing: border-box;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger-text);
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
-.base-input:focus {
-  border-color: #0038FF;
-  box-shadow: 0 0 10px rgba(0, 56, 255, 0.2);
-  background: #ffffff;
-}
-
+/* ---------- submit ---------- */
 .btn-submit-lime {
-  background: #9EFF00;
-  color: #000000;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--lime-primary);
+  color: var(--lime-ink);
   border: none;
   padding: 14px;
   border-radius: 14px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 900;
+  letter-spacing: 0.4px;
   cursor: pointer;
-  transition: transform 0.15s ease;
-  box-shadow: 0 6px 20px rgba(158, 255, 0, 0.35);
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+  box-shadow: 0 6px 20px var(--lime-glow);
 }
 
-.btn-submit-lime:hover {
+.btn-submit-lime:hover:not(:disabled) {
   transform: translateY(-2px);
 }
+.btn-submit-lime:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
 
-.text-blue { color: #0038FF; }
+/* ---------- footer ---------- */
+.auth-footer {
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.auth-link {
+  color: var(--brand-blue);
+  text-decoration: none;
+}
+.auth-link:hover {
+  text-decoration: underline;
+}
 
-@media (max-width: 640px) {
-  .auth-white-card {
-    padding: 20px 16px;
-    border-radius: 20px;
-  }
-
-  .base-input {
-    font-size: 16px !important;
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

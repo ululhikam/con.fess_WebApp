@@ -1,0 +1,7 @@
+# Build output
+dist/
+.tmp-build-*/
+node_modules/
+
+# Lockfiles are generated artefacts
+package-lock.json
