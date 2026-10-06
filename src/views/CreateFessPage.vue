@@ -34,7 +34,7 @@
         <BaseSelector v-model="form.baseHandle" :bases="availableBases" @change="onBaseChange" />
 
         <!-- Text Editor -->
-        <EditorArea ref="editorRef" v-model="form.content" :placeholder="getPlaceholder" :max-length="2000" />
+        <EditorArea v-model="form.content" :placeholder="getPlaceholder" :max-length="2000" />
 
         <!-- Media Upload Section -->
         <MediaUploader
@@ -91,15 +91,26 @@
       <!-- Preview Panel (Right Sidebar on Desktop, Bottom on Mobile) -->
       <aside class="preview-panel" :class="{ 'has-content': hasContent }">
         <div class="preview-header">
-          <h2 class="preview-title">Pratinjau</h2>
-          <label class="preview-toggle" @click="previewMode = !previewMode">
-            <input type="checkbox" v-model="previewMode" />
-            <span>{{ previewMode ? 'Mode Preview' : 'Mode Edit' }}</span>
-          </label>
+          <div>
+            <h2 class="preview-title">Pratinjau Kartu</h2>
+            <p class="preview-subtitle">{{ activeTemplate.label }} · {{ activeAspect.label }}</p>
+          </div>
+          <button
+            type="button"
+            class="btn-export"
+            :disabled="!hasContent || exporting"
+            :title="hasContent ? 'Simpan kartu sebagai gambar PNG' : 'Tulis fess dulu'"
+            @click="exportCard"
+          >
+            <Loader2 v-if="exporting" :size="15" class="spin" />
+            <Download v-else :size="15" />
+            <span>{{ exporting ? 'Membuat…' : 'Ekspor PNG' }}</span>
+          </button>
         </div>
 
         <div class="preview-content">
           <PostPreview
+            ref="previewRef"
             :content="form.content"
             :media="form.media"
             :base-handle="form.baseHandle"
@@ -108,7 +119,11 @@
             :template="form.template"
             :author="currentUser"
             :is-preview="true"
+            :exporting="exporting"
           />
+          <p v-if="exportError" class="preview-error" role="alert">
+            <AlertCircle :size="14" /> {{ exportError }}
+          </p>
         </div>
 
         <div class="preview-stats" v-if="hasContent">
@@ -148,7 +163,17 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ChevronLeft, Loader2, Tag, Calendar, Music, Layout } from 'lucide-vue-next';
+import {
+  ChevronLeft,
+  Loader2,
+  Tag,
+  Calendar,
+  Music,
+  Layout,
+  Download,
+  AlertCircle,
+} from 'lucide-vue-next';
+import { toPng } from 'html-to-image';
 
 // Components
 import BaseSelector from '../components/compose/BaseSelector.vue';
@@ -169,7 +194,7 @@ import { validateFessContent, generateClientId } from '../utils/format';
 
 // Data
 import { TOPICS } from '../data/topics';
-import { TEMPLATES } from '../data/templates';
+import { TEMPLATES, ASPECTS, getTemplateByKey } from '../data/templates';
 import { SONGS } from '../data/songs';
 
 const router = useRouter();
@@ -193,12 +218,53 @@ const showScheduleModal = ref(false);
 const showSongModal = ref(false);
 const showTemplateModal = ref(false);
 const showPublishModal = ref(false);
-const previewMode = ref(true);
 const savingDraft = ref(false);
 const publishing = ref(false);
-const editorFocused = ref(false);
 
-const editorRef = ref(null);
+/* ---------- card export ---------- */
+const previewRef = ref(null);
+const exporting = ref(false);
+const exportError = ref('');
+
+const activeTemplate = computed(() => getTemplateByKey(form.value.template));
+const activeAspect = computed(() => ASPECTS[activeTemplate.value.aspect] || ASPECTS.portrait);
+
+/**
+ * Rasterise the preview card to a PNG sized for Instagram.
+ *
+ * html-to-image renders the node at its natural CSS size, so we bump
+ * `pixelRatio` to reach the export width and keep `cacheBust` on for any
+ * uploaded blob/media URLs.
+ */
+async function exportCard() {
+  const node = previewRef.value?.cardEl;
+  if (!node || exporting.value) return;
+
+  exporting.value = true;
+  exportError.value = '';
+  try {
+    const targetWidth = activeAspect.value.exportWidth;
+    const naturalWidth = node.getBoundingClientRect().width || node.offsetWidth || targetWidth;
+    const pixelRatio = Math.max(1, targetWidth / naturalWidth);
+
+    const dataUrl = await toPng(node, {
+      pixelRatio,
+      cacheBust: true,
+      backgroundColor: undefined,
+      style: { transform: 'none', margin: '0' },
+    });
+
+    const link = document.createElement('a');
+    link.download = `fess-${form.value.template}-${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+  } catch (err) {
+    console.error('Export failed:', err);
+    exportError.value = 'Gagal membuat gambar. Coba lagi.';
+  } finally {
+    exporting.value = false;
+  }
+}
 const currentUser = computed(() => authStore.user);
 
 const availableBases = computed(() => {
@@ -597,13 +663,14 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 }
 
 .preview-panel:not(.has-content) .preview-content {
-  opacity: 0.5;
+  opacity: 0.75;
 }
 
 .preview-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-surface-2);
@@ -616,19 +683,47 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   margin: 0;
 }
 
-.preview-toggle {
+.preview-subtitle {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.2px;
+}
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-export:hover:not(:disabled) {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+.btn-export:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.preview-error {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin: 10px 0 0;
   font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.preview-toggle input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--brand-blue);
+  color: var(--danger-text, #ef4444);
 }
 
 .preview-content {
