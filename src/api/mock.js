@@ -29,9 +29,16 @@ function maybeThrow() {
   }
 }
 
-const fessStore = useFessStore();
-const authStore = useAuthStore();
-const followBase = useFollowBase(['@ustfess', '@codememfess']);
+/** Lazy store accessors — called only when Pinia is active. */
+function getFessStore() {
+  return useFessStore();
+}
+function getAuthStore() {
+  return useAuthStore();
+}
+function getFollowBase() {
+  return useFollowBase(['@ustfess', '@codememfess']);
+}
 
 /** Convert internal fess to API shape. */
 function serializeFess(fess) {
@@ -67,7 +74,8 @@ function parseRelative(str) {
 }
 
 /** Convert internal base to API shape. */
-function serializeBase(base) {
+function serializeBase(base, fb) {
+  const follower = fb || getFollowBase();
   return {
     id: base.id,
     name: base.name,
@@ -77,7 +85,7 @@ function serializeBase(base) {
     avatar: base.avatar || base.initial,
     verified: base.verified,
     color: base.color,
-    is_following: followBase.isFollowing(base.handle),
+    is_following: follower.isFollowing(base.handle),
   };
 }
 
@@ -103,25 +111,29 @@ export const mockApi = {
   async login(role = 'User') {
     await delay();
     maybeThrow();
-    authStore.login(role);
-    return { user: serializeUser(authStore.user), token: authStore.token };
+    const as = getAuthStore();
+    as.login(role);
+    return { user: serializeUser(as.user), token: as.token };
   },
 
   async logout() {
     await delay();
-    authStore.logout();
+    const as = getAuthStore();
+    as.logout();
     return { ok: true };
   },
 
   async me() {
     await delay();
-    if (!authStore.isAuthenticated) throw new Error('Unauthenticated');
-    return { user: serializeUser(authStore.user) };
+    const as = getAuthStore();
+    if (!as.isAuthenticated) throw new Error('Unauthenticated');
+    return { user: serializeUser(as.user) };
   },
 
   async refreshToken() {
     await delay();
-    return { token: authStore.token };
+    const as = getAuthStore();
+    return { token: as.token };
   },
 
   /* ---- BASES ---- */
@@ -144,23 +156,26 @@ export const mockApi = {
   async getBase(handle) {
     await delay();
     maybeThrow();
+    const fb = getFollowBase();
     const base = ALL_BASES.find((b) => b.handle === handle);
     if (!base) throw { status: 404, message: 'Base not found' };
-    return serializeBase(base);
+    return serializeBase(base, fb);
   },
 
   async followBase(handle) {
     await delay();
     maybeThrow();
-    followBase.toggleFollowBase(handle);
-    return { is_following: followBase.isFollowing(handle) };
+    const fb = getFollowBase();
+    fb.toggleFollowBase(handle);
+    return { is_following: fb.isFollowing(handle) };
   },
 
   /* ---- FESSES (POSTS) ---- */
   async getFesses(params = {}) {
     await delay();
     maybeThrow();
-    let list = fessStore.fesses.map(serializeFess);
+    const fs = getFessStore();
+    let list = fs.fesses.map(serializeFess);
 
     if (params.base) {
       list = list.filter((f) => f.base_handle === params.base);
@@ -197,7 +212,8 @@ export const mockApi = {
   async getFess(id) {
     await delay();
     maybeThrow();
-    const fess = fessStore.fesses.find((f) => f.id === id);
+    const fs = getFessStore();
+    const fess = fs.fesses.find((f) => f.id === id);
     if (!fess) throw { status: 404, message: 'Fess not found' };
     return serializeFess(fess);
   },
@@ -205,33 +221,38 @@ export const mockApi = {
   async createFess(payload) {
     await delay();
     maybeThrow();
-    if (!authStore.isAuthenticated) throw { status: 401, message: 'Login required' };
+    const as = getAuthStore();
+    if (!as.isAuthenticated) throw { status: 401, message: 'Login required' };
 
-    const newFess = fessStore.addFess(payload.base_handle, payload.content);
+    const fs = getFessStore();
+    const newFess = fs.addFess(payload.base_handle, payload.content);
     return serializeFess(newFess);
   },
 
   async voteFess(id, type) {
     await delay();
     maybeThrow();
-    fessStore.vote(id, type);
-    const fess = fessStore.fesses.find((f) => f.id === id);
+    const fs = getFessStore();
+    fs.vote(id, type);
+    const fess = fs.fesses.find((f) => f.id === id);
     return serializeFess(fess);
   },
 
   async approveFess(id) {
     await delay();
     maybeThrow();
-    fessStore.approveFess(id);
-    const fess = fessStore.fesses.find((f) => f.id === id);
+    const fs = getFessStore();
+    fs.approveFess(id);
+    const fess = fs.fesses.find((f) => f.id === id);
     return serializeFess(fess);
   },
 
   async rejectFess(id) {
     await delay();
     maybeThrow();
-    fessStore.rejectFess(id);
-    const fess = fessStore.fesses.find((f) => f.id === id);
+    const fs = getFessStore();
+    fs.rejectFess(id);
+    const fess = fs.fesses.find((f) => f.id === id);
     return serializeFess(fess);
   },
 
@@ -239,7 +260,8 @@ export const mockApi = {
   async getComments(fessId) {
     await delay();
     maybeThrow();
-    const fess = fessStore.fesses.find((f) => f.id === fessId);
+    const fs = getFessStore();
+    const fess = fs.fesses.find((f) => f.id === fessId);
     if (!fess) throw { status: 404, message: 'Fess not found' };
     return {
       data: fess.comments.map((c) => ({
@@ -254,14 +276,16 @@ export const mockApi = {
   async addComment(fessId, text) {
     await delay();
     maybeThrow();
-    if (!authStore.isAuthenticated) throw { status: 401, message: 'Login required' };
+    const as = getAuthStore();
+    if (!as.isAuthenticated) throw { status: 401, message: 'Login required' };
 
-    const fess = fessStore.fesses.find((f) => f.id === fessId);
+    const fs = getFessStore();
+    const fess = fs.fesses.find((f) => f.id === fessId);
     if (!fess) throw { status: 404, message: 'Fess not found' };
 
     const comment = {
       id: 'c_' + Date.now(),
-      author: authStore.displayName,
+      author: as.displayName,
       time: 'baru saja',
       text: String(text).trim(),
     };
@@ -274,8 +298,9 @@ export const mockApi = {
   async getNotifications(params = {}) {
     await delay();
     maybeThrow();
+    const fs = getFessStore();
     // Generate mock notifications from fesses
-    const notifs = fessStore.fesses.flatMap((f) =>
+    const notifs = fs.fesses.flatMap((f) =>
       f.comments.map((c) => ({
         id: `notif_${f.id}_${c.id}`,
         type: 'comment',
@@ -300,9 +325,10 @@ export const mockApi = {
   async getProfile(userId) {
     await delay();
     maybeThrow();
+    const as = getAuthStore();
     // In mock, we only have current user
-    if (authStore.user && authStore.user.id === userId) {
-      return { user: serializeUser(authStore.user) };
+    if (as.user && as.user.id === userId) {
+      return { user: serializeUser(as.user) };
     }
     throw { status: 404, message: 'User not found' };
   },
@@ -310,22 +336,24 @@ export const mockApi = {
   async updateProfile(data) {
     await delay();
     maybeThrow();
-    if (!authStore.isAuthenticated) throw { status: 401 };
+    const as = getAuthStore();
+    if (!as.isAuthenticated) throw { status: 401 };
     // Mock: just merge
-    authStore.user = { ...authStore.user, ...data };
-    localStorage.setItem('fess_user', JSON.stringify(authStore.user));
-    return { user: serializeUser(authStore.user) };
+    as.user = { ...as.user, ...data };
+    localStorage.setItem('fess_user', JSON.stringify(as.user));
+    return { user: serializeUser(as.user) };
   },
 
   /* ---- STATS / ADMIN ---- */
   async getStats() {
     await delay();
     maybeThrow();
-    const total = fessStore.fesses.length;
-    const published = fessStore.fesses.filter((f) => f.status === 'published').length;
-    const pending = fessStore.fesses.filter((f) => f.status === 'pending').length;
-    const rejected = fessStore.fesses.filter((f) => f.status === 'rejected').length;
-    const totalVotes = fessStore.fesses.reduce((s, f) => s + f.upvotes + f.downvotes, 0);
+    const fs = getFessStore();
+    const total = fs.fesses.length;
+    const published = fs.fesses.filter((f) => f.status === 'published').length;
+    const pending = fs.fesses.filter((f) => f.status === 'pending').length;
+    const rejected = fs.fesses.filter((f) => f.status === 'rejected').length;
+    const totalVotes = fs.fesses.reduce((s, f) => s + f.upvotes + f.downvotes, 0);
     return {
       total_fesses: total,
       published,
@@ -340,7 +368,8 @@ export const mockApi = {
   async getModerationQueue(params = {}) {
     await delay();
     maybeThrow();
-    let list = fessStore.fesses.filter((f) => f.status === 'pending').map(serializeFess);
+    const fs = getFessStore();
+    let list = fs.fesses.filter((f) => f.status === 'pending').map(serializeFess);
     return { data: list, total: list.length };
   },
 };
