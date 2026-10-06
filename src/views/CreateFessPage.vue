@@ -34,13 +34,7 @@
         <BaseSelector v-model="form.baseHandle" :bases="availableBases" @change="onBaseChange" />
 
         <!-- Text Editor -->
-        <EditorArea
-          v-model="form.content"
-          :placeholder="getPlaceholder"
-          :max-length="2000"
-          @input="onContentChange"
-          ref="editorRef"
-        />
+        <EditorArea ref="editorRef" v-model="form.content" :placeholder="getPlaceholder" :max-length="2000" />
 
         <!-- Media Upload Section -->
         <MediaUploader
@@ -305,10 +299,6 @@ const formatScheduleDate = (dateStr) => {
 // Actions
 function onBaseChange(handle) {
   form.value.baseHandle = handle;
-}
-
-function onContentChange(content) {
-  form.value.content = content;
 }
 
 function onMediaChange(media) {
