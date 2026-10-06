@@ -36,7 +36,7 @@ export function usePosts() {
   const {
     items: feedPosts,
     loading: feedLoading,
-    loadingMore,
+    loadingMore: feedLoadingMore,
     error: feedError,
     hasMore,
     loadMore,
