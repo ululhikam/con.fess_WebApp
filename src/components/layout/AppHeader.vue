@@ -10,8 +10,6 @@
       </router-link>
 
       <div class="header-right-actions">
-        <ThemeToggle class="header-theme" />
-
         <router-link
           v-if="authStore.isBaseAdmin || authStore.isSuperAdmin"
           to="/base-admin"
@@ -35,7 +33,6 @@
  */
 import { MessageSquare, Plus } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
-import ThemeToggle from '../ui/ThemeToggle.vue';
 
 defineEmits(['openCompose']);
 const authStore = useAuthStore();

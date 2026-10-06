@@ -9,9 +9,7 @@
           :subtitle="SUPER_ADMIN_HEADER.subtitle"
           :health="SUPER_ADMIN_HEADER.health"
         >
-          <template #actions>
-            <ThemeToggle label />
-          </template>
+          <template #actions> </template>
         </SuperAdminHeader>
 
         <ContentSkeleton v-if="loading" type="stats" :count="4" label="Memuat status sistem…" />
@@ -44,7 +42,6 @@
  * Composes the header, system gauges and the two control cards; loading and
  * error states are handled with the shared skeleton / state components.
  */
-import ThemeToggle from '../components/ui/ThemeToggle.vue';
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
 

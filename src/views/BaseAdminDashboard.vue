@@ -10,7 +10,6 @@
         subtitle="Kelola pesan anonim, moderasi otomatis, platform cross-post & keuangan komunitas"
       >
         <template #actions>
-          <ThemeToggle label />
           <AdminButton variant="outline" @click="activeTab = 'profil'"
             >Lihat Profil Base</AdminButton
           >
@@ -72,7 +71,6 @@
  */
 import { Plus } from 'lucide-vue-next';
 
-import ThemeToggle from '../components/ui/ThemeToggle.vue';
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
 

@@ -8,21 +8,10 @@
     </router-link>
 
     <p v-if="subtitle" class="auth-subtitle">{{ subtitle }}</p>
-
-    <div class="auth-theme-slot">
-      <ThemeToggle label />
-    </div>
   </div>
 </template>
 
 <script setup>
-/**
- * AuthLogo — the shared brand lockup shown above every auth card.
- * The theme switch lives here so login & register stay consistent and the
- * user can preview dark/light before signing in.
- */
-import ThemeToggle from '../ui/ThemeToggle.vue';
-
 defineProps({
   /** Second word of the lockup: `CLUB` or `CONFESS`. */
   word: { type: String, default: 'CONFESS' },
@@ -71,12 +60,5 @@ defineProps({
   font-size: 13.5px;
   color: var(--shell-text-muted);
   font-weight: 600;
-}
-
-.auth-theme-slot {
-  display: flex;
-  justify-content: center;
-  margin-top: 14px;
-  color: var(--shell-text);
 }
 </style>

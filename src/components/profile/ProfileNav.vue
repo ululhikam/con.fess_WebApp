@@ -44,8 +44,6 @@
           </select>
         </div>
 
-        <ThemeToggle />
-
         <button type="button" class="btn-logout-pill text-xs" @click="$emit('logout')">
           Keluar
         </button>
@@ -60,7 +58,6 @@
  * Reads the auth store for the role switcher and emits `logout` so routing
  * stays with the view.
  */
-import ThemeToggle from '../ui/ThemeToggle.vue';
 import { useAuthStore } from '../../stores/authStore';
 
 defineEmits(['logout']);
