@@ -1,6 +1,6 @@
 <template>
   <div class="user-app-layout">
-    <AppHeader @openCompose="isComposerOpen = true" />
+    <AppHeader @openCompose="openComposePage" />
 
     <main class="app-main-centered-stage">
       <div class="centered-content-wrapper">
@@ -56,14 +56,7 @@
     <BottomNavBar
       :active="activeNav"
       @navChange="activeNav = $event"
-      @openCompose="isComposerOpen = true"
-    />
-
-    <ComposerModal
-      v-model="isComposerOpen"
-      :bases="exploreBases"
-      :default-base="selectedBase"
-      @submit="handlePublish"
+      @openCompose="openComposePage"
     />
   </div>
 </template>
@@ -83,7 +76,6 @@ import FeedHomeTab from '../components/feed/FeedHomeTab.vue';
 import ExploreSearchTab from '../components/feed/ExploreSearchTab.vue';
 import ActivityTab from '../components/feed/ActivityTab.vue';
 import AccountTab from '../components/feed/AccountTab.vue';
-import ComposerModal from '../components/feed/ComposerModal.vue';
 
 import { useAuthStore } from '../stores/authStore';
 import { useFeedPosts } from '../composables/useFeedPosts';
@@ -134,26 +126,11 @@ const { loading, error, reload } = useAsyncData(
   { delay: 650 },
 );
 
-/* ---------- composer ---------- */
-const isComposerOpen = ref(false);
-const selectedBase = ref(ALL_BASES[0]?.handle ?? '@unermenfess');
-
-function handlePublish({ base, content }) {
-  const source = ALL_BASES.find((b) => b.handle === base);
-  const accepted = publish({
-    handle: base,
-    content,
-    avatarBg: source?.color ?? '#7000FF',
-    avatarText: source?.initial ?? 'FESS',
-  });
-
-  if (accepted) {
-    activeNav.value = 'home';
-    homeTab.value = 'forYou';
-  }
+/* ---------- actions ---------- */
+function openComposePage() {
+  router.push('/create');
 }
 
-/* ---------- actions ---------- */
 function handleAccountAction(action) {
   const routes = { profile: '/profile', 'my-fess': '/profile' };
   if (routes[action]) router.push(routes[action]);
