@@ -81,14 +81,14 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { X, Calendar, Clock, Check } from 'lucide-vue-next';
+import { X } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   date: { type: [String, null], default: null },
 });
 
-defineEmits(['update:show', 'update:date']);
+const emit = defineEmits(['update:show', 'update:date']);
 
 const scheduleType = ref('now');
 const dateValue = ref('');

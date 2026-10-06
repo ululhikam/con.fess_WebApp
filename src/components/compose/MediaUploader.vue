@@ -94,13 +94,13 @@
 import { ref, computed } from 'vue';
 import { Image, Upload, X, Plus, AlertCircle, Video } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   modelValue: { type: Array, default: () => [] },
   maxFiles: { type: Number, default: 4 },
   maxSizeMB: { type: Number, default: 50 },
 });
 
-defineEmits(['update:modelValue', 'change']);
+const emit = defineEmits(['update:modelValue', 'change']);
 
 const fileInputRef = ref(null);
 const dragActive = ref(false);

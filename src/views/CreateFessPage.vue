@@ -36,7 +36,7 @@
         <!-- Text Editor -->
         <EditorArea
           v-model="form.content"
-          :placeholder="getPlaceholder()"
+          :placeholder="getPlaceholder"
           :max-length="2000"
           @input="onContentChange"
           ref="editorRef"
@@ -53,7 +53,7 @@
         <!-- Bottom Toolbar -->
         <div class="editor-toolbar">
           <ToolbarButton
-            icon="Tag"
+            :icon="Tag"
             label="Topik"
             :active="!!form.topic"
             @click="showTopicModal = true"
@@ -62,7 +62,7 @@
           </ToolbarButton>
 
           <ToolbarButton
-            icon="Calendar"
+            :icon="Calendar"
             label="Jadwal"
             :active="!!form.scheduledAt"
             @click="showScheduleModal = true"
@@ -73,7 +73,7 @@
           </ToolbarButton>
 
           <ToolbarButton
-            icon="Music"
+            :icon="Music"
             label="Lagu"
             :active="!!form.song"
             @click="showSongModal = true"
@@ -82,7 +82,7 @@
           </ToolbarButton>
 
           <ToolbarButton
-            icon="Layout"
+            :icon="Layout"
             label="Template"
             :active="form.template !== 'default'"
             @click="showTemplateModal = true"
@@ -137,7 +137,7 @@
     <!-- Modals -->
     <TopicModal v-model:show="showTopicModal" v-model:topic="form.topic" :topics="topics" />
     <ScheduleModal v-model:show="showScheduleModal" v-model:date="form.scheduledAt" />
-    <SongModal v-model:show="showSongModal" v-model:song="form.song" />
+    <SongModal v-model:show="showSongModal" v-model:song="form.song" :songs="songs" />
     <TemplateModal v-model:show="showTemplateModal" v-model:template="form.template" />
 
     <!-- Publish Confirmation Modal -->
@@ -152,8 +152,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { ChevronLeft, Loader2, Tag, Calendar, Music, Layout } from 'lucide-vue-next';
 
 // Components
@@ -171,7 +171,6 @@ import PublishModal from '../components/compose/PublishModal.vue';
 // Composables & Stores
 import { usePosts } from '../composables/usePosts';
 import { useAuthStore } from '../stores/authStore';
-import { useValidatedForm, rules } from '../composables/useValidatedForm';
 import { validateFessContent, generateClientId } from '../utils/format';
 
 // Data
@@ -180,7 +179,6 @@ import { TEMPLATES } from '../data/templates';
 import { SONGS } from '../data/songs';
 
 const router = useRouter();
-const route = useRoute();
 const authStore = useAuthStore();
 const { createPost } = usePosts();
 

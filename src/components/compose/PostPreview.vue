@@ -42,10 +42,15 @@
             class="preview-media-item"
             :class="{ featured: index === 0 && media.length > 1 }"
           >
-            <img v-if="item.type === 'image'" :src="item.url" :alt="item.name" loading="lazy" />
+            <img
+              v-if="item.type === 'image'"
+              :src="item.url || item.preview"
+              :alt="item.name"
+              loading="lazy"
+            />
             <video
               v-else-if="item.type === 'video'"
-              :src="item.url"
+              :src="item.url || item.preview"
               muted
               playsinline
               controls
@@ -102,11 +107,10 @@ import {
   MoreHorizontal,
   Music,
   Play,
-  Image,
 } from 'lucide-vue-next';
 import { formatCompact } from '../../utils/format';
 
-defineProps({
+const props = defineProps({
   content: { type: String, default: '' },
   media: { type: Array, default: () => [] },
   baseHandle: { type: String, default: '@anonfess' },
@@ -481,6 +485,63 @@ const templateClass = computed(() => `template-${props.template}`);
 
 .template-story .preview-media-grid {
   border-radius: 16px;
+}
+
+.template-text-only .preview-media-grid,
+.template-text-only .preview-song-card {
+  display: none;
+}
+
+.template-gallery .preview-media-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+
+.template-gallery .preview-media-item.featured {
+  grid-column: auto;
+  grid-row: auto;
+  aspect-ratio: 1;
+}
+
+.template-quote .preview-card {
+  background: linear-gradient(135deg, var(--bg-surface-2), var(--bg-inset));
+  border: none;
+  text-align: center;
+}
+
+.template-quote .preview-header,
+.template-quote .preview-footer {
+  display: none;
+}
+
+.template-quote .preview-content {
+  padding: 28px 24px;
+}
+
+.template-quote .preview-text {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.template-quote .preview-text::before {
+  content: '\201C';
+  display: block;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--brand-blue);
+  margin-bottom: 4px;
+}
+
+.template-announcement .preview-card {
+  border: 2px solid var(--danger);
+  border-radius: 12px;
+}
+
+.template-announcement .preview-name {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 @media (max-width: 600px) {

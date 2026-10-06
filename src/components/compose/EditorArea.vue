@@ -52,7 +52,7 @@ defineProps({
   maxLength: { type: Number, default: 2000 },
 });
 
-defineEmits(['focus', 'blur']);
+defineEmits(['update:modelValue', 'focus', 'blur']);
 
 const textareaRef = ref(null);
 const focused = ref(false);

@@ -77,15 +77,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ChevronDown, Search, Check, MessageSquare } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   modelValue: { type: String, default: '' },
   bases: { type: Array, default: () => [] },
 });
 
-defineEmits(['update:modelValue', 'change']);
+const emit = defineEmits(['update:modelValue', 'change']);
 
 const open = ref(false);
 const searchQuery = ref('');
@@ -109,8 +109,9 @@ function selectBase(handle) {
   open.value = false;
 }
 
-// Close on outside click
-document.addEventListener('click', handleOutsideClick);
+// Close on outside click (cleaned up on unmount)
+onMounted(() => document.addEventListener('click', handleOutsideClick));
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick));
 
 function handleOutsideClick(e) {
   if (open.value && !e.target.closest('.base-selector')) {
@@ -121,6 +122,7 @@ function handleOutsideClick(e) {
 
 <style scoped>
 .base-selector {
+  position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;

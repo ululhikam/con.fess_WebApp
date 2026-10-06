@@ -87,15 +87,15 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { X, Music, Check, Search, Play, Pause, Volume2 } from 'lucide-vue-next';
+import { X, Music, Check, Search, Play, Pause } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   song: { type: Object, default: null },
   songs: { type: Array, default: () => [] },
 });
 
-defineEmits(['update:show', 'update:song']);
+const emit = defineEmits(['update:show', 'update:song']);
 
 const searchQuery = ref('');
 const playingId = ref(null);

@@ -72,13 +72,13 @@
 import { ref, computed, watch } from 'vue';
 import { X, Check, Search } from 'lucide-vue-next';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   topic: { type: String, default: '' },
   topics: { type: Array, default: () => [] },
 });
 
-defineEmits(['update:show', 'update:topic']);
+const emit = defineEmits(['update:show', 'update:topic']);
 
 const searchQuery = ref('');
 

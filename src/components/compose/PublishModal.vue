@@ -54,7 +54,7 @@
             <div v-if="form.media.length > 0" class="summary-row">
               <span class="summary-label">Media</span>
               <span class="summary-value"
-                >{{ form.media.length }} file ({{ getTotalMediaSize }})</span
+                >{{ form.media.length }} file ({{ getTotalMediaSize() }})</span
               >
             </div>
 
@@ -99,13 +99,13 @@ import { computed } from 'vue';
 import { X, Calendar, Loader2, AlertCircle } from 'lucide-vue-next';
 import PostPreview from './PostPreview.vue';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   form: { type: Object, required: true },
   isScheduled: { type: Boolean, default: false },
 });
 
-defineEmits(['update:show', 'confirm', 'cancel']);
+const emit = defineEmits(['update:show', 'confirm', 'cancel']);
 
 const author = computed(() => ({
   username: 'Kamu',

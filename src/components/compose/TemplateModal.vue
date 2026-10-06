@@ -67,54 +67,21 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
 import { X, Check } from 'lucide-vue-next';
+import { TEMPLATES } from '../../data/templates';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   template: { type: String, default: 'default' },
 });
 
-defineEmits(['update:show', 'update:template']);
+const emit = defineEmits(['update:show', 'update:template']);
 
-const templates = ref([
-  {
-    key: 'default',
-    label: 'Standar',
-    description: 'Tampilan klasik dengan avatar, teks, media, dan aksi',
-    mediaCount: 1,
-  },
-  {
-    key: 'minimal',
-    label: 'Minimal',
-    description: 'Fokus pada konten, header ringan tanpa border',
-    mediaCount: 1,
-  },
-  {
-    key: 'card',
-    label: 'Kartu',
-    description: 'Border tebal, bayangan dalam, cocok untuk highlight',
-    mediaCount: 1,
-  },
-  {
-    key: 'story',
-    label: 'Story',
-    description: 'Format vertikal full-width, cocok untuk mobile',
-    mediaCount: 1,
-  },
-  {
-    key: 'text-only',
-    label: 'Hanya Teks',
-    description: 'Tanpa media, fokus maksimal pada tulisan',
-    mediaCount: 0,
-  },
-  {
-    key: 'gallery',
-    label: 'Galeri',
-    description: 'Grid foto/video hingga 4 item, cocok untuk album',
-    mediaCount: 4,
-  },
-]);
+// Single source of truth is src/data/templates.js; mediaCount derived from features.
+const templates = TEMPLATES.map((t) => ({
+  ...t,
+  mediaCount: t.features.includes('media-grid') ? 4 : t.features.includes('media') ? 1 : 0,
+}));
 
 function selectTemplate(key) {
   emit('update:template', key);
@@ -263,6 +230,30 @@ function close() {
   gap: 2px;
   aspect-ratio: 1;
   border-radius: 12px;
+}
+
+.template-card__preview.template-quote {
+  background: linear-gradient(135deg, var(--bg-surface-2), var(--bg-inset));
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+}
+
+.template-card__preview.template-quote .template-mini-header,
+.template-card__preview.template-quote .template-mini-media {
+  display: none;
+}
+
+.template-card__preview.template-quote .template-mini-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100% - 34px);
+  padding: 8px;
+}
+
+.template-card__preview.template-announcement {
+  border: 2px solid var(--danger);
+  border-radius: 10px;
 }
 
 .template-mini-header {
