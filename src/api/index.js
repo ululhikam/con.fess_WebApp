@@ -29,6 +29,8 @@ function createRealApi() {
   return {
     /* AUTH */
     login: (role) => client.post('/auth/login', { role }),
+    registerUser: (payload) => client.post('/auth/register/user', payload),
+    registerBase: (payload) => client.post('/auth/register/base', payload),
     logout: () => client.post('/auth/logout'),
     me: () => client.get('/auth/me'),
     refreshToken: () => client.post('/auth/refresh'),

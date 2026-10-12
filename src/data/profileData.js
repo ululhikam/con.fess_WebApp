@@ -97,7 +97,7 @@ export const SPOTIFY_TRACKS = [
 
 export const CROSS_POST_TWEET = {
   time: '2 hours ago',
-  text: 'Testing the new Base Club Anon Engine with NestJS + Canvas renderer 🚀 Auto-crosspost works like magic!',
+  text: 'Testing the new Base Club Anon Engine with NestJS + Canvas renderer. Auto-crosspost works like magic!',
 };
 
 /* ---------- Photos gallery ---------- */

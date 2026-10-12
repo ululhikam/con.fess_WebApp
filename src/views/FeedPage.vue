@@ -1,10 +1,8 @@
 <template>
   <div class="user-app-layout">
-    <AppHeader @openCompose="openComposePage" />
-
     <main class="app-main-centered-stage">
       <div class="centered-content-wrapper">
-        <!-- HOME -->
+        <!-- 1. HOME -->
         <FeedHomeTab
           v-if="activeNav === 'home'"
           v-model="homeTab"
@@ -13,11 +11,11 @@
           :loading="loading"
           :error="error"
           @like="toggleLike"
-          @findMore="activeNav = 'search'"
+          @findMore="onNavChange('search')"
           @retry="reload"
         />
 
-        <!-- SEARCH -->
+        <!-- 2. SEARCH -->
         <ExploreSearchTab
           v-else-if="activeNav === 'search'"
           v-model:query="searchQuery"
@@ -30,9 +28,9 @@
           @toggle-follow="toggleFollowBase"
         />
 
-        <!-- AKTIVITAS -->
+        <!-- 3. NOTIF -->
         <ActivityTab
-          v-else-if="activeNav === 'aktivitas'"
+          v-else-if="activeNav === 'notif' || activeNav === 'aktivitas'"
           v-model="aktivitasTab"
           :filters="ACTIVITY_FILTERS"
           :loading="loading"
@@ -40,42 +38,54 @@
           @retry="reload"
         />
 
-        <!-- AKUN -->
-        <AccountTab
-          v-else
-          :username="authStore.user?.username || 'ululhikam69@gmail.com'"
+        <!-- 4. USER PROFILE (Instagram Style) -->
+        <UserProfileTab
+          v-else-if="activeNav === 'profile' || activeNav === 'akun'"
           :theme-mode="themeMode"
-          @navigate="handleAccountAction"
           @setTheme="setMode"
           @logout="handleLogout"
-          @openProfile="router.push('/profile')"
+          @openCompose="openComposePage"
+          @openSubPanel="handleAccountAction"
         />
       </div>
     </main>
 
+    <!-- Bottom Navigation Bar (Persistent across all tabs) -->
     <BottomNavBar
       :active="activeNav"
-      @navChange="activeNav = $event"
+      @navChange="onNavChange"
       @openCompose="openComposePage"
+    />
+
+    <!-- Account Sub-Page Slide-in Panels -->
+    <AccountPanels
+      v-model="activePanel"
+      :user="authStore.user"
     />
   </div>
 </template>
 
 <script setup>
 /**
- * FeedPage — application shell.
- * Owns navigation state only; each screen lives in its own component under
- * src/components/feed/, data in src/data/, and behaviour in src/composables/.
+ * FeedPage — primary application shell for regular users.
+ * 5-element mobile navigation:
+ *   1. Home
+ *   2. Search
+ *   3. [+] (Compose FAB)
+ *   4. Notif
+ *   5. Profil (Instagram-style with top hamburger, settings, center avatar, 3 tabs)
+ *
+ * Persistent Bottom Navigation stays visible across all 5 tabs.
  */
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
-import AppHeader from '../components/layout/AppHeader.vue';
 import BottomNavBar from '../components/layout/BottomNavBar.vue';
 import FeedHomeTab from '../components/feed/FeedHomeTab.vue';
 import ExploreSearchTab from '../components/feed/ExploreSearchTab.vue';
 import ActivityTab from '../components/feed/ActivityTab.vue';
-import AccountTab from '../components/feed/AccountTab.vue';
+import UserProfileTab from '../components/feed/UserProfileTab.vue';
+import AccountPanels from '../components/feed/AccountPanels.vue';
 
 import { useAuthStore } from '../stores/authStore';
 import { useFeedPosts } from '../composables/useFeedPosts';
@@ -86,6 +96,7 @@ import { ALL_BASES, FEED_CATEGORIES } from '../data/bases';
 import { ACTIVITY_FILTERS } from '../data/mockPosts';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const { mode: themeMode, setMode } = useTheme();
 
@@ -94,10 +105,36 @@ const { feedPosts, toggleLike, publish } = useFeedPosts();
 const { followedHandles, isFollowing, toggleFollowBase } = useFollowBase(['@ustfess']);
 
 /* ---------- navigation ---------- */
-const activeNav = ref('home');
+const VALID_TABS = ['home', 'search', 'notif', 'profile'];
+const initialTab = VALID_TABS.includes(route.query.tab)
+  ? route.query.tab
+  : route.query.tab === 'akun'
+    ? 'profile'
+    : 'home';
+
+const activeNav = ref(initialTab);
+const activePanel = ref(null);
 const homeTab = ref('forYou');
 const searchTab = ref('base');
 const aktivitasTab = ref('semua');
+
+function onNavChange(key) {
+  activeNav.value = key;
+  router.replace({
+    query: key === 'home' ? {} : { ...route.query, tab: key },
+  });
+}
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab && VALID_TABS.includes(tab)) {
+      activeNav.value = tab;
+    } else if (tab === 'akun') {
+      activeNav.value = 'profile';
+    }
+  },
+);
 
 /* ---------- discovery ---------- */
 const searchQuery = ref('');
@@ -119,7 +156,6 @@ const filteredBases = computed(() => {
 /* ---------- initial load (drives the skeleton) ---------- */
 const { loading, error, reload } = useAsyncData(
   async () => {
-    // Stand-in for `api.fetchFeed()`; swap this for a real request.
     await Promise.resolve();
     return true;
   },
@@ -132,8 +168,20 @@ function openComposePage() {
 }
 
 function handleAccountAction(action) {
-  const routes = { profile: '/profile', 'my-fess': '/profile' };
-  if (routes[action]) router.push(routes[action]);
+  const PANEL_ACTIONS = [
+    'topup',
+    'security',
+    'my-fess',
+    'following',
+    'notifications',
+    'help',
+    'report',
+    'terms',
+    'privacy',
+  ];
+  if (PANEL_ACTIONS.includes(action)) {
+    activePanel.value = action;
+  }
 }
 
 function handleLogout() {

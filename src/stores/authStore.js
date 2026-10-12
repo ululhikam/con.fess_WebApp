@@ -78,8 +78,67 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('fess_user', JSON.stringify(this.user));
       localStorage.setItem('fess_token', this.token);
     },
-    switchRole(role) {
-      this.login(role);
+    registerUser(payload = {}) {
+      const rawHandle = payload.handle || payload.username || 'anon_user';
+      const cleanHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
+      this.user = {
+        id: 'usr_' + Date.now(),
+        username: payload.username || 'Pengguna Anonim',
+        handle: cleanHandle,
+        email: payload.email || 'user@fesshub.com',
+        role: 'User',
+        avatar:
+          payload.avatar ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+        level: 1,
+        bio: payload.bio || 'Secret sender & casual reader di FessHub.',
+        badges: ['NEW MEMBER', 'ANON SENDER'],
+        managedBases: [],
+      };
+      this.token = 'mock_jwt_token_' + Date.now();
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+      localStorage.setItem('fess_token', this.token);
+      return this.user;
+    },
+    registerBase(payload = {}) {
+      const rawHandle = payload.handle || '@codememfess';
+      const cleanHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
+      this.user = {
+        id: 'usr_base_' + Date.now(),
+        name: payload.name || 'Code & Memes Base',
+        username: payload.name || 'Code & Memes Base',
+        handle: cleanHandle,
+        email: payload.email || 'admin@codememfess.id',
+        role: 'Base Admin',
+        avatar:
+          payload.avatar ||
+          'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+        level: 1,
+        bio:
+          payload.bio ||
+          `Base resmi komunitas ${cleanHandle}. Kirim confession anonim dengan tag keyword base!`,
+        badges: ['BASE CREATOR', 'VERIFIED ADMIN'],
+        managedBases: [cleanHandle],
+        igAccount: payload.igAccount || '@codememfess_ig',
+        followersCount: 18420,
+        followingCount: 42,
+        fessCount: 1284,
+        balance: 24580,
+        revenue: 1120000,
+      };
+      this.token = 'mock_jwt_token_' + Date.now();
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+      localStorage.setItem('fess_token', this.token);
+      return this.user;
+    },
+    updateProfile(updates = {}) {
+      if (!this.user) return null;
+      this.user = {
+        ...this.user,
+        ...updates,
+      };
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+      return this.user;
     },
     logout() {
       this.user = null;

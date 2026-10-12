@@ -4,6 +4,10 @@ import { useAuthStore } from '../stores/authStore';
 /**
  * Routes are code-split with dynamic `import()` so each screen ships as its
  * own chunk — the visitor only downloads what they navigate to.
+ *
+ * Strict Role Separation:
+ *  • User Portal: Feed, CreateFess, Profile (roles: ['User'])
+ *  • Admin Portal: BaseAdmin (roles: ['Base Admin', 'Super Admin']), SuperAdmin (roles: ['Super Admin'])
  */
 const routes = [
   {
@@ -16,31 +20,60 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: () => import('../views/LoginPage.vue'),
-    meta: { title: 'Masuk', layout: 'auth' },
+    meta: { title: 'Masuk', layout: 'auth', guestOnly: true },
   },
   {
     path: '/register',
     name: 'Register',
+    component: () => import('../views/RegisterUserPage.vue'),
+    meta: { title: 'Daftar Akun User', layout: 'auth', guestOnly: true },
+  },
+  {
+    path: '/register/user',
+    name: 'RegisterUser',
+    component: () => import('../views/RegisterUserPage.vue'),
+    meta: { title: 'Daftar Akun User', layout: 'auth', guestOnly: true },
+  },
+  {
+    path: '/register-user',
+    redirect: '/register/user',
+  },
+  {
+    path: '/register/base',
+    name: 'RegisterBase',
     component: () => import('../views/RegisterPage.vue'),
-    meta: { title: 'Daftar', layout: 'auth' },
+    meta: { title: 'Buat Akun Base', layout: 'auth', guestOnly: true },
+  },
+  {
+    path: '/register-base',
+    redirect: '/register/base',
   },
   {
     path: '/feed',
     name: 'Feed',
     component: () => import('../views/FeedPage.vue'),
-    meta: { requiresAuth: true, title: 'Feed' },
+    meta: { requiresAuth: true, roles: ['User'], title: 'Feed' },
   },
   {
     path: '/create',
     name: 'CreateFess',
     component: () => import('../views/CreateFessPage.vue'),
-    meta: { requiresAuth: true, title: 'Buat Fess' },
+    meta: { requiresAuth: true, roles: ['User', 'Base Admin'], title: 'Buat Fess' },
   },
   {
     path: '/profile',
     name: 'Profile',
-    component: () => import('../views/ProfilePage.vue'),
-    meta: { requiresAuth: true, title: 'Profil' },
+    redirect: { path: '/feed', query: { tab: 'profile' } },
+  },
+  {
+    path: '/base/:handle',
+    name: 'BasePublicProfile',
+    component: () => import('../views/BasePublicProfilePage.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: ['User', 'Base Admin', 'Super Admin'],
+      title: 'Profil Base',
+    },
   },
   {
     path: '/base-admin',
@@ -77,15 +110,33 @@ const router = createRouter({
   },
 });
 
-/** Global guard: auth -> role -> document title. */
+/** Global guard: auth -> strict role separation -> document title. */
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
+  const userRole = authStore.user?.role;
 
+  // 1. Protected route: requires authentication
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return next({ name: 'Login', query: { redirect: to.fullPath } });
   }
 
-  if (to.meta.roles && !to.meta.roles.includes(authStore.user?.role)) {
+  // 2. Guest-only routes (Login / Register): redirect already logged-in users to their respective home
+  if (to.meta.guestOnly && authStore.isAuthenticated) {
+    if (userRole === 'Super Admin') return next({ name: 'SuperAdmin' });
+    if (userRole === 'Base Admin') return next({ name: 'BaseAdmin' });
+    return next({ name: 'Feed' });
+  }
+
+  // 3. Strict Role Access Control:
+  // If route specifies allowed roles, check if current user matches
+  if (to.meta.roles && !to.meta.roles.includes(userRole)) {
+    // Send to appropriate home based on current role
+    if (userRole === 'Super Admin') {
+      return next({ name: 'SuperAdmin' });
+    }
+    if (userRole === 'Base Admin') {
+      return next({ name: 'BaseAdmin' });
+    }
     return next({ name: 'Feed' });
   }
 
@@ -93,7 +144,7 @@ router.beforeEach((to, from, next) => {
 });
 
 router.afterEach((to) => {
-  const base = 'FessHub';
+  const base = 'Fess n Curious';
   document.title = to.meta.title ? `${to.meta.title} · ${base}` : base;
 });
 

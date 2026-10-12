@@ -1,24 +1,27 @@
 <template>
-  <nav class="admin-topnav" :class="{ 'admin-topnav--sticky': sticky }" aria-label="Navigasi admin">
+  <nav class="admin-topnav" :class="{ 'admin-topnav--sticky': sticky }" aria-label="Navigasi portal admin">
     <div class="container flex items-center justify-between flex-wrap gap-3">
-      <router-link to="/" class="brand-logo" aria-label="Beranda Base Club">
+      <!-- Admin Portal Brand -->
+      <router-link to="/base-admin" class="brand-logo" aria-label="Portal Admin — Beranda">
         <div class="speech-bubble-logo">
+          <Shield :size="16" class="admin-brand-icon" />
           <span class="logo-base">BASE</span>
-          <span class="logo-club">CLUB</span>
+          <span class="logo-admin">ADMIN PORTAL</span>
         </div>
       </router-link>
 
-      <div class="nav-pill-container">
-        <router-link to="/feed" class="nav-pill">Feed</router-link>
-        <router-link to="/profile" class="nav-pill">Profil Saya</router-link>
+      <!-- Center: Dedicated Admin Navigation -->
+      <div class="nav-pill-container" role="navigation" aria-label="Menu Admin">
         <router-link
           to="/base-admin"
           class="nav-pill"
           :class="{ 'active-pill': active === 'base-admin' }"
           :aria-current="active === 'base-admin' ? 'page' : null"
         >
-          Base Admin
+          <LayoutDashboard :size="14" />
+          <span>Dasbor Base</span>
         </router-link>
+
         <router-link
           v-if="isSuperAdmin"
           to="/super-admin"
@@ -26,26 +29,24 @@
           :class="{ 'active-pill': active === 'super-admin' }"
           :aria-current="active === 'super-admin' ? 'page' : null"
         >
-          Super Admin
+          <ShieldAlert :size="14" />
+          <span>Super Admin</span>
         </router-link>
       </div>
 
-      <div class="flex items-center gap-2">
-        <div class="role-selector flex items-center px-2 py-1">
-          <label for="admin-role-select" class="visually-hidden">Peran akun</label>
-          <select
-            id="admin-role-select"
-            :value="role"
-            class="role-select-dropdown"
-            @change="(e) => switchRole(e.target.value)"
-          >
-            <option v-for="option in ROLE_OPTIONS" :key="option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+      <!-- Right: Admin Profile Info & Logout -->
+      <div class="flex items-center gap-3">
+        <div class="admin-identity-badge">
+          <span class="admin-role-tag">
+            {{ isSuperAdmin ? 'SUPER ADMIN' : 'MODERATOR' }}
+          </span>
+          <span class="admin-name">{{ authStore.displayName }}</span>
         </div>
 
-        <button type="button" class="btn-logout text-xs" @click="logout">Keluar</button>
+        <button type="button" class="btn-logout text-xs" @click="logout" aria-label="Keluar dari portal admin">
+          <LogOut :size="13" />
+          <span>Keluar</span>
+        </button>
       </div>
     </div>
   </nav>
@@ -53,19 +54,29 @@
 
 <script setup>
 /**
- * AdminTopNav — brand chrome shared by the Base Admin & Super Admin dashboards.
- * Session behaviour (role switch, logout) comes from useAdminSession().
+ * AdminTopNav — brand chrome dedicated strictly to Base Admin & Super Admin dashboards.
+ * Completely decoupled from user consumer feed navigation and role switches.
  */
-import { useAdminSession } from '../../composables/useAdminDashboard';
-import { ROLE_OPTIONS } from '../../data/adminData';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { Shield, ShieldAlert, LayoutDashboard, LogOut } from 'lucide-vue-next';
+import { useAuthStore } from '../../stores/authStore';
 
 defineProps({
   /** 'base-admin' | 'super-admin' — which pill is highlighted. */
-  active: { type: String, default: '' },
+  active: { type: String, default: 'base-admin' },
   sticky: { type: Boolean, default: false },
 });
 
-const { role, isSuperAdmin, switchRole, logout } = useAdminSession();
+const authStore = useAuthStore();
+const router = useRouter();
+
+const isSuperAdmin = computed(() => authStore.isSuperAdmin);
+
+function logout() {
+  authStore.logout();
+  router.push('/login');
+}
 </script>
 
 <style scoped>
@@ -86,24 +97,29 @@ const { role, isSuperAdmin, switchRole, logout } = useAdminSession();
 }
 
 .speech-bubble-logo {
-  /* White badge sitting on the brand-blue chrome: inverted on-accent colours. */
   background: var(--text-on-accent);
   color: var(--lime-ink);
   padding: 5px 12px;
   border-radius: 14px 14px 14px 2px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-weight: 900;
   font-size: 14px;
 }
 
-.logo-club {
+.admin-brand-icon {
+  color: var(--brand-blue);
+}
+
+.logo-admin {
   background: var(--lime-primary);
   color: var(--lime-ink);
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
 }
 
 .nav-pill-container {
@@ -120,11 +136,14 @@ const { role, isSuperAdmin, switchRole, logout } = useAdminSession();
   color: var(--text-on-accent);
   text-decoration: none;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 6px 14px;
   border-radius: var(--radius-pill);
   transition: all 0.2s;
   opacity: 0.85;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .nav-pill.active-pill,
@@ -133,19 +152,34 @@ const { role, isSuperAdmin, switchRole, logout } = useAdminSession();
   opacity: 1;
 }
 
-.role-select-dropdown {
-  background: transparent;
-  color: var(--lime-primary);
-  border: none;
-  font-size: 11px;
-  font-weight: 800;
-  outline: none;
-  cursor: pointer;
+.admin-identity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 4px 12px 4px 8px;
+  border-radius: var(--radius-pill);
+  color: #fff;
 }
 
-.role-select-dropdown option {
-  background: var(--bg-inset);
-  color: var(--text-main);
+.admin-role-tag {
+  background: var(--lime-primary);
+  color: var(--lime-ink);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.5px;
+}
+
+.admin-name {
+  font-size: 12px;
+  font-weight: 700;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-logout {
@@ -157,11 +191,12 @@ const { role, isSuperAdmin, switchRole, logout } = useAdminSession();
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 
-/* Solid pink + white label is only ~3.8:1, so the hover deepens the wash
-   instead — the label keeps its 7:1 contrast against brand-blue. */
 .btn-logout:hover {
   background: rgba(255, 0, 122, 0.5);
   color: var(--text-on-accent);

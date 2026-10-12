@@ -1,51 +1,33 @@
 <template>
-  <nav class="profile-nav">
+  <nav class="profile-nav" aria-label="Navigasi Profil Pengguna">
     <div class="container flex items-center justify-between flex-wrap gap-3">
-      <router-link to="/" class="brand-logo" aria-label="Base Club — beranda">
+      <router-link to="/feed" class="brand-logo" aria-label="Base Confess — Kembali ke Feed">
         <div class="speech-bubble-logo">
           <span class="logo-base">BASE</span>
-          <span class="logo-club">CLUB</span>
+          <span class="logo-club">CONFESS</span>
         </div>
       </router-link>
 
-      <!-- Center Nav Capsule -->
-      <div class="nav-pill-container">
-        <router-link to="/feed" class="nav-pill">Feed</router-link>
-        <router-link to="/profile" class="nav-pill active-pill" aria-current="page"
-          >Profil Saya</router-link
-        >
-        <router-link
-          v-if="authStore.isBaseAdmin || authStore.isSuperAdmin"
-          to="/base-admin"
-          class="nav-pill"
-          >Base Admin</router-link
-        >
-        <router-link v-if="authStore.isSuperAdmin" to="/super-admin" class="nav-pill"
-          >Super Admin</router-link
-        >
+      <!-- Center Nav: Clean User Navigation -->
+      <div class="nav-center-actions">
+        <router-link to="/feed" class="nav-back-pill">
+          <ArrowLeft :size="15" />
+          <span>Kembali ke Feed</span>
+        </router-link>
       </div>
 
-      <!-- Right Quick Actions -->
-      <div class="flex items-center gap-2">
-        <!-- Role Selector Dropdown -->
-        <div
-          class="role-selector-wrapper flex items-center bg-black/30 border border-white/20 rounded-full px-2 py-1"
-        >
-          <span class="text-xs text-white/70 mr-1 hidden sm:inline">Peran:</span>
-          <select
-            :value="authStore.user?.role || 'User'"
-            aria-label="Pilih peran"
-            @change="(e) => authStore.switchRole(e.target.value)"
-            class="role-select-dropdown"
-          >
-            <option value="User">User / Anon</option>
-            <option value="Base Admin">Base Admin</option>
-            <option value="Super Admin">Super Admin</option>
-          </select>
+      <!-- Right Quick Actions: User Badge & Logout -->
+      <div class="flex items-center gap-3">
+        <div class="user-identity-badge">
+          <span class="user-avatar-tiny">
+            <UserRound :size="14" />
+          </span>
+          <span class="user-handle-text">{{ authStore.displayName }}</span>
         </div>
 
         <button type="button" class="btn-logout-pill text-xs" @click="$emit('logout')">
-          Keluar
+          <LogOut :size="13" />
+          <span>Keluar</span>
         </button>
       </div>
     </div>
@@ -54,10 +36,10 @@
 
 <script setup>
 /**
- * ProfileNav — sticky branded navigation bar of the profile screen.
- * Reads the auth store for the role switcher and emits `logout` so routing
- * stays with the view.
+ * ProfileNav — sticky branded navigation bar for the user profile screen.
+ * Dedicated to the User experience: strictly user navigation, no admin controls.
  */
+import { ArrowLeft, UserRound, LogOut } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
 
 defineEmits(['logout']);
@@ -99,58 +81,73 @@ const authStore = useAuthStore();
   font-size: 12px;
 }
 
-.nav-pill-container {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-  border-radius: var(--radius-pill);
-  padding: 4px 6px;
+.nav-center-actions {
   display: flex;
-  gap: 4px;
+  align-items: center;
 }
 
-.nav-pill {
+.nav-back-pill {
   color: var(--brand-blue-ink);
   text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 16px;
   border-radius: var(--radius-pill);
-  transition: all 0.2s;
-  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
 }
 
-.nav-pill.active-pill,
-.nav-pill:hover {
-  background: rgba(255, 255, 255, 0.25);
-  opacity: 1;
+.nav-back-pill:hover {
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateX(-2px);
 }
 
-.role-select-dropdown {
-  background: transparent;
-  color: var(--lime-primary);
-  border: none;
-  font-size: 11px;
-  font-weight: 800;
-  outline: none;
-  cursor: pointer;
+.user-identity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 12px 4px 6px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.role-select-dropdown option {
-  background: var(--bg-raised);
-  color: var(--text-main);
+.user-avatar-tiny {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--lime-primary);
+  color: var(--lime-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-handle-text {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-logout-pill {
   background: rgba(255, 0, 122, 0.22);
   border: 1px solid var(--cyber-pink);
-  /* Pink text on brand-blue only reaches ~2:1, so the label stays white and
-     the pink shows through the border + wash. */
   color: var(--text-on-accent);
   padding: 6px 14px;
   border-radius: var(--radius-pill);
   font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.2s ease;
 }
 

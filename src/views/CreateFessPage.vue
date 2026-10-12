@@ -2,7 +2,7 @@
   <div class="create-fess-page">
     <!-- Header -->
     <header class="create-header">
-      <button type="button" class="btn-back" @click="$router.back()" aria-label="Kembali">
+      <button type="button" class="btn-back" @click="handleBack" aria-label="Kembali">
         <ChevronLeft :size="24" />
       </button>
       <h1 class="header-title">Buat Fess Baru</h1>
@@ -35,6 +35,27 @@
 
         <!-- Text Editor -->
         <EditorArea v-model="form.content" :placeholder="getPlaceholder" :max-length="2000" />
+
+        <!-- Quoted Fess Display in Composer -->
+        <div v-if="form.quotedFess" class="composer-quoted-card">
+          <div class="composer-quoted-head">
+            <div class="cq-author">
+              <Quote :size="13" class="cq-icon" />
+              <span class="cq-handle">{{ form.quotedFess.handle || form.quotedFess.senderHandle }}</span>
+              <span class="cq-time">• {{ form.quotedFess.time }}</span>
+            </div>
+            <button
+              type="button"
+              class="btn-remove-quote"
+              title="Hapus kutipan fess"
+              aria-label="Hapus kutipan"
+              @click="form.quotedFess = null"
+            >
+              <X :size="14" />
+            </button>
+          </div>
+          <p class="cq-text">{{ form.quotedFess.content }}</p>
+        </div>
 
         <!-- Media Upload Section -->
         <MediaUploader
@@ -85,6 +106,17 @@
               {{ getTemplateLabel(form.template) }}
             </span>
           </ToolbarButton>
+
+          <ToolbarButton
+            :icon="Quote"
+            label="Kutip"
+            :active="!!form.quotedFess"
+            @click="showQuoteModal = true"
+          >
+            <span v-if="form.quotedFess" class="toolbar-badge">
+              {{ form.quotedFess.handle || '@fess' }}
+            </span>
+          </ToolbarButton>
         </div>
       </main>
 
@@ -118,6 +150,7 @@
             :song="form.song"
             :template="form.template"
             :author="currentUser"
+            :quoted-fess="form.quotedFess"
             :is-preview="true"
             :exporting="exporting"
           />
@@ -148,6 +181,7 @@
     <ScheduleModal v-model:show="showScheduleModal" v-model:date="form.scheduledAt" />
     <SongModal v-model:show="showSongModal" v-model:song="form.song" :songs="songs" />
     <TemplateModal v-model:show="showTemplateModal" v-model:template="form.template" />
+    <QuoteModal v-model:show="showQuoteModal" v-model="form.quotedFess" />
 
     <!-- Publish Confirmation Modal -->
     <PublishModal
@@ -162,7 +196,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import {
   ChevronLeft,
   Loader2,
@@ -172,6 +206,8 @@ import {
   Layout,
   Download,
   AlertCircle,
+  Quote,
+  X,
 } from 'lucide-vue-next';
 import { toPng } from 'html-to-image';
 
@@ -186,20 +222,25 @@ import ScheduleModal from '../components/compose/ScheduleModal.vue';
 import SongModal from '../components/compose/SongModal.vue';
 import TemplateModal from '../components/compose/TemplateModal.vue';
 import PublishModal from '../components/compose/PublishModal.vue';
+import QuoteModal from '../components/compose/QuoteModal.vue';
 
 // Composables & Stores
 import { usePosts } from '../composables/usePosts';
 import { useAuthStore } from '../stores/authStore';
 import { validateFessContent, generateClientId } from '../utils/format';
+import { useFeedPosts } from '../composables/useFeedPosts';
 
 // Data
 import { TOPICS } from '../data/topics';
 import { TEMPLATES, ASPECTS, getTemplateByKey } from '../data/templates';
 import { SONGS } from '../data/songs';
+import { FEED_POSTS, DUMMY_MENFESS_POSTS } from '../data/mockPosts';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const { createPost } = usePosts();
+const { publish } = useFeedPosts();
 
 // Form state
 const form = ref({
@@ -210,6 +251,7 @@ const form = ref({
   scheduledAt: null,
   song: null,
   template: 'default',
+  quotedFess: null,
 });
 
 // UI state
@@ -217,9 +259,20 @@ const showTopicModal = ref(false);
 const showScheduleModal = ref(false);
 const showSongModal = ref(false);
 const showTemplateModal = ref(false);
+const showQuoteModal = ref(false);
 const showPublishModal = ref(false);
 const savingDraft = ref(false);
 const publishing = ref(false);
+
+function handleBack() {
+  if (window.history.length > 1) {
+    router.back();
+  } else if (authStore.user?.role === 'Base Admin') {
+    router.push('/base-admin');
+  } else {
+    router.push('/feed');
+  }
+}
 
 /* ---------- card export ---------- */
 const previewRef = ref(null);
@@ -318,12 +371,18 @@ const templates = ref(TEMPLATES);
 const songs = ref(SONGS);
 
 const hasContent = computed(
-  () => form.value.content.trim().length > 0 || form.value.media.length > 0,
+  () =>
+    form.value.content.trim().length > 0 ||
+    form.value.media.length > 0 ||
+    !!form.value.quotedFess,
 );
 
 const canPublish = computed(() => {
   const validation = validateFessContent(form.value.content);
-  return (validation.valid || form.value.media.length > 0) && form.value.baseHandle;
+  return (
+    (validation.valid || form.value.media.length > 0 || !!form.value.quotedFess) &&
+    form.value.baseHandle
+  );
 });
 
 const isScheduled = computed(() => !!form.value.scheduledAt);
@@ -417,15 +476,39 @@ async function publishFess() {
           }
         : null,
       template: form.value.template,
+      quoted_fess: form.value.quotedFess,
     };
 
     await createPost(payload);
 
+    // Also sync to active feedPosts so it shows in feed immediately
+    publish({
+      handle: form.value.baseHandle || '@codememfess',
+      content: form.value.content.trim(),
+      media: form.value.media.map((m) => ({
+        type: m.type,
+        url: m.url || m.preview,
+        thumbnail: m.thumbnail || m.preview,
+        duration: m.duration,
+        caption: m.caption || m.name,
+      })),
+      quotedFess: form.value.quotedFess,
+      tag: form.value.topic === 'Tanya' ? 'Tanya' : 'Cerita',
+      avatarBg: '#0055FF',
+      avatarText: form.value.baseHandle
+        ? form.value.baseHandle.replace(/^@/, '').slice(0, 2).toUpperCase()
+        : 'FS',
+    });
+
     // Clear draft
     localStorage.removeItem('fess_draft');
 
-    // Navigate to feed
-    router.push('/feed');
+    // Role-aware navigation: Base Admin returns to /base-admin, regular user to /feed
+    if (authStore.user?.role === 'Base Admin') {
+      router.push('/base-admin');
+    } else {
+      router.push('/feed');
+    }
   } catch (error) {
     console.error('Publish failed:', error);
     // Error handled by useMutation in usePosts
@@ -435,7 +518,7 @@ async function publishFess() {
   }
 }
 
-// Load draft on mount
+// Load draft and initialize on mount
 onMounted(() => {
   const savedDraft = localStorage.getItem('fess_draft');
   if (savedDraft) {
@@ -453,6 +536,7 @@ onMounted(() => {
             scheduledAt: draft.scheduledAt || null,
             song: draft.song || null,
             template: draft.template || 'default',
+            quotedFess: draft.quotedFess || null,
           });
         }
       }
@@ -461,9 +545,37 @@ onMounted(() => {
     }
   }
 
-  // Set default base if user has one followed
-  if (!form.value.baseHandle && availableBases.value.length > 0) {
-    form.value.baseHandle = availableBases.value[0].handle;
+  // Pre-fill quote from sessionStorage or query param
+  const pendingSessionQuote = sessionStorage.getItem('pending_quote_fess');
+  if (pendingSessionQuote) {
+    try {
+      const parsed = JSON.parse(pendingSessionQuote);
+      if (parsed) {
+        form.value.quotedFess = parsed;
+        sessionStorage.removeItem('pending_quote_fess');
+      }
+    } catch (e) {
+      console.error('Failed to parse session quote', e);
+    }
+  } else if (route.query.quoteId) {
+    const qId = Number(route.query.quoteId) || route.query.quoteId;
+    const candidates = [...DUMMY_MENFESS_POSTS, ...FEED_POSTS];
+    const match = candidates.find((p) => p.id === qId || String(p.id) === String(qId));
+    if (match) {
+      form.value.quotedFess = match;
+    }
+  }
+
+  // Pre-fill base handle from query param if provided (e.g. from public base profile)
+  if (route.query.base) {
+    const qBase = String(route.query.base).startsWith('@') ? String(route.query.base) : `@${route.query.base}`;
+    form.value.baseHandle = qBase;
+  } else if (!form.value.baseHandle) {
+    if (authStore.isBaseAdmin && authStore.user?.managedBases?.length) {
+      form.value.baseHandle = authStore.user.managedBases[0];
+    } else if (availableBases.value.length > 0) {
+      form.value.baseHandle = availableBases.value[0].handle;
+    }
   }
 });
 
@@ -483,6 +595,31 @@ watch(
     autoSaveTimer = setTimeout(saveDraft, 3000);
   },
   { deep: true },
+);
+
+watch(
+  () => route.query.quoteId,
+  (newId) => {
+    if (newId) {
+      const pendingSessionQuote = sessionStorage.getItem('pending_quote_fess');
+      if (pendingSessionQuote) {
+        try {
+          const parsed = JSON.parse(pendingSessionQuote);
+          if (parsed) {
+            form.value.quotedFess = parsed;
+            sessionStorage.removeItem('pending_quote_fess');
+            return;
+          }
+        } catch (e) {}
+      }
+      const qId = Number(newId) || newId;
+      const candidates = [...DUMMY_MENFESS_POSTS, ...FEED_POSTS];
+      const match = candidates.find((p) => p.id === qId || String(p.id) === String(qId));
+      if (match) {
+        form.value.quotedFess = match;
+      }
+    }
+  }
 );
 
 onUnmounted(() => {
@@ -630,7 +767,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   grid-template-columns: 1fr;
   gap: 16px;
   padding: 16px;
-  max-width: 1000px;
+  max-width: 1080px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -638,8 +775,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 
 @media (min-width: 900px) {
   .create-content {
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     align-items: start;
+    gap: 20px;
+    padding: 20px 24px;
   }
 }
 
@@ -648,6 +787,8 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* ===== PREVIEW PANEL ===== */
@@ -655,11 +796,17 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   position: sticky;
   top: 80px;
   max-height: calc(100vh - 100px);
-  overflow-y: auto;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 16px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-panel .preview-content {
+  overflow-y: auto;
+  flex: 1;
 }
 
 .preview-panel:not(.has-content) .preview-content {
@@ -766,6 +913,9 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ===== SCROLLBAR ===== */
@@ -788,26 +938,147 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   .create-header {
-    padding: 10px 12px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .btn-back {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
   }
 
   .header-title {
-    font-size: 16px;
+    font-size: 14.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-actions {
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .btn-save-draft {
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
   }
 
   .btn-publish {
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 7px 14px;
+    font-size: 12.5px;
+    white-space: nowrap;
   }
 
   .create-content {
-    padding: 12px;
+    padding: 10px;
     gap: 12px;
   }
+
+  .editor-toolbar {
+    gap: 6px;
+    padding: 6px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Preview panel on mobile: not sticky, just flow */
+  .preview-panel {
+    position: relative;
+    top: 0;
+    max-height: none;
+  }
+}
+
+/* ===== COMPOSER QUOTED CARD ===== */
+.composer-quoted-card {
+  background: var(--bg-surface, #12151e);
+  border: 1px solid var(--border-subtle, #2a3143);
+  border-left: 3px solid var(--brand-blue, #60a5fa);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.composer-quoted-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cq-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.cq-icon {
+  color: var(--brand-blue, #60a5fa);
+  flex-shrink: 0;
+}
+
+.cq-handle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.cq-time {
+  font-size: 11.5px;
+  color: var(--text-muted, #7c889f);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-remove-quote {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #7c889f);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-remove-quote:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.cq-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary, #d0d7e5);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 </style>

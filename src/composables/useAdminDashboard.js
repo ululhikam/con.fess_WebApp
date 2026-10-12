@@ -16,24 +16,20 @@ import { useAuthStore } from '../stores/authStore';
 import { useFessStore } from '../stores/fessStore';
 import { BASE_ADMIN_TABS, BASE_OVERVIEW_STAT_DEFS, BASE_SETTINGS_FIELDS } from '../data/adminData';
 
-/** Role selector + logout, shared by both admin dashboards. */
+/** Admin session helpers (role checks, logout). */
 export function useAdminSession() {
   const authStore = useAuthStore();
   const router = useRouter();
 
-  const role = computed(() => authStore.user?.role || 'User');
+  const role = computed(() => authStore.user?.role || 'Base Admin');
   const isSuperAdmin = computed(() => authStore.isSuperAdmin);
-
-  function switchRole(nextRole) {
-    authStore.switchRole(nextRole);
-  }
 
   function logout() {
     authStore.logout();
     router.push('/login');
   }
 
-  return { role, isSuperAdmin, switchRole, logout };
+  return { role, isSuperAdmin, logout };
 }
 
 /** Tab navigation, live counters and the derived overview stat cards. */

@@ -116,6 +116,22 @@ export const mockApi = {
     return { user: serializeUser(as.user), token: as.token };
   },
 
+  async registerUser(payload) {
+    await delay();
+    maybeThrow();
+    const as = getAuthStore();
+    const user = as.registerUser(payload);
+    return { user: serializeUser(user), token: as.token };
+  },
+
+  async registerBase(payload) {
+    await delay();
+    maybeThrow();
+    const as = getAuthStore();
+    const user = as.registerBase(payload);
+    return { user: serializeUser(user), token: as.token };
+  },
+
   async logout() {
     await delay();
     const as = getAuthStore();

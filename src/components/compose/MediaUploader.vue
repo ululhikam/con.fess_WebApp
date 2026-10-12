@@ -25,74 +25,273 @@
 
       <div v-if="mediaFiles.length === 0" class="media-uploader__empty">
         <div class="media-uploader__icon">
-          <Image :size="32" v-if="!dragActive" />
-          <Upload :size="32" v-else class="spin" />
+          <Image :size="30" v-if="!dragActive" />
+          <Upload :size="30" v-else class="spin" />
         </div>
         <p class="media-uploader__text">
-          <span v-if="!dragActive">Klik atau tarik media ke sini</span>
-          <span v-else>Lepaskan untuk upload</span>
+          <span v-if="!dragActive">Unggah Foto atau Video</span>
+          <span v-else>Lepaskan file untuk unggah</span>
         </p>
         <p class="media-uploader__hint">
-          Foto (JPG, PNG, WebP) atau Video (MP4, WebM) · Maks {{ maxSizeMB }}MB · Maks
-          {{ maxFiles }} file
+          Pilih file dari perangkat · Maks {{ maxSizeMB }}MB · Maks {{ maxFiles }} file
         </p>
       </div>
     </div>
 
-    <!-- Media Preview Grid -->
+    <!-- MOCKUP MEDIA PRESET PICKER SECTION -->
+    <div class="mockup-preset-section">
+      <div class="mockup-header-row">
+        <div class="mockup-header-title">
+          <Sparkles :size="15" class="sparkle-icon" />
+          <span>Gunakan Mockup Media (Sampel)</span>
+        </div>
+        <button
+          type="button"
+          class="btn-open-catalog"
+          @click="showCatalogModal = true"
+        >
+          <span>Katalog Lengkap</span>
+          <ChevronRight :size="14" />
+        </button>
+      </div>
+
+      <!-- Quick Preset Carousel Scroll -->
+      <div class="mockup-carousel-track">
+        <button
+          v-for="preset in ALL_MOCKUP_MEDIA"
+          :key="preset.id"
+          type="button"
+          class="mockup-chip-btn"
+          :class="{ added: isPresetAdded(preset) }"
+          :disabled="mediaFiles.length >= maxFiles && !isPresetAdded(preset)"
+          :title="isPresetAdded(preset) ? 'Sudah ditambahkan' : `Tambahkan ${preset.name}`"
+          @click="toggleMockupMedia(preset)"
+        >
+          <div class="mockup-chip-thumb-box">
+            <img :src="preset.thumbnail || preset.url" :alt="preset.name" loading="lazy" />
+            <div v-if="preset.type === 'video'" class="mockup-video-overlay-icon">
+              <Film :size="13" />
+            </div>
+            <span class="mockup-type-badge-mini" :class="preset.type">
+              {{ preset.type === 'image' ? 'Foto' : 'Video' }}
+            </span>
+          </div>
+
+          <div class="mockup-chip-text-col">
+            <span class="mockup-chip-title">{{ preset.name }}</span>
+            <span class="mockup-chip-size">{{ preset.sizeText }}</span>
+          </div>
+
+          <span v-if="isPresetAdded(preset)" class="mockup-check-badge">
+            <Check :size="12" />
+          </span>
+          <Plus v-else :size="14" class="mockup-plus-icon" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Media Preview Grid (When media files are selected) -->
     <div v-if="mediaFiles.length > 0" class="media-uploader__preview-grid">
-      <div v-for="(file, index) in mediaFiles" :key="file.id" class="media-uploader__preview-item">
+      <div
+        v-for="(file, index) in mediaFiles"
+        :key="file.id"
+        class="media-uploader__preview-item"
+      >
         <button
           type="button"
           class="media-uploader__remove"
-          @click.stop="removeFile(index)"
+          title="Hapus media"
           aria-label="Hapus media"
+          @click.stop="removeFile(index)"
         >
-          <X :size="16" />
+          <X :size="15" />
         </button>
 
         <div class="media-uploader__media">
-          <img v-if="file.type === 'image'" :src="file.preview" :alt="file.name" loading="lazy" />
-          <video v-else-if="file.type === 'video'" :src="file.preview" muted playsinline controls />
+          <img
+            v-if="file.type === 'image'"
+            :src="file.preview || file.url"
+            :alt="file.name"
+            loading="lazy"
+          />
+          <div v-else-if="file.type === 'video'" class="video-preview-wrapper">
+            <video
+              :src="file.preview || file.url"
+              :poster="file.thumbnail"
+              muted
+              playsinline
+              controls
+              class="preview-video-tag"
+            />
+          </div>
         </div>
 
         <div class="media-uploader__progress" v-if="file.uploading">
-          <div class="media-uploader__progress-bar" :style="{ width: file.progress + '%' }" />
+          <div class="media-uploader__progress-bar" :style="{ width: (file.progress || 100) + '%' }" />
         </div>
 
         <div class="media-uploader__info">
-          <span class="media-uploader__name">{{ truncate(file.name, 20) }}</span>
-          <span class="media-uploader__size">{{ formatFileSize(file.size) }}</span>
+          <span class="media-uploader__name" :title="file.name">{{ truncate(file.name, 18) }}</span>
+          <span class="media-uploader__size">{{ file.sizeText || formatFileSize(file.size) }}</span>
         </div>
 
         <div class="media-uploader__type-badge" :class="file.type">
-          {{ file.type === 'image' ? 'Foto' : 'Video' }}
+          <Film v-if="file.type === 'video'" :size="11" />
+          <Image v-else :size="11" />
+          <span>{{ file.type === 'image' ? 'Foto' : 'Video' }}</span>
         </div>
       </div>
 
-      <!-- Add more button -->
+      <!-- Add more button if slots remain -->
       <button
         v-if="mediaFiles.length < maxFiles"
         type="button"
         class="media-uploader__add-more"
+        title="Tambah media lagi"
         @click="triggerFileInput"
-        :disabled="mediaFiles.length >= maxFiles"
       >
-        <Plus :size="24" />
+        <Plus :size="22" />
         <span>Tambah</span>
+        <span class="slots-counter">{{ maxFiles - mediaFiles.length }} sisa</span>
       </button>
     </div>
 
     <!-- Error message -->
     <p v-if="error" class="media-uploader__error" role="alert">
-      <AlertCircle :size="14" /> {{ error }}
+      <AlertCircle :size="15" />
+      <span>{{ error }}</span>
     </p>
+
+    <!-- FULL MOCKUP CATALOG MODAL -->
+    <Teleport to="body">
+      <Transition name="fade-modal">
+        <div
+          v-if="showCatalogModal"
+          class="mockup-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          @click="showCatalogModal = false"
+        >
+          <div class="mockup-modal-window" @click.stop>
+            <div class="mockup-modal-header">
+              <div class="modal-head-title">
+                <Sparkles :size="18" class="sparkle-icon" />
+                <h3>Katalog Mockup Foto &amp; Video</h3>
+              </div>
+              <button
+                type="button"
+                class="btn-close-modal"
+                aria-label="Tutup"
+                @click="showCatalogModal = false"
+              >
+                <X :size="18" />
+              </button>
+            </div>
+
+            <!-- Tab Filter (Semua, Foto, Video) -->
+            <div class="mockup-modal-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                :class="['modal-tab-btn', { active: catalogFilter === 'all' }]"
+                @click="catalogFilter = 'all'"
+              >
+                Semua ({{ ALL_MOCKUP_MEDIA.length }})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :class="['modal-tab-btn', { active: catalogFilter === 'image' }]"
+                @click="catalogFilter = 'image'"
+              >
+                <Image :size="13" />
+                <span>Foto ({{ MOCKUP_IMAGES.length }})</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :class="['modal-tab-btn', { active: catalogFilter === 'video' }]"
+                @click="catalogFilter = 'video'"
+              >
+                <Film :size="13" />
+                <span>Video ({{ MOCKUP_VIDEOS.length }})</span>
+              </button>
+            </div>
+
+            <!-- Cards Grid in Modal -->
+            <div class="mockup-modal-grid">
+              <div
+                v-for="item in filteredCatalog"
+                :key="item.id"
+                class="mockup-grid-card"
+                :class="{ selected: isPresetAdded(item) }"
+              >
+                <div class="modal-card-thumb">
+                  <img :src="item.thumbnail || item.url" :alt="item.name" loading="lazy" />
+                  <span class="card-type-tag" :class="item.type">
+                    {{ item.type === 'image' ? 'Foto' : 'Video' }}
+                    <span v-if="item.duration">• {{ item.duration }}</span>
+                  </span>
+                </div>
+                <div class="modal-card-body">
+                  <h4 class="card-title">{{ item.name }}</h4>
+                  <p class="card-desc">{{ item.caption }}</p>
+                  <div class="card-footer-row">
+                    <span class="card-size-pill">{{ item.sizeText }}</span>
+                    <button
+                      type="button"
+                      :class="['btn-toggle-attach', { attached: isPresetAdded(item) }]"
+                      :disabled="mediaFiles.length >= maxFiles && !isPresetAdded(item)"
+                      @click="toggleMockupMedia(item)"
+                    >
+                      <Check v-if="isPresetAdded(item)" :size="13" />
+                      <Plus v-else :size="13" />
+                      <span>{{ isPresetAdded(item) ? 'Terpasang' : 'Pilih' }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="mockup-modal-footer">
+              <span class="footer-count-text">
+                {{ mediaFiles.length }} dari {{ maxFiles }} media dipilih
+              </span>
+              <button
+                type="button"
+                class="btn-done-modal"
+                @click="showCatalogModal = false"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Image, Upload, X, Plus, AlertCircle, Video } from 'lucide-vue-next';
+import {
+  Image,
+  Upload,
+  X,
+  Plus,
+  AlertCircle,
+  Film,
+  Sparkles,
+  ChevronRight,
+  Check,
+} from 'lucide-vue-next';
+
+import {
+  MOCKUP_IMAGES,
+  MOCKUP_VIDEOS,
+  ALL_MOCKUP_MEDIA,
+} from '../../data/mockupMedia';
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -105,6 +304,16 @@ const emit = defineEmits(['update:modelValue', 'change']);
 const fileInputRef = ref(null);
 const dragActive = ref(false);
 const error = ref('');
+
+// Catalog Modal State
+const showCatalogModal = ref(false);
+const catalogFilter = ref('all');
+
+const filteredCatalog = computed(() => {
+  if (catalogFilter.value === 'image') return MOCKUP_IMAGES;
+  if (catalogFilter.value === 'video') return MOCKUP_VIDEOS;
+  return ALL_MOCKUP_MEDIA;
+});
 
 const mediaFiles = computed({
   get() {
@@ -182,70 +391,117 @@ function processFile(file) {
     size: file.size,
     type,
     preview,
-    uploading: false,
+    url: preview,
+    uploading: true,
     progress: 0,
   };
 
   mediaFiles.value = [...mediaFiles.value, mediaItem];
   emit('change', mediaFiles.value);
 
-  // Simulate upload (in real app, upload to server)
-  simulateUpload(id);
+  simulateUpload(mediaItem);
 }
 
-function simulateUpload(id) {
-  const item = mediaFiles.value.find((m) => m.id === id);
-  if (!item) return;
-
-  item.uploading = true;
+function simulateUpload(item) {
   let progress = 0;
   const interval = setInterval(() => {
-    progress += Math.random() * 15;
+    progress += 20;
     if (progress >= 100) {
       progress = 100;
       clearInterval(interval);
       item.uploading = false;
     }
     item.progress = Math.min(progress, 100);
-  }, 150);
+  }, 90);
+}
+
+function isPresetAdded(preset) {
+  return mediaFiles.value.some((m) => m.url === preset.url || m.id === preset.id);
+}
+
+function toggleMockupMedia(preset) {
+  error.value = '';
+  const existingIdx = mediaFiles.value.findIndex(
+    (m) => m.url === preset.url || m.id === preset.id
+  );
+
+  if (existingIdx !== -1) {
+    // Remove if already added
+    removeFile(existingIdx);
+    return;
+  }
+
+  if (mediaFiles.value.length >= props.maxFiles) {
+    error.value = `Maksimal ${props.maxFiles} media tercapai`;
+    return;
+  }
+
+  const mediaItem = {
+    id: preset.id || `mock_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: `${preset.name}.${preset.type === 'video' ? 'mp4' : 'jpg'}`,
+    size: preset.size,
+    sizeText: preset.sizeText,
+    type: preset.type,
+    preview: preset.url,
+    url: preset.url,
+    thumbnail: preset.thumbnail || preset.url,
+    duration: preset.duration || null,
+    caption: preset.caption || preset.name,
+    uploading: true,
+    progress: 0,
+  };
+
+  mediaFiles.value = [...mediaFiles.value, mediaItem];
+  emit('change', mediaFiles.value);
+
+  simulateUpload(mediaItem);
 }
 
 function removeFile(index) {
   const item = mediaFiles.value[index];
-  if (item?.preview) URL.revokeObjectURL(item.preview);
+  if (item?.file && item?.preview) URL.revokeObjectURL(item.preview);
   mediaFiles.value.splice(index, 1);
   emit('change', mediaFiles.value);
 }
 
 function formatFileSize(bytes) {
+  if (!bytes) return '';
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 function truncate(str, max) {
+  if (!str) return '';
   return str.length <= max ? str : str.slice(0, max - 1) + '…';
 }
 </script>
 
 <style scoped>
 .media-uploader {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  background: var(--shell-card, #131722);
+  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
+/* DROPZONE */
 .media-uploader__dropzone {
   position: relative;
-  padding: 24px;
-  border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.2s ease;
+  padding: 22px 20px;
+  border-bottom: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .media-uploader__dropzone.active {
-  background: var(--shell-chip);
-  border-color: var(--brand-blue);
+  background: rgba(0, 85, 255, 0.08);
+  border-color: #0055ff;
+}
+
+.media-uploader__dropzone.has-files {
+  padding: 14px 20px;
 }
 
 .media-uploader__input {
@@ -269,17 +525,19 @@ function truncate(str, max) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: var(--bg-inset);
-  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--shell-sub-accent, #60a5fa);
   transition: all 0.2s ease;
 }
 
 .media-uploader__dropzone.active .media-uploader__icon {
-  background: var(--brand-blue);
-  color: var(--brand-blue-ink);
+  background: #0055ff;
+  color: #fff;
+  transform: scale(1.08);
 }
 
 .spin {
@@ -293,31 +551,191 @@ function truncate(str, max) {
 }
 
 .media-uploader__text {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-main);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--shell-text, #fff);
   margin: 0;
 }
 
 .media-uploader__hint {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--shell-text-muted, #8e95a5);
   margin: 0;
 }
 
+/* MOCKUP PRESET SECTION */
+.mockup-preset-section {
+  padding: 12px 16px;
+  background: rgba(0, 85, 255, 0.035);
+  border-bottom: 1px solid var(--shell-border, rgba(255, 255, 255, 0.06));
+}
+
+.mockup-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.mockup-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.sparkle-icon {
+  color: #f59e0b;
+}
+
+.btn-open-catalog {
+  background: transparent;
+  border: none;
+  color: var(--shell-text-muted, #94a3b8);
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-open-catalog:hover {
+  color: #fff;
+}
+
+.mockup-carousel-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.mockup-chip-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px 6px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  color: var(--shell-text, #fff);
+  text-align: left;
+}
+
+.mockup-chip-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(96, 165, 250, 0.4);
+  transform: translateY(-1px);
+}
+
+.mockup-chip-btn.added {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.mockup-chip-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mockup-chip-thumb-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  background: #000;
+}
+
+.mockup-chip-thumb-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mockup-video-overlay-icon {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.mockup-type-badge-mini {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  font-size: 8px;
+  font-weight: 800;
+  text-align: center;
+  padding: 1px 0;
+  text-transform: uppercase;
+}
+
+.mockup-type-badge-mini.image {
+  background: rgba(16, 185, 129, 0.85);
+  color: #fff;
+}
+
+.mockup-type-badge-mini.video {
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+}
+
+.mockup-chip-text-col {
+  display: flex;
+  flex-direction: column;
+  max-width: 110px;
+}
+
+.mockup-chip-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--shell-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mockup-chip-size {
+  font-size: 10px;
+  color: var(--shell-text-muted, #8e95a5);
+}
+
+.mockup-check-badge {
+  color: #10b981;
+}
+
+.mockup-plus-icon {
+  color: var(--shell-text-muted, #8e95a5);
+}
+
+/* MEDIA PREVIEW GRID */
 .media-uploader__preview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 12px;
-  padding: 12px;
+  padding: 14px;
 }
 
 .media-uploader__preview-item {
   position: relative;
   aspect-ratio: 1;
-  background: var(--bg-inset);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -327,38 +745,51 @@ function truncate(str, max) {
   position: absolute;
   top: 6px;
   right: 6px;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  border: none;
-  color: white;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0;
-  transform: scale(0.8);
   transition: all 0.2s ease;
-  z-index: 2;
+  z-index: 3;
 }
 
-.media-uploader__preview-item:hover .media-uploader__remove {
-  opacity: 1;
-  transform: scale(1);
+.media-uploader__remove:hover {
+  background: #ef4444;
+  transform: scale(1.1);
 }
 
 .media-uploader__media {
   flex: 1;
   width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background: #000;
 }
 
-.media-uploader__media img,
-.media-uploader__media video {
+.media-uploader__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-preview-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-video-tag {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -370,56 +801,63 @@ function truncate(str, max) {
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--bg-inset);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .media-uploader__progress-bar {
   height: 100%;
-  background: var(--brand-blue);
-  border-radius: 0 0 10px 10px;
-  transition: width 0.1s ease.;
+  background: #0055ff;
+  transition: width 0.1s ease;
 }
 
 .media-uploader__info {
-  padding: 8px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.85) 100%);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-height: 44px;
 }
 
 .media-uploader__name {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-main);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .media-uploader__size {
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: 9.5px;
+  color: #cbd5e1;
 }
 
 .media-uploader__type-badge {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 4px;
-  font-size: 10px;
+  top: 6px;
+  left: 6px;
+  padding: 3px 7px;
+  font-size: 9.5px;
   font-weight: 700;
-  text-align: center;
-  color: var(--text-on-accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  z-index: 2;
 }
 
 .media-uploader__type-badge.image {
-  background: linear-gradient(90deg, var(--success), #22c55e);
+  background: rgba(16, 185, 129, 0.85);
+  backdrop-filter: blur(4px);
 }
 
 .media-uploader__type-badge.video {
-  background: linear-gradient(90deg, var(--danger), #f87171);
+  background: rgba(239, 68, 68, 0.85);
+  backdrop-filter: blur(4px);
 }
 
 .media-uploader__add-more {
@@ -427,27 +865,27 @@ function truncate(str, max) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px;
-  background: var(--bg-inset);
-  border: 2px dashed var(--border-subtle);
-  border-radius: 10px;
-  color: var(--text-secondary);
-  font-size: 13px;
+  gap: 4px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px dashed var(--shell-border, rgba(255, 255, 255, 0.15));
+  border-radius: 12px;
+  color: var(--shell-text-muted, #8e95a5);
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.media-uploader__add-more:hover:not(:disabled) {
-  border-color: var(--brand-blue);
-  color: var(--brand-blue);
-  background: var(--shell-chip);
+.media-uploader__add-more:hover {
+  border-color: #0055ff;
+  color: #fff;
+  background: rgba(0, 85, 255, 0.06);
 }
 
-.media-uploader__add-more:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.slots-counter {
+  font-size: 10px;
+  color: var(--shell-text-muted, #64748b);
 }
 
 .media-uploader__error {
@@ -455,10 +893,264 @@ function truncate(str, max) {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  color: var(--danger);
+  color: #ef4444;
   font-size: 12px;
   background: rgba(239, 68, 68, 0.1);
-  border-top: 1px solid var(--danger);
+  border-top: 1px solid rgba(239, 68, 68, 0.3);
   margin: 0;
+}
+
+/* CATALOG MODAL */
+.mockup-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.mockup-modal-window {
+  background: var(--shell-card, #131722);
+  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.1));
+  border-radius: 20px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.mockup-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
+}
+
+.modal-head-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-head-title h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+
+.btn-close-modal {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-close-modal:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mockup-modal-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--shell-border, rgba(255, 255, 255, 0.06));
+}
+
+.modal-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  color: var(--shell-text-muted, #94a3b8);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-tab-btn:hover {
+  color: #fff;
+}
+
+.modal-tab-btn.active {
+  background: #0055ff;
+  border-color: #0055ff;
+  color: #fff;
+}
+
+.mockup-modal-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.mockup-grid-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.mockup-grid-card.selected {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.modal-card-thumb {
+  height: 120px;
+  position: relative;
+  background: #000;
+}
+
+.modal-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-type-tag {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+.card-type-tag.image {
+  background: rgba(16, 185, 129, 0.85);
+}
+
+.card-type-tag.video {
+  background: rgba(239, 68, 68, 0.85);
+}
+
+.modal-card-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.card-desc {
+  font-size: 11.5px;
+  color: var(--shell-text-muted, #94a3b8);
+  margin: 0;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.card-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.card-size-pill {
+  font-size: 10.5px;
+  color: var(--shell-text-muted, #8e95a5);
+}
+
+.btn-toggle-attach {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(0, 85, 255, 0.15);
+  border: 1px solid rgba(0, 85, 255, 0.35);
+  color: #60a5fa;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-attach:hover:not(:disabled) {
+  background: #0055ff;
+  color: #fff;
+}
+
+.btn-toggle-attach.attached {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+
+.btn-toggle-attach:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mockup-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
+}
+
+.footer-count-text {
+  font-size: 12.5px;
+  color: var(--shell-text-muted, #94a3b8);
+}
+
+.btn-done-modal {
+  padding: 8px 22px;
+  background: #0055ff;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-done-modal:hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 600px) {
+  .mockup-modal-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

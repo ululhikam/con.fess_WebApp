@@ -158,12 +158,23 @@ import { landingSampleBases } from '../../data/landingData';
 @media (max-width: 600px) {
   .base-cards-grid {
     grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .base-card-item {
+    padding: 18px 16px;
+    border-radius: 18px;
   }
 
   .showcase-head {
     flex-direction: column;
     align-items: flex-start;
-    gap: 16px;
+    gap: 12px;
+  }
+
+  .showcase-cta {
+    padding: 7px 18px;
+    font-size: 12px;
   }
 }
 </style>

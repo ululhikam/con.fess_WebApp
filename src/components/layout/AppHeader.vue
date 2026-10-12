@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <header class="app-top-header">
     <div class="top-header-inner">
       <router-link to="/" class="brand-logo" aria-label="Beranda Base Confess">
@@ -10,14 +10,6 @@
       </router-link>
 
       <div class="header-right-actions">
-        <router-link
-          v-if="authStore.isBaseAdmin || authStore.isSuperAdmin"
-          to="/base-admin"
-          class="btn-admin-chip"
-        >
-          Admin Portal
-        </router-link>
-
         <button type="button" class="btn-header-kirim" @click="$emit('openCompose')">
           <Plus :size="14" /> Kirim Fess
         </button>
@@ -32,10 +24,8 @@
  * Presentational; the parent handles the `openCompose` action.
  */
 import { MessageSquare, Plus } from 'lucide-vue-next';
-import { useAuthStore } from '../../stores/authStore';
 
 defineEmits(['openCompose']);
-const authStore = useAuthStore();
 </script>
 
 <style scoped>
@@ -104,20 +94,7 @@ const authStore = useAuthStore();
   color: var(--shell-text);
 }
 
-.btn-admin-chip {
-  color: var(--shell-active);
-  border: 1.5px solid currentColor;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  font-weight: 800;
-  font-size: 12px;
-  text-decoration: none;
-  transition: background 0.15s ease;
-}
 
-.btn-admin-chip:hover {
-  background: var(--shell-chip);
-}
 
 .btn-header-kirim {
   display: inline-flex;

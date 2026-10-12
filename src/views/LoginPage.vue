@@ -1,17 +1,27 @@
 <template>
   <AuthShell logo-word="CONFESS" subtitle="Masuk ke Akun Base & Portal Admin">
-    <!-- Role quick-switcher -->
-    <div class="role-selector-pills" role="radiogroup" aria-label="Pilih peran masuk">
+    <!-- Role selector tabs: Pengguna vs Admin Base -->
+    <div class="role-selector-pills" role="radiogroup" aria-label="Pilih portal masuk">
       <button
-        v-for="role in ROLES"
-        :key="role"
         type="button"
         role="radio"
-        :aria-checked="selectedRole === role"
-        :class="['role-pill-btn', selectedRole === role ? roleClass(role) : '']"
-        @click="selectedRole = role"
+        :aria-checked="selectedRole === 'User'"
+        :class="['role-pill-btn', selectedRole === 'User' ? 'active-user' : '']"
+        @click="selectedRole = 'User'"
       >
-        {{ role === 'User' ? 'User / Anon' : role }}
+        <UserRound :size="14" />
+        <span>Akun Pengguna</span>
+      </button>
+
+      <button
+        type="button"
+        role="radio"
+        :aria-checked="selectedRole === 'Base Admin'"
+        :class="['role-pill-btn', selectedRole === 'Base Admin' ? 'active-mod' : '']"
+        @click="selectedRole = 'Base Admin'"
+      >
+        <ShieldCheck :size="14" />
+        <span>Portal Admin Base</span>
       </button>
     </div>
 
@@ -30,8 +40,8 @@
       <FormField
         id="login-identifier"
         v-model="form.values.identifier"
-        label="Email atau Username Base"
-        placeholder="contoh: alexdev@base.eth"
+        :label="selectedRole === 'Base Admin' ? 'Email Admin atau Handle Base' : 'Email atau Username User'"
+        :placeholder="selectedRole === 'Base Admin' ? 'contoh: admin@codememfess.id' : 'contoh: alexdev@base.eth'"
         autocomplete="username"
         required
         :error="fieldError('identifier')"
@@ -58,10 +68,10 @@
         {{ form.submitError }}
       </p>
 
-      <button type="submit" class="btn-submit-blue mt-2" :disabled="form.submitting">
-        <Loader2 v-if="form.submitting" class="spin" :size="16" aria-hidden="true" />
+      <button type="submit" class="btn-submit-blue mt-2" :disabled="isSubmitting">
+        <Loader2 v-if="isSubmitting" class="spin" :size="16" aria-hidden="true" />
         <template v-else>
-          MASUK SEBAGAI {{ selectedRole.toUpperCase() }}
+          {{ selectedRole === 'Base Admin' ? 'MASUK KE PORTAL ADMIN' : 'MASUK KE FEED PENGGUNA' }}
           <ArrowRight :size="15" aria-hidden="true" />
         </template>
       </button>
@@ -72,7 +82,7 @@
     </div>
 
     <div class="social-login">
-      <button type="button" class="btn-google" @click="handleGoogleLogin">
+      <button type="button" class="btn-google" :disabled="isSubmitting" @click="handleGoogleLogin">
         <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <path
             fill="#4285F4"
@@ -95,12 +105,32 @@
       </button>
     </div>
 
-    <p class="auth-footer mt-6 text-xs text-muted">
-      Belum punya akun Base?
-      <router-link :to="registerTarget" class="auth-link font-bold"
-        >Buat Akun Base Confess</router-link
-      >
-    </p>
+    <div class="auth-footer mt-6 text-xs text-muted">
+      <template v-if="selectedRole === 'User'">
+        <p class="mb-2">Belum punya akun pengguna?</p>
+        <div class="auth-footer-links">
+          <router-link :to="registerUserTarget" class="auth-link font-bold">
+            Daftar Akun User
+          </router-link>
+          <span class="auth-footer-dot" aria-hidden="true">•</span>
+          <router-link :to="registerBaseTarget" class="auth-link font-medium">
+            Buat Akun Base
+          </router-link>
+        </div>
+      </template>
+      <template v-else>
+        <p class="mb-2">Ingin buat base confession sendiri?</p>
+        <div class="auth-footer-links">
+          <router-link :to="registerBaseTarget" class="auth-link font-bold">
+            Buat Akun Base Confess
+          </router-link>
+          <span class="auth-footer-dot" aria-hidden="true">•</span>
+          <router-link :to="registerUserTarget" class="auth-link font-medium">
+            Daftar User Biasa
+          </router-link>
+        </div>
+      </template>
+    </div>
   </AuthShell>
 </template>
 
@@ -126,6 +156,8 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const selectedRole = ref('User');
+/** Local submitting flag — avoids spinner stuck during async route transition. */
+const isSubmitting = ref(false);
 
 /**
  * Return the user to the page that triggered the login, but only allow
@@ -178,24 +210,46 @@ const bannerIcon = computed(() => (selectedRole.value === 'Base Admin' ? ShieldC
 const roleClass = (role) => (role === 'User' ? 'active-user' : 'active-mod');
 
 /* ---------- actions ---------- */
-function redirectRole(role) {
+async function redirectRole(role) {
   const target = safeRedirect();
-  if (target) return router.push(target);
-  router.push(role === 'Base Admin' ? '/base-admin' : '/feed');
+  if (role === 'Base Admin') {
+    await router.push(target && target.startsWith('/base-admin') ? target : '/base-admin');
+  } else {
+    await router.push(
+      target && !target.startsWith('/base-admin') && !target.startsWith('/super-admin')
+        ? target
+        : '/feed',
+    );
+  }
 }
 
 async function handleLogin() {
-  const ok = await form.submit(() => authStore.login(selectedRole.value));
-  if (ok) redirectRole(selectedRole.value);
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+  try {
+    const ok = await form.submit(() => authStore.login(selectedRole.value));
+    if (ok) await redirectRole(selectedRole.value);
+  } catch {
+    // Errors surfaced via form.submitError
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
-function handleGoogleLogin() {
-  authStore.login(selectedRole.value);
-  redirectRole(selectedRole.value);
+async function handleGoogleLogin() {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
+  try {
+    authStore.login(selectedRole.value);
+    await redirectRole(selectedRole.value);
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 /** Deep-link to register still has to honour the original destination. */
-const registerTarget = computed(() => ({ path: '/register', query: route.query }));
+const registerUserTarget = computed(() => ({ path: '/register/user', query: route.query }));
+const registerBaseTarget = computed(() => ({ path: '/register/base', query: route.query }));
 </script>
 
 <style scoped>
@@ -221,6 +275,10 @@ const registerTarget = computed(() => ({ path: '/register', query: route.query }
   border-radius: 10px;
   cursor: pointer;
   color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   transition:
     background 0.2s ease,
     color 0.2s ease,
@@ -383,6 +441,19 @@ const registerTarget = computed(() => ({ path: '/register', query: route.query }
   font-size: 13px;
   text-align: center;
   color: var(--text-muted);
+}
+
+.auth-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth-footer-dot {
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
 .auth-link {

@@ -287,4 +287,28 @@
     display: none;
   }
 }
+
+@media (max-width: 600px) {
+  .hero-glass-card {
+    display: none;
+  }
+
+  .doodle-arrow-top,
+  .doodle-arrow-bottom {
+    display: none;
+  }
+
+  .doodle-hashtag {
+    transform: scale(0.55);
+    top: -20px;
+    left: 2%;
+  }
+
+  .hero-badge-sticker {
+    bottom: -15px;
+    right: 4%;
+    transform: scale(0.65);
+    transform-origin: bottom right;
+  }
+}
 </style>

@@ -1,0 +1,2008 @@
+<template>
+  <div class="admin-profile-ig-view">
+    <!-- TOP BAR (Base Handle on left, Hamburger button on far right) -->
+    <div class="ig-top-bar">
+      <div class="ig-top-left">
+        <h1 class="ig-handle-title">{{ baseHandle }}</h1>
+        <span class="badge-base-admin">BASE ADMIN</span>
+      </div>
+
+      <div class="ig-top-right">
+        <button
+          type="button"
+          class="btn-hamburger"
+          aria-label="Buka Menu Admin"
+          title="Menu Admin & Pengaturan"
+          @click="showDrawer = true"
+        >
+          <Menu :size="24" />
+        </button>
+      </div>
+    </div>
+
+    <!-- PROFILE HEADER (IG STYLE FOR BASE ADMIN) -->
+    <div class="ig-header-container">
+      <div class="ig-header-top-row">
+        <!-- SEBELAH KIRI ATAS: FOTO PROFILE & TOMBOL EDIT PROFIL -->
+        <div class="ig-left-col">
+          <div class="ig-avatar-ring">
+            <img :src="baseAvatar" :alt="baseName" class="ig-avatar-img" />
+          </div>
+
+          <!-- Button Edit Profile dibawah foto profil -->
+          <button type="button" class="btn-edit-profile-left mt-2" @click="showEditModal = true">
+            <Edit3 :size="13" />
+            <span>Edit Profile</span>
+          </button>
+        </div>
+
+        <!-- DI SAMPING FOTO PROFIL: FESS, FOLLOW, FOLLOWER (dengan angka jumlah di bawahnya) -->
+        <div class="ig-metrics-row">
+          <div class="ig-metric-col">
+            <span class="ig-metric-label">Fess</span>
+            <span class="ig-metric-num">{{ fessCount.toLocaleString() }}</span>
+          </div>
+
+          <button
+            type="button"
+            class="ig-metric-col ig-metric-btn"
+            title="Lihat daftar akun yang diikuti"
+            @click="openFollowModal('following')"
+          >
+            <span class="ig-metric-label">Follow</span>
+            <span class="ig-metric-num">{{ followingCount.toLocaleString() }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="ig-metric-col ig-metric-btn"
+            title="Lihat daftar pengikut base"
+            @click="openFollowModal('followers')"
+          >
+            <span class="ig-metric-label">Follower</span>
+            <span class="ig-metric-num">{{ followersCount.toLocaleString() }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- NAMA, USERNAME, BIO & MEDSOS PILL DI BAWAH -->
+      <div class="ig-bio-section mt-3">
+        <h2 class="base-full-name">{{ baseName }}</h2>
+        <div class="base-handle-sub">{{ baseHandle }}</div>
+        <p class="base-bio-desc">{{ baseBio }}</p>
+
+        <!-- Medsos Integration Pill -->
+        <div class="base-medsos-badge mt-2">
+          <Instagram :size="13" class="ig-color-icon" />
+          <span>{{ igAccount || '@codememfess_ig' }}</span>
+          <span class="medsos-dot">•</span>
+          <span class="auto-post-status">Auto-Post Aktif</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICK STATUS STRIP MODERASI BASE (Dipindahkan dari Home ke Profile) -->
+    <div class="quick-status-grid mb-3">
+      <div class="quick-status-card">
+        <span class="status-num">{{ pendingCount }}</span>
+        <span class="status-lbl">Antrean Moderasi</span>
+      </div>
+      <div class="quick-status-card">
+        <span class="status-num">{{ baseFesses.filter((f) => f.status === 'approved').length }}</span>
+        <span class="status-lbl">Fess Terbit</span>
+      </div>
+      <div class="quick-status-card">
+        <span class="status-num">99.2%</span>
+        <span class="status-lbl">Auto-Post IG</span>
+      </div>
+      <div class="quick-status-card">
+        <span class="status-num">1</span>
+        <span class="status-lbl">Laporan Masuk</span>
+      </div>
+    </div>
+
+    <!-- FILTER / SUB-TABS KONTEN FESS USER -->
+    <div class="ig-feed-tabs" role="tablist" aria-label="Status Konten Fess">
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="fessFilter === 'semua'"
+        class="feed-tab-btn"
+        :class="{ active: fessFilter === 'semua' }"
+        @click="fessFilter = 'semua'"
+      >
+        <Grid :size="16" />
+        <span>Semua Fess ({{ baseFesses.length }})</span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="fessFilter === 'approved'"
+        class="feed-tab-btn"
+        :class="{ active: fessFilter === 'approved' }"
+        @click="fessFilter = 'approved'"
+      >
+        <CheckCircle2 :size="16" />
+        <span>Terbit</span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="fessFilter === 'pending'"
+        class="feed-tab-btn"
+        :class="{ active: fessFilter === 'pending' }"
+        @click="fessFilter = 'pending'"
+      >
+        <Clock :size="16" />
+        <span>Antrean ({{ pendingCount }})</span>
+      </button>
+    </div>
+
+    <!-- KONTEN YANG SUDAH DI-FESS OLEH USER BIASA -->
+    <div class="ig-fess-content-area">
+      <div v-if="filteredFesses.length" class="fess-cards-stream">
+        <AdminFessCard
+          v-for="item in filteredFesses"
+          :key="item.id"
+          :post="item"
+          :is-admin="true"
+          @approve="approveFess"
+          @hide="hideFess"
+        />
+      </div>
+
+      <div v-else class="empty-fess-box">
+        <MessageSquare :size="36" class="text-muted mb-2" />
+        <p class="font-bold">Belum ada confession dalam kategori ini.</p>
+        <p class="text-xs text-muted">Confession baru yang dikirim user ke base ini akan muncul di sini.</p>
+      </div>
+    </div>
+
+    <!-- HAMBURGER DRAWER (KANAN ATAS) -->
+    <div
+      v-if="showDrawer"
+      class="drawer-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu Admin Base"
+      @click.self="showDrawer = false"
+    >
+      <div class="drawer-content-pane">
+        <div class="drawer-top-header">
+          <span class="drawer-header-title">Menu Pengelola Base</span>
+          <button type="button" class="btn-close-drawer" @click="showDrawer = false">
+            <X :size="20" />
+          </button>
+        </div>
+
+        <div class="drawer-scroll-body">
+          <!-- 1. KONEKSI MEDSOS -->
+          <div class="menu-section-card">
+            <button
+              type="button"
+              class="menu-row-btn"
+              @click="openModal('medsos')"
+            >
+              <div class="menu-row-left">
+                <Instagram :size="18" class="row-ico-brand" />
+                <div>
+                  <div class="menu-row-label">Koneksi Medsos</div>
+                  <div class="menu-row-desc">Instagram, Twitter Bot, Telegram</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+          </div>
+
+          <!-- 2. BAGIAN KEUANGAN {saldo, pendapatan, penarikan} -->
+          <div class="menu-section-card mt-3">
+            <div class="section-card-title">Bagian Keuangan</div>
+
+            <button type="button" class="menu-row-btn" @click="openModal('keuangan_saldo')">
+              <div class="menu-row-left">
+                <Coins :size="18" class="row-ico-gold" />
+                <div>
+                  <div class="menu-row-label">Saldo Treasury Base</div>
+                  <div class="menu-row-desc">Rp 2.458.000 (24.580 $CLUB)</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <button type="button" class="menu-row-btn" @click="openModal('keuangan_pendapatan')">
+              <div class="menu-row-left">
+                <TrendingUp :size="18" class="row-ico-green" />
+                <div>
+                  <div class="menu-row-label">Pendapatan Bulan Ini</div>
+                  <div class="menu-row-desc">Rp 1.120.000 dari fess prioritas</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <button type="button" class="menu-row-btn" @click="openModal('keuangan_penarikan')">
+              <div class="menu-row-left">
+                <ArrowDownToLine :size="18" class="row-ico-blue" />
+                <div>
+                  <div class="menu-row-label">Penarikan Saldo (Payout)</div>
+                  <div class="menu-row-desc">Tarik saldo ke rekening bank / e-wallet</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+          </div>
+
+          <!-- 3. ANALITIK {ringkasan, konten, moderasi, komunitas} -->
+          <div class="menu-section-card mt-3">
+            <div class="section-card-title">Analitik Base</div>
+
+            <button type="button" class="menu-row-btn" @click="openModal('analitik_ringkasan')">
+              <div class="menu-row-left">
+                <BarChart3 :size="18" class="row-ico-blue" />
+                <div>
+                  <div class="menu-row-label">Ringkasan Analitik</div>
+                  <div class="menu-row-desc">Impresi, kunjungan profil, views</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <button type="button" class="menu-row-btn" @click="openModal('analitik_konten')">
+              <div class="menu-row-left">
+                <FileText :size="18" class="row-ico-blue" />
+                <div>
+                  <div class="menu-row-label">Analitik Konten</div>
+                  <div class="menu-row-desc">Fess paling viral & kata kunci teratas</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <button type="button" class="menu-row-btn" @click="openModal('analitik_moderasi')">
+              <div class="menu-row-left">
+                <ShieldCheck :size="18" class="row-ico-blue" />
+                <div>
+                  <div class="menu-row-label">Moderasi & Filter Kata</div>
+                  <div class="menu-row-desc">Auto-moderation keyword & antrean</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <button type="button" class="menu-row-btn" @click="openModal('analitik_komunitas')">
+              <div class="menu-row-left">
+                <Users :size="18" class="row-ico-blue" />
+                <div>
+                  <div class="menu-row-label">Analitik Komunitas</div>
+                  <div class="menu-row-desc">Pertumbuhan 18.4K member & pengirim aktif</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+          </div>
+
+          <!-- 4. PENGATURAN {tampilan, notif, bantuan, ketentuan, privasi, keamanan ganti password} -->
+          <div class="menu-section-card mt-3">
+            <div class="section-card-title">Pengaturan</div>
+
+            <!-- Tampilan (Theme Switcher) -->
+            <button type="button" class="menu-row-btn" @click="openModal('pengaturan_tampilan')">
+              <div class="menu-row-left">
+                <Sun :size="18" class="row-ico-muted" />
+                <div>
+                  <div class="menu-row-label">Tampilan Tema</div>
+                  <div class="menu-row-desc">
+                    Mode: {{ currentTheme === 'system' ? 'Sistem Otomatis' : currentTheme === 'light' ? 'Terang' : 'Gelap' }}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <!-- Notif -->
+            <button type="button" class="menu-row-btn" @click="openModal('pengaturan_notif')">
+              <div class="menu-row-left">
+                <Bell :size="18" class="row-ico-muted" />
+                <span class="menu-row-label">Notifikasi Base</span>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <!-- Bantuan -->
+            <button type="button" class="menu-row-btn" @click="openModal('pengaturan_bantuan')">
+              <div class="menu-row-left">
+                <HelpCircle :size="18" class="row-ico-muted" />
+                <span class="menu-row-label">Bantuan Pengelola</span>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <!-- Ketentuan Layanan -->
+            <button type="button" class="menu-row-btn" @click="openModal('pengaturan_ketentuan')">
+              <div class="menu-row-left">
+                <ScrollText :size="18" class="row-ico-muted" />
+                <span class="menu-row-label">Ketentuan Layanan</span>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <!-- Kebijakan Privasi -->
+            <button type="button" class="menu-row-btn" @click="openModal('pengaturan_privasi')">
+              <div class="menu-row-left">
+                <Shield :size="18" class="row-ico-muted" />
+                <span class="menu-row-label">Kebijakan Privasi</span>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <!-- Keamanan Profil Ganti Password -->
+            <button type="button" class="menu-row-btn" @click="openModal('pengaturan_keamanan')">
+              <div class="menu-row-left">
+                <KeyRound :size="18" class="row-ico-muted" />
+                <span class="menu-row-label">Keamanan Profil &amp; Ganti Password</span>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+          </div>
+
+          <!-- 5. LOGOUT -->
+          <div class="menu-section-card mt-3">
+            <button type="button" class="menu-row-btn danger-row" @click="handleAdminLogout">
+              <div class="menu-row-left">
+                <LogOut :size="18" class="row-ico-danger" />
+                <span class="menu-row-label text-danger">Keluar dari Akun Base</span>
+              </div>
+              <ChevronRight :size="16" class="row-chevron text-danger" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL EDIT PROFILE BASE -->
+    <div
+      v-if="showEditModal"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit Profil Base"
+      @click.self="showEditModal = false"
+    >
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Edit Profil Base</h3>
+          <button type="button" class="btn-close-modal" @click="showEditModal = false">
+            <X :size="18" />
+          </button>
+        </div>
+
+        <form class="modal-body" @submit.prevent="saveBaseProfile">
+          <!-- Foto Profil Preview -->
+          <div class="edit-avatar-group">
+            <img :src="editForm.avatar" alt="Foto Base" class="edit-avatar-img" />
+            <div class="avatar-presets-grid">
+              <div class="avatar-select-head">
+                <span class="text-xs text-muted">Pilih atau Upload:</span>
+                <label class="btn-upload-avatar-chip">
+                  <Upload :size="12" />
+                  <span>Upload Foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    class="sr-only"
+                    @change="handleAdminAvatarUpload"
+                  />
+                </label>
+              </div>
+              <div class="presets-row">
+                <button
+                  v-for="(preset, i) in BASE_AVATARS"
+                  :key="i"
+                  type="button"
+                  class="btn-preset-pic"
+                  :class="{ selected: editForm.avatar === preset }"
+                  @click="editForm.avatar = preset"
+                >
+                  <img :src="preset" :alt="`Pilihan ${i+1}`" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="edit-base-name" class="form-label">Nama Base</label>
+            <input
+              id="edit-base-name"
+              v-model="editForm.name"
+              type="text"
+              class="form-input"
+              required
+            />
+          </div>
+
+          <div class="form-group mt-3">
+            <label for="edit-base-bio" class="form-label">Bio Base</label>
+            <textarea
+              id="edit-base-bio"
+              v-model="editForm.bio"
+              rows="3"
+              class="form-textarea"
+              required
+            ></textarea>
+          </div>
+
+          <div class="modal-footer mt-4">
+            <button type="button" class="btn-cancel" @click="showEditModal = false">Batal</button>
+            <button type="submit" class="btn-save">Simpan Perubahan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL DAFTAR FOLLOW & FOLLOWER -->
+    <div
+      v-if="showFollowModal"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="followModalTab === 'followers' ? 'Daftar Pengikut' : 'Daftar Mengikuti'"
+      @click.self="showFollowModal = false"
+    >
+      <div class="modal-card follow-modal-card">
+        <div class="follow-modal-header">
+          <!-- Tab Switcher: Follower vs Following -->
+          <div class="follow-tabs-nav">
+            <button
+              type="button"
+              class="follow-tab-btn"
+              :class="{ active: followModalTab === 'followers' }"
+              @click="followModalTab = 'followers'"
+            >
+              <span>Follower</span>
+              <span class="follow-tab-count">{{ followersCount.toLocaleString() }}</span>
+            </button>
+            <button
+              type="button"
+              class="follow-tab-btn"
+              :class="{ active: followModalTab === 'following' }"
+              @click="followModalTab = 'following'"
+            >
+              <span>Follow</span>
+              <span class="follow-tab-count">{{ followingCount.toLocaleString() }}</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            class="btn-close-modal"
+            aria-label="Tutup"
+            @click="showFollowModal = false"
+          >
+            <X :size="18" />
+          </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="follow-search-box">
+          <Search :size="15" class="follow-search-icon" />
+          <input
+            v-model="followSearchQuery"
+            type="text"
+            class="follow-search-input"
+            :placeholder="followModalTab === 'followers' ? 'Cari di daftar follower...' : 'Cari di daftar following...'"
+          />
+          <button
+            v-if="followSearchQuery"
+            type="button"
+            class="btn-clear-search"
+            @click="followSearchQuery = ''"
+          >
+            <X :size="13" />
+          </button>
+        </div>
+
+        <!-- Users List -->
+        <div class="follow-list-body custom-scrollbar">
+          <div v-if="filteredFollowList.length === 0" class="follow-empty-state">
+            <Users :size="32" class="empty-icon" />
+            <p class="empty-text">
+              {{ followSearchQuery ? 'Tidak ada akun yang cocok dengan pencarian' : 'Belum ada data akun' }}
+            </p>
+          </div>
+
+          <div
+            v-for="user in filteredFollowList"
+            :key="user.id"
+            class="follow-user-row"
+          >
+            <div class="follow-user-avatar-wrap">
+              <img :src="user.avatar" :alt="user.name" class="follow-user-avatar" />
+              <span v-if="user.isVerified" class="follow-verified-dot" title="Verified">✓</span>
+            </div>
+
+            <div class="follow-user-info">
+              <div class="follow-user-name-line">
+                <span class="follow-user-name">{{ user.name }}</span>
+                <span v-if="user.isVerified" class="verified-tag">Base</span>
+              </div>
+              <div class="follow-user-handle">{{ user.handle }}</div>
+              <p class="follow-user-bio">{{ user.bio }}</p>
+            </div>
+
+            <button
+              type="button"
+              class="btn-follow-toggle"
+              :class="{ 'btn-following': user.isFollowing }"
+              @click="toggleFollowUser(user)"
+            >
+              <template v-if="user.isFollowing">
+                <UserCheck :size="13" />
+                <span>Mengikuti</span>
+              </template>
+              <template v-else>
+                <UserPlus :size="13" />
+                <span>Ikuti</span>
+              </template>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REAL FULL SLIDE-IN PANELS FOR ALL HAMBURGER ITEMS -->
+    <BaseAdminPanels
+      v-model="activeSubModal"
+      @setTheme="changeTheme"
+      @logout="handleAdminLogout"
+    />
+  </div>
+</template>
+
+<script setup>
+/**
+ * BaseAdminProfileTab — Instagram-style Profile View for Base Admin.
+ */
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import {
+  Menu,
+  X,
+  Edit3,
+  Instagram,
+  Twitter,
+  Send,
+  Grid,
+  CheckCircle2,
+  Clock,
+  UserRound,
+  ChevronRight,
+  Coins,
+  TrendingUp,
+  ArrowDownToLine,
+  BarChart3,
+  FileText,
+  ShieldCheck,
+  Users,
+  Sun,
+  Bell,
+  HelpCircle,
+  ScrollText,
+  Shield,
+  KeyRound,
+  LogOut,
+  MessageSquare,
+  Search,
+  UserCheck,
+  UserPlus,
+  Upload,
+} from 'lucide-vue-next';
+
+import { useAuthStore } from '../../stores/authStore';
+import { useTheme } from '../../composables/useTheme';
+import BaseAdminPanels from './BaseAdminPanels.vue';
+import AdminFessCard from './AdminFessCard.vue';
+
+const router = useRouter();
+const authStore = useAuthStore();
+const { mode: currentTheme, setMode } = useTheme();
+
+const showDrawer = ref(false);
+const showEditModal = ref(false);
+const activeSubModal = ref(null);
+const payoutSuccess = ref(false);
+
+const fessFilter = ref('semua');
+
+/* Follow & Follower Modal State */
+const showFollowModal = ref(false);
+const followModalTab = ref('followers'); // 'followers' or 'following'
+const followSearchQuery = ref('');
+
+const followersList = ref([
+  {
+    id: 'f1',
+    name: 'Rizky Pratama',
+    handle: '@dev_rizky',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+    bio: 'Frontend dev • Vue & Tailwind enthusiast',
+    isFollowing: true,
+  },
+  {
+    id: 'f2',
+    name: 'Sarah Amanda',
+    handle: '@sarah_design',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
+    bio: 'UI/UX Designer & coffee lover ☕',
+    isFollowing: false,
+  },
+  {
+    id: 'f3',
+    name: 'Budi Santoso',
+    handle: '@budi_santoso',
+    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
+    bio: 'Backend engineer • Golang & Postgres',
+    isFollowing: true,
+  },
+  {
+    id: 'f4',
+    name: 'Dinda Kirana',
+    handle: '@dinda_tech',
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80',
+    bio: 'Junior Developer @ TechStartup ID',
+    isFollowing: false,
+  },
+  {
+    id: 'f5',
+    name: 'Kampus Fess Official',
+    handle: '@kampusfess',
+    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
+    bio: 'Portal curhat dan info mahasiswa se-Indonesia 🎓',
+    isFollowing: true,
+    isVerified: true,
+  },
+  {
+    id: 'f6',
+    name: 'Arya Nugraha',
+    handle: '@arya_cloud',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
+    bio: 'DevOps & Cloud architecture enthusiast',
+    isFollowing: true,
+  },
+  {
+    id: 'f7',
+    name: 'Nadia Putri',
+    handle: '@nadia_codes',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80',
+    bio: 'Mobile dev Flutter • suka baca fess tech malam hari',
+    isFollowing: false,
+  },
+  {
+    id: 'f8',
+    name: 'Kucing Dev',
+    handle: '@kucing_oren',
+    avatar: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=120&q=80',
+    bio: 'Meow meow debug bug kucing oren 🐾',
+    isFollowing: true,
+  },
+]);
+
+const followingList = ref([
+  {
+    id: 'fo1',
+    name: 'Kampus Fess Official',
+    handle: '@kampusfess',
+    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
+    bio: 'Portal curhat dan info mahasiswa se-Indonesia 🎓',
+    isFollowing: true,
+    isVerified: true,
+  },
+  {
+    id: 'fo2',
+    name: 'ITB Confess',
+    handle: '@itb_fess',
+    avatar: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=120&q=80',
+    bio: 'Komunitas ganesha confess & diskusi tech',
+    isFollowing: true,
+    isVerified: true,
+  },
+  {
+    id: 'fo3',
+    name: 'Rizky Pratama',
+    handle: '@dev_rizky',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+    bio: 'Frontend dev • Vue & Tailwind enthusiast',
+    isFollowing: true,
+  },
+  {
+    id: 'fo4',
+    name: 'Budi Santoso',
+    handle: '@budi_santoso',
+    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
+    bio: 'Backend engineer • Golang & Postgres',
+    isFollowing: true,
+  },
+  {
+    id: 'fo5',
+    name: 'Arya Nugraha',
+    handle: '@arya_cloud',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
+    bio: 'DevOps & Cloud architecture enthusiast',
+    isFollowing: true,
+  },
+  {
+    id: 'fo6',
+    name: 'Kucing Dev',
+    handle: '@kucing_oren',
+    avatar: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=120&q=80',
+    bio: 'Meow meow debug bug kucing oren 🐾',
+    isFollowing: true,
+  },
+]);
+
+function openFollowModal(tab = 'followers') {
+  followModalTab.value = tab;
+  followSearchQuery.value = '';
+  showFollowModal.value = true;
+}
+
+function toggleFollowUser(user) {
+  user.isFollowing = !user.isFollowing;
+}
+
+const filteredFollowList = computed(() => {
+  const currentList = followModalTab.value === 'followers' ? followersList.value : followingList.value;
+  const q = followSearchQuery.value.trim().toLowerCase();
+  if (!q) return currentList;
+  return currentList.filter(
+    (u) =>
+      u.name.toLowerCase().includes(q) ||
+      u.handle.toLowerCase().includes(q) ||
+      (u.bio && u.bio.toLowerCase().includes(q)),
+  );
+});
+
+const BASE_AVATARS = [
+  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+  'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=150&q=80',
+  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=150&q=80',
+  'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?auto=format&fit=crop&w=150&q=80',
+];
+
+/* Base Data */
+const baseName = computed(() => authStore.user?.name || authStore.user?.username || 'Code & Memes Base');
+const baseHandle = computed(() => authStore.user?.handle || '@codememfess');
+const baseBio = computed(
+  () =>
+    authStore.user?.bio ||
+    'Base resmi komunitas developer & programmer. Kirim confession anonim seputar tech, coding, dan karir dev!',
+);
+const baseAvatar = computed(
+  () =>
+    authStore.user?.avatar ||
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+);
+const igAccount = computed(() => authStore.user?.igAccount || '@codememfess_ig');
+
+const fessCount = computed(() => authStore.user?.fessCount || 1284);
+const followingCount = computed(() => authStore.user?.followingCount || 42);
+const followersCount = computed(() => authStore.user?.followersCount || 18420);
+
+/* Edit Profile State */
+const editForm = ref({
+  name: baseName.value,
+  bio: baseBio.value,
+  avatar: baseAvatar.value,
+});
+
+function handleAdminAvatarUpload(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    editForm.value.avatar = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveBaseProfile() {
+  authStore.updateProfile({
+    name: editForm.value.name.trim(),
+    username: editForm.value.name.trim(),
+    bio: editForm.value.bio.trim(),
+    avatar: editForm.value.avatar,
+  });
+  showEditModal.value = false;
+}
+
+/* User-submitted Fesses for this Base with realistic comments & replies */
+const baseFesses = ref([
+  {
+    id: 'fess_base_01',
+    senderHandle: '@anon_coder99',
+    content:
+      'Mau curhat, senior kantor suka nge-push code langsung ke main branch tanpa PR review. Giliran ada bug pas deploy production, yang disalahin junior. Cara negur yang sopan gimana ya?',
+    status: 'approved',
+    time: '25 menit lalu',
+    likes: 84,
+    comments: 26,
+    isLiked: false,
+    isSaved: false,
+    postedToIg: true,
+    commentsList: [
+      {
+        id: 'c_01_1',
+        author: '@dev_jakarta',
+        time: '18m lalu',
+        text: 'Bikin branch protection rule di GitHub atau GitLab gan, kunci main branch biar minimal ada 1 approval PR sebelum merge.',
+        likes: 14,
+        isLiked: false,
+        replies: [
+          {
+            id: 'r_01_1',
+            author: '@senior_santuy',
+            time: '12m lalu',
+            text: 'Setuju banget, ini bukan masalah junior vs senior, ini masalah standar devops tim agar production aman.',
+          },
+        ],
+      },
+      {
+        id: 'c_01_2',
+        author: '@frontend_warrior',
+        time: '15m lalu',
+        text: 'Ajak ngopi bareng pas retrospektif sprint, bahas secara tim tanpa menunjuk individu.',
+        likes: 5,
+        isLiked: false,
+        replies: [],
+      },
+    ],
+  },
+  {
+    id: 'fess_base_02',
+    senderHandle: '@anon_fe_lead',
+    content:
+      'Spill dong roadmap belajar Vue 3 Composition API & Pinia buat yang baru pindah dari React. Worth it ga dipelajari buat project 2026 ini?',
+    status: 'approved',
+    time: '1 jam lalu',
+    likes: 52,
+    comments: 14,
+    isLiked: false,
+    isSaved: false,
+    postedToIg: true,
+    commentsList: [
+      {
+        id: 'c_02_1',
+        author: '@vue_enthusiast',
+        time: '45m lalu',
+        text: 'Sangat worth it. Vue 3 dengan Script Setup dan Pinia terasa sangat bersih dan performanya cepat.',
+        likes: 8,
+        isLiked: false,
+        replies: [],
+      },
+    ],
+  },
+  {
+    id: 'fess_base_03',
+    senderHandle: '@anon_devops',
+    content:
+      'Rekomendasi VPS murah buat hosting backend Go + Postgres dockerized dengan budget mahasiswa dong temen-temen.',
+    status: 'pending',
+    time: 'Baru saja',
+    likes: 0,
+    comments: 0,
+    isLiked: false,
+    isSaved: false,
+    postedToIg: false,
+    commentsList: [],
+  },
+]);
+
+const pendingCount = computed(() => baseFesses.value.filter((f) => f.status === 'pending').length);
+
+const filteredFesses = computed(() => {
+  if (fessFilter.value === 'semua') return baseFesses.value;
+  return baseFesses.value.filter((f) => f.status === fessFilter.value);
+});
+
+function approveFess(id) {
+  const f = baseFesses.value.find((item) => item.id === id);
+  if (f) {
+    f.status = 'approved';
+    f.postedToIg = true;
+  }
+}
+
+function hideFess(id) {
+  baseFesses.value = baseFesses.value.filter((item) => item.id !== id);
+}
+
+/* Drawer & Sub-modal Handlers */
+const subModalTitle = computed(() => {
+  const titles = {
+    medsos: 'Koneksi Media Sosial',
+    keuangan_saldo: 'Saldo Treasury Base',
+    keuangan_pendapatan: 'Pendapatan Base',
+    keuangan_penarikan: 'Penarikan Saldo (Payout)',
+    analitik_ringkasan: 'Ringkasan Analitik Base',
+    analitik_konten: 'Analitik Konten Fess',
+    analitik_moderasi: 'Moderasi & Filter Kata',
+    analitik_komunitas: 'Analitik Komunitas Base',
+    pengaturan_notif: 'Pengaturan Notifikasi',
+    pengaturan_bantuan: 'Pusat Bantuan Pengelola',
+    pengaturan_ketentuan: 'Ketentuan Layanan Base',
+    pengaturan_privasi: 'Kebijakan Privasi',
+    pengaturan_keamanan: 'Keamanan Profil & Ganti Password',
+  };
+  return titles[activeSubModal.value] || 'Detail Menu';
+});
+
+function openModal(modalKey) {
+  showDrawer.value = false;
+  payoutSuccess.value = false;
+  activeSubModal.value = modalKey;
+}
+
+function changeTheme(theme) {
+  setMode(theme);
+}
+
+function simulatePayout() {
+  payoutSuccess.value = true;
+  setTimeout(() => {
+    payoutSuccess.value = false;
+    activeSubModal.value = null;
+  }, 2200);
+}
+
+function handleAdminLogout() {
+  showDrawer.value = false;
+  authStore.logout();
+  router.push('/login');
+}
+</script>
+
+<style scoped>
+.admin-profile-ig-view {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  font-family: var(--font-sans);
+  color: var(--shell-text);
+  padding-bottom: 24px;
+}
+
+/* Top bar */
+.ig-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px 16px;
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.ig-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ig-handle-title {
+  font-size: 19px;
+  font-weight: 900;
+  margin: 0;
+  color: var(--shell-text);
+}
+
+.badge-base-admin {
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.5px;
+}
+
+.btn-hamburger {
+  background: transparent;
+  border: none;
+  color: var(--shell-text);
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.btn-hamburger:hover {
+  background: var(--shell-chip);
+}
+
+/* Header IG Layout */
+.ig-header-container {
+  padding: 20px 4px 16px;
+}
+
+.ig-header-top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+/* Sebelah kiri atas: foto profil */
+.ig-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ig-avatar-ring {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--shell-sub-accent) 0%, var(--brand-blue) 100%);
+  box-shadow: 0 6px 18px var(--shadow-color);
+}
+
+.ig-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--shell-stage);
+}
+
+.btn-edit-profile-left {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--shell-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-edit-profile-left:hover {
+  background: var(--shell-card);
+  border-color: var(--shell-active);
+}
+
+/* Di samping foto profil: Fess, Follow, Follower */
+.ig-metrics-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-top: 14px;
+}
+
+.ig-metric-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.ig-metric-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ig-metric-btn:hover {
+  background: var(--shell-chip);
+  transform: translateY(-2px);
+}
+
+.ig-metric-btn:active {
+  transform: translateY(0);
+}
+
+.ig-metric-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--shell-text-muted);
+}
+
+.ig-metric-num {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+
+/* Bio info */
+.ig-bio-section {
+  text-align: left;
+}
+
+.base-full-name {
+  font-size: 17px;
+  font-weight: 900;
+  margin: 0;
+  color: var(--shell-text);
+}
+
+.base-handle-sub {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--shell-text-muted);
+}
+
+.base-bio-desc {
+  font-size: 13px;
+  color: var(--shell-text);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.base-medsos-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ig-color-icon {
+  color: #e1306c;
+}
+
+.auto-post-status {
+  color: #10b981;
+}
+
+/* Quick status moderasi strip */
+.quick-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.quick-status-card {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 14px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.status-num {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+
+.status-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--shell-text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* Feed tabs */
+.ig-feed-tabs {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--shell-border);
+  border-bottom: 1px solid var(--shell-border);
+  margin-top: 12px;
+}
+
+.feed-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  color: var(--shell-text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.feed-tab-btn.active {
+  color: var(--shell-text);
+  border-bottom-color: var(--shell-text);
+}
+
+/* Fess cards stream */
+.ig-fess-content-area {
+  padding-top: 14px;
+}
+
+.fess-cards-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.base-fess-card {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.fess-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.fess-author-anon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.anon-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--shell-chip);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fess-time {
+  color: var(--shell-text-muted);
+}
+
+.fess-status-badge {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.badge--approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.badge--pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.fess-card-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--shell-text);
+  margin: 0 0 12px;
+}
+
+.fess-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: gap;
+  gap: 8px;
+}
+
+.fess-reactions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--shell-text-muted);
+}
+
+.ig-posted-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(225, 48, 108, 0.12);
+  color: #e1306c;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+}
+
+.fess-admin-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-mod-approve {
+  padding: 5px 12px;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-mod-hide {
+  padding: 5px 12px;
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.empty-fess-box {
+  text-align: center;
+  padding: 40px 16px;
+}
+
+/* DRAWER */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer-content-pane {
+  width: 100%;
+  max-width: 380px;
+  height: 100%;
+  background: var(--shell-header-bg);
+  backdrop-filter: blur(20px);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.drawer-header-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+
+.btn-close-drawer {
+  background: none;
+  border: none;
+  color: var(--shell-text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.drawer-scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.menu-section-card {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.section-card-title {
+  padding: 10px 16px 4px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--shell-text-muted);
+}
+
+.menu-row-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--shell-border);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.menu-row-btn:last-child {
+  border-bottom: none;
+}
+
+.menu-row-btn:hover {
+  background: var(--shell-chip);
+}
+
+.menu-row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-row-label {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--shell-text);
+}
+
+.menu-row-desc {
+  font-size: 11px;
+  color: var(--shell-text-muted);
+  margin-top: 1px;
+}
+
+.row-chevron {
+  color: var(--shell-text-dim);
+}
+
+.row-ico-brand { color: #e1306c; }
+.row-ico-gold { color: #f59e0b; }
+.row-ico-green { color: #10b981; }
+.row-ico-blue { color: #3b82f6; }
+.row-ico-muted { color: var(--shell-text-muted); }
+.row-ico-danger { color: #ef4444; }
+
+.danger-row:hover { background: rgba(239, 68, 68, 0.1); }
+.text-danger { color: #ef4444 !important; }
+
+.menu-row-static {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.theme-pill-group {
+  display: flex;
+  background: var(--shell-chip);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.tp-btn {
+  background: none;
+  border: none;
+  color: var(--shell-text-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tp-btn.active {
+  background: var(--shell-sub-accent);
+  color: #ffffff;
+}
+
+/* MODALS */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--shell-header-bg);
+  border: 1px solid var(--shell-border-strong);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-card--large {
+  max-width: 520px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  color: var(--shell-text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.avatar-select-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.btn-upload-avatar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 800;
+  color: #0055ff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-upload-avatar-chip:hover {
+  background: rgba(0, 85, 255, 0.1);
+  border-color: #0055ff;
+}
+
+[data-theme='dark'] .btn-upload-avatar-chip {
+  color: #60a5fa;
+}
+
+.edit-avatar-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.edit-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--shell-sub-accent);
+}
+
+.presets-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-preset-pic {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  border: 2px solid transparent;
+  cursor: pointer;
+  background: none;
+  overflow: hidden;
+}
+
+.btn-preset-pic img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-preset-pic.selected {
+  border-color: var(--shell-sub-accent);
+  transform: scale(1.1);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--shell-text-muted);
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--shell-border);
+  background: var(--shell-card);
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--shell-text);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  border-color: var(--shell-sub-accent);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-cancel {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text);
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-save {
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--shell-sub-accent);
+  color: #ffffff;
+  border: none;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Sub-pane cards */
+.conn-item-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.finance-hero-badge {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(16, 185, 129, 0.15));
+  border: 1.5px solid var(--shell-border);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.analytics-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.stat-pill-box {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+/* Follow & Follower Modal Styles */
+.follow-modal-card {
+  max-width: 500px;
+  width: 95%;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.follow-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--shell-border);
+  background: var(--shell-card);
+}
+
+.follow-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.follow-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--shell-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.follow-tab-btn:hover {
+  color: var(--shell-text);
+  background: var(--shell-chip);
+}
+
+.follow-tab-btn.active {
+  background: var(--shell-chip);
+  color: var(--shell-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.follow-tab-count {
+  font-size: 11px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.follow-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 16px 8px;
+  padding: 8px 12px;
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+}
+
+.follow-search-icon {
+  color: var(--shell-text-muted);
+  flex-shrink: 0;
+}
+
+.follow-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--shell-text);
+}
+
+.follow-search-input::placeholder {
+  color: var(--shell-text-muted);
+}
+
+.btn-clear-search {
+  background: transparent;
+  border: none;
+  color: var(--shell-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.follow-list-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 52vh;
+}
+
+.follow-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  transition: background 0.15s ease;
+}
+
+.follow-user-row:hover {
+  background: var(--shell-chip);
+}
+
+.follow-user-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.follow-user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--shell-border);
+}
+
+.follow-verified-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 15px;
+  height: 15px;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--shell-card);
+}
+
+.follow-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.follow-user-name-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.follow-user-name {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--shell-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verified-tag {
+  font-size: 9.5px;
+  font-weight: 900;
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.follow-user-handle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--shell-text-muted);
+}
+
+.follow-user-bio {
+  font-size: 11px;
+  color: var(--shell-text-muted);
+  margin: 3px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-follow-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--shell-sub-accent, #2563eb);
+  color: #fff;
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+}
+
+.btn-follow-toggle:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-follow-toggle.btn-following {
+  background: var(--shell-chip);
+  color: var(--shell-text);
+  border-color: var(--shell-border);
+}
+
+.btn-follow-toggle.btn-following:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.follow-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--shell-text-muted);
+}
+
+.empty-icon {
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+.empty-text {
+  font-size: 12.5px;
+  margin: 0;
+}
+</style>

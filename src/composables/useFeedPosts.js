@@ -24,23 +24,35 @@ export function useFeedPosts() {
 
   /**
    * Publish a new confession.
-   * @param {{ handle: string, content: string, avatarBg?: string, avatarText?: string }} payload
+   * @param {{ handle: string, content: string, avatarBg?: string, avatarText?: string, media?: Array, quotedFess?: any, tag?: string }} payload
    * @returns {boolean} whether the post was accepted
    */
-  function publish({ handle, content, avatarBg = '#7000FF', avatarText = 'FESS' }) {
+  function publish({
+    handle,
+    content,
+    avatarBg = '#7000FF',
+    avatarText = 'FESS',
+    media = [],
+    quotedFess = null,
+    tag = 'Cerita',
+  }) {
     const text = String(content ?? '').trim();
-    if (!text) return false;
+    if (!text && (!media || !media.length)) return false;
 
     posts.value.unshift({
       id: Date.now(),
-      handle,
+      handle: handle || '@anonim',
+      senderHandle: handle || '@anonim',
       time: 'baru saja',
-      tag: 'Cerita',
+      tag: tag || 'Cerita',
       content: text,
       likes: 0,
       isLiked: false,
       avatarBg,
       avatarText,
+      media: Array.isArray(media) ? media : [],
+      quotedFess: quotedFess || null,
+      status: 'approved',
     });
     return true;
   }

@@ -45,7 +45,7 @@ export const useFessStore = defineStore('fess', {
         id: 'fess_101',
         baseHandle: '@codememfess',
         content:
-          '[code] Jujur aja, kadang suka nulis console.log("sini bang") daripada panggil debugger beneran pas fixing production bug jam 2 pagi. Anyone else? 😭',
+          '[code] Jujur aja, kadang suka nulis console.log("sini bang") daripada panggil debugger beneran pas fixing production bug jam 2 pagi. Anyone else?',
         timestamp: '12m ago',
         upvotes: 248,
         downvotes: 12,

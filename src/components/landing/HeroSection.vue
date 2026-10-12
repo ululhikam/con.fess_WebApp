@@ -123,8 +123,19 @@ defineEmits(['retry']);
 }
 
 @media (max-width: 600px) {
+  .lp-hero {
+    padding-bottom: 40px;
+  }
+
+  .hero-main {
+    min-height: 260px;
+    margin: 20px auto 0 auto;
+    padding: 0 16px;
+  }
+
   .hero-title-line {
-    font-size: 48px;
+    font-size: 38px;
+    letter-spacing: -0.8px;
   }
 }
 </style>

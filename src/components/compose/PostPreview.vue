@@ -15,7 +15,7 @@
           <strong class="post-card__handle">{{ baseHandle }}</strong>
           <span class="post-card__name">{{ baseInfo.name }}</span>
         </span>
-        <span class="post-card__brand">con.fess</span>
+        <span class="post-card__brand">Fess n Curious</span>
       </header>
 
       <!-- Topic + song strip -->
@@ -30,6 +30,15 @@
       <!-- Body -->
       <p v-if="displayContent" class="post-card__body">{{ displayContent }}</p>
       <p v-else class="post-card__body post-card__body--empty">Tulis fessmu…</p>
+
+      <!-- Quoted Fess Preview -->
+      <div v-if="quotedFess" class="post-card__quoted">
+        <div class="quoted-meta">
+          <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
+          <span>• {{ quotedFess.time || 'Fess' }}</span>
+        </div>
+        <p class="quoted-text">{{ quotedFess.content }}</p>
+      </div>
 
       <!-- Media -->
       <div
@@ -90,6 +99,7 @@ const props = defineProps({
   song: { type: Object, default: null },
   template: { type: String, default: 'default' },
   author: { type: Object, default: null },
+  quotedFess: { type: Object, default: null },
   isPreview: { type: Boolean, default: true },
   /** True while html-to-image is rasterising — freezes animations/jitter. */
   exporting: { type: Boolean, default: false },
@@ -316,6 +326,36 @@ const timeAgo = 'baru saja';
 .post-card__body--empty {
   font-style: italic;
   font-weight: 400;
+}
+
+/* ---- quoted fess ---- */
+.post-card__quoted {
+  margin: 6px 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 8px 10px;
+  font-size: clamp(11px, 2.8vw, 13px);
+  flex-shrink: 0;
+}
+
+.quoted-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  opacity: 0.9;
+}
+
+.quoted-text {
+  margin: 0;
+  line-height: 1.4;
+  opacity: 0.85;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ---- media ---- */

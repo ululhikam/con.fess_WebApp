@@ -18,19 +18,6 @@
       </div>
     </div>
 
-    <!-- Bases yang diikuti -->
-    <div class="followed-base-bar mb-4">
-      <span class="fbb-label">Base diikuti:</span>
-      <div class="fbb-pills flex gap-2 overflow-x-auto no-scrollbar">
-        <span v-for="handle in followedHandles" :key="handle" class="fbb-chip">
-          {{ handle.replace('@', '').toUpperCase() }}
-        </span>
-        <button type="button" class="fbb-chip active" @click="$emit('findMore')">
-          + Cari base lain
-        </button>
-      </div>
-    </div>
-
     <!-- Timeline -->
     <div v-if="loading" class="flex flex-col gap-3 sm:gap-4">
       <ContentSkeleton type="feed-card" :count="3" label="Memuat feed…" />
@@ -127,51 +114,5 @@ defineEmits(['update:modelValue', 'like', 'findMore', 'retry']);
 .sub-tab-btn.active {
   background: var(--shell-sub-accent);
   color: var(--text-on-accent);
-}
-
-.followed-base-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--shell-card);
-  border: 1px solid var(--shell-border);
-  padding: 10px 14px;
-  border-radius: 16px;
-}
-
-.fbb-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--shell-text-muted);
-  white-space: nowrap;
-}
-
-.fbb-pills {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.fbb-chip {
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 800;
-  background: var(--shell-chip);
-  padding: 4px 12px;
-  border-radius: 99px;
-  color: var(--shell-text);
-  white-space: nowrap;
-}
-
-button.fbb-chip {
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.fbb-chip.active {
-  background: var(--brand-blue);
-  color: var(--brand-blue-ink);
 }
 </style>

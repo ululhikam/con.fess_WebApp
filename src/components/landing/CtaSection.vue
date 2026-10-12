@@ -62,4 +62,28 @@ import { ArrowRight } from 'lucide-vue-next';
 .hero-cta-btn:hover {
   transform: scale(1.05);
 }
+
+@media (max-width: 600px) {
+  .lp-cta-banner {
+    padding: 36px 18px;
+    border-radius: 24px;
+    margin-bottom: 36px;
+  }
+
+  .cta-inner h2 {
+    font-size: 22px;
+    margin: 0 0 8px 0;
+  }
+
+  .cta-inner p {
+    font-size: 13.5px;
+    margin: 0 0 20px 0;
+  }
+
+  .hero-cta-btn {
+    font-size: 13px;
+    padding: 10px 22px;
+    gap: 6px;
+  }
+}
 </style>

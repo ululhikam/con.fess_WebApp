@@ -137,4 +137,36 @@ defineProps({
     display: none;
   }
 }
+
+@media (max-width: 600px) {
+  .lp-nav {
+    padding: 10px 14px;
+  }
+
+  .lp-nav.scrolled {
+    padding: 8px 14px;
+  }
+
+  .nav-logo-pill {
+    padding: 6px 12px;
+    font-size: 12.5px;
+    gap: 6px;
+  }
+
+  .logo-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .nav-connect-btn {
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    border-width: 1.5px;
+  }
+
+  .nav-right {
+    gap: 8px;
+  }
+}
 </style>

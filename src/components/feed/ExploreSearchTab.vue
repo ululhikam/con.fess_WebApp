@@ -44,56 +44,104 @@
       </button>
     </div>
 
-    <h3 class="section-title-md mb-4">Base For You</h3>
+    <!-- Base Mode Content -->
+    <template v-if="mode === 'base'">
+      <h3 class="section-title-md mb-4">Base For You</h3>
 
-    <ContentSkeleton v-if="loading" type="list" :count="4" label="Mencari base…" />
+      <ContentSkeleton v-if="loading" type="list" :count="4" label="Mencari base…" />
 
-    <AppStateView
-      v-else-if="!bases.length"
-      variant="empty"
-      title="Tidak ada base yang cocok"
-      :description="`Tidak ada hasil untuk “${query}”. Coba kata kunci lain.`"
-      action-label="Bersihkan pencarian"
-      @action="$emit('update:query', '')"
-    />
+      <AppStateView
+        v-else-if="!bases.length"
+        variant="empty"
+        title="Tidak ada base yang cocok"
+        :description="`Tidak ada hasil untuk “${query}”. Coba kata kunci lain.`"
+        action-label="Bersihkan pencarian"
+        @action="$emit('update:query', '')"
+      />
 
-    <div v-else class="explore-base-list flex flex-col gap-3">
-      <article v-for="base in bases" :key="base.handle" class="centered-base-card">
-        <div class="eb-avatar-box" :style="{ background: base.color }">
-          <span>{{ base.initial }}</span>
-        </div>
-        <div class="eb-meta-info">
-          <div class="eb-name-text">{{ base.name }}</div>
-          <div class="eb-handle-text">{{ base.handle }}</div>
-        </div>
-        <button
-          type="button"
-          :class="['btn-follow-outline', { following: isFollowing(base.handle) }]"
-          :aria-pressed="isFollowing(base.handle)"
-          @click="$emit('toggleFollow', base.handle)"
-        >
-          {{ isFollowing(base.handle) ? 'Diikuti' : 'Ikuti' }}
-        </button>
-      </article>
-    </div>
+      <div v-else class="explore-base-list flex flex-col gap-3">
+        <article v-for="base in bases" :key="base.handle" class="centered-base-card">
+          <div
+            class="eb-clickable-col"
+            @click="goToBase(base.handle)"
+            title="Lihat profil base"
+          >
+            <div class="eb-avatar-box" :style="{ background: base.color }">
+              <span>{{ base.initial }}</span>
+            </div>
+            <div class="eb-meta-info">
+              <div class="eb-name-text">{{ base.name }}</div>
+              <div class="eb-handle-text">{{ base.handle }}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            :class="['btn-follow-outline', { following: isFollowing(base.handle) }]"
+            :aria-pressed="isFollowing(base.handle)"
+            @click.stop="$emit('toggleFollow', base.handle)"
+          >
+            {{ isFollowing(base.handle) ? 'Diikuti' : 'Ikuti' }}
+          </button>
+        </article>
+      </div>
+    </template>
+
+    <!-- Menfess Mode Content -->
+    <template v-else-if="mode === 'menfess'">
+      <h3 class="section-title-md mb-4">Menfess Terkait &amp; Populer</h3>
+
+      <ContentSkeleton v-if="loading" type="list" :count="3" label="Mencari menfess…" />
+
+      <AppStateView
+        v-else-if="!filteredMenfess.length"
+        variant="empty"
+        title="Tidak ada menfess yang cocok"
+        :description="`Tidak ada menfess untuk “${query}”. Coba kata kunci topik atau base lain.`"
+        action-label="Bersihkan pencarian"
+        @action="$emit('update:query', '')"
+      />
+
+      <div v-else class="explore-menfess-stream flex flex-col gap-4">
+        <FessCard
+          v-for="post in filteredMenfess"
+          :key="post.id"
+          :post="post"
+          :is-admin="false"
+        />
+      </div>
+    </template>
   </section>
 </template>
 
 <script setup>
 /**
  * ExploreSearchTab — discovery screen (search + category filter + follow).
+ * Supports both 'base' and 'menfess' exploration modes.
  */
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { Search } from 'lucide-vue-next';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
+import FessCard from '../common/FessCard.vue';
+import { DUMMY_MENFESS_POSTS } from '../../data/mockPosts';
+
+const router = useRouter();
+
+function goToBase(handle) {
+  if (!handle) return;
+  const clean = handle.replace(/^@/, '');
+  router.push(`/base/${clean}`);
+}
 
 const TABS = [
   { key: 'base', label: 'Base' },
   { key: 'menfess', label: 'Menfess' },
 ];
 
-defineProps({
+const props = defineProps({
   bases: { type: Array, default: () => [] },
+  menfess: { type: Array, default: null },
   categories: { type: Array, default: () => [] },
   query: { type: String, default: '' },
   category: { type: String, default: 'Semua' },
@@ -103,6 +151,34 @@ defineProps({
 });
 
 defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
+
+const menfessPool = computed(() => props.menfess || DUMMY_MENFESS_POSTS);
+
+const filteredMenfess = computed(() => {
+  let list = menfessPool.value;
+  const q = props.query.trim().toLowerCase();
+  const cat = props.category;
+
+  if (cat && cat !== 'Semua') {
+    list = list.filter(
+      (m) =>
+        m.category === cat ||
+        (m.tag && m.tag.toLowerCase() === cat.toLowerCase()) ||
+        (m.content && m.content.toLowerCase().includes(cat.toLowerCase()))
+    );
+  }
+
+  if (q) {
+    list = list.filter(
+      (m) =>
+        m.content.toLowerCase().includes(q) ||
+        (m.handle && m.handle.toLowerCase().includes(q)) ||
+        (m.tag && m.tag.toLowerCase().includes(q))
+    );
+  }
+
+  return list;
+});
 </script>
 
 <style scoped>
@@ -188,6 +264,15 @@ defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
 .sub-pills-row {
   display: flex;
   gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 6px;
+}
+
+.sub-pills-row::-webkit-scrollbar {
+  display: none;
 }
 
 .sub-pill-btn {
@@ -200,6 +285,8 @@ defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
   transition:
     background 0.15s ease,
     color 0.15s ease,
@@ -226,6 +313,26 @@ defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.eb-clickable-col {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px;
+  margin: -4px;
+  transition: opacity 0.15s ease;
+}
+
+.eb-clickable-col:hover {
+  opacity: 0.88;
+}
+
+.eb-clickable-col:hover .eb-name-text {
+  color: var(--shell-sub-accent, #60a5fa);
 }
 
 .eb-avatar-box {
