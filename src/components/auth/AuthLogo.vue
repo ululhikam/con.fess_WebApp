@@ -1,10 +1,13 @@
 <template>
   <div class="auth-logo-block">
-    <router-link to="/" class="auth-brand-logo" aria-label="Beranda Base Confess">
-      <span class="auth-bubble">
-        <span class="auth-bubble__base">BASE</span>
-        <span class="auth-bubble__word">{{ word }}</span>
-      </span>
+    <router-link to="/" class="auth-brand-logo" aria-label="Beranda Fess n Curious">
+      <div class="auth-logo-wrap">
+        <img src="/logo.png" alt="Fess n Curious Logo" class="auth-logo-img" />
+        <span class="auth-bubble">
+          <span class="auth-bubble__base">FESS</span>
+          <span class="auth-bubble__word">{{ word }}</span>
+        </span>
+      </div>
     </router-link>
 
     <p v-if="subtitle" class="auth-subtitle">{{ subtitle }}</p>
@@ -27,6 +30,26 @@ defineProps({
 
 .auth-brand-logo {
   text-decoration: none;
+  display: inline-block;
+}
+
+.auth-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-logo-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.auth-brand-logo:hover .auth-logo-img {
+  transform: scale(1.06) rotate(-2deg);
 }
 
 .auth-bubble {

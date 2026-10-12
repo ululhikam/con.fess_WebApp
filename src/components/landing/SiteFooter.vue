@@ -2,9 +2,10 @@
   <footer class="lp-footer">
     <div class="footer-left">
       <div class="footer-logo">
-        <span class="logo-text">BASE <strong>CONFESS</strong></span>
+        <img src="/logo.png" alt="Fess n Curious Logo" class="footer-logo-img" />
+        <span class="logo-text">FESS <strong>N CURIOUS</strong></span>
       </div>
-      <p>© 2026 BASE CONFESS - Automatic Social Media Confession Platform.</p>
+      <p>© 2026 Fess n Curious - Automatic Social Media Confession Platform.</p>
     </div>
 
     <nav class="footer-links" aria-label="Tautan footer">
@@ -44,6 +45,14 @@
   font-weight: 800;
   font-size: 15px;
   letter-spacing: -0.3px;
+}
+
+.footer-logo-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .footer-left p {

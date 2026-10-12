@@ -1,11 +1,11 @@
 <template>
   <header class="app-top-header">
     <div class="top-header-inner">
-      <router-link to="/" class="brand-logo" aria-label="Beranda Base Confess">
+      <router-link to="/" class="brand-logo" aria-label="Beranda Fess n Curious">
         <span class="speech-bubble-logo">
-          <span class="logo-icon"><MessageSquare :size="18" /></span>
-          <span class="logo-base">BASE</span>
-          <span class="logo-club">CONFESS</span>
+          <img src="/logo.png" alt="Logo" class="header-logo-img" />
+          <span class="logo-base">FESS</span>
+          <span class="logo-club">CURIOUS</span>
         </span>
       </router-link>
 
@@ -23,7 +23,7 @@
  * AppHeader — sticky app chrome for the feed shell.
  * Presentational; the parent handles the `openCompose` action.
  */
-import { MessageSquare, Plus } from 'lucide-vue-next';
+import { Plus } from 'lucide-vue-next';
 
 defineEmits(['openCompose']);
 </script>
@@ -67,9 +67,12 @@ defineEmits(['openCompose']);
   box-shadow: 0 4px 16px var(--shadow-color);
 }
 
-.logo-icon {
-  display: flex;
-  align-items: center;
+.header-logo-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 .logo-base {
   color: inherit;
@@ -121,6 +124,11 @@ defineEmits(['openCompose']);
   .speech-bubble-logo {
     padding: 5px 12px;
     font-size: 13px;
+  }
+  .header-logo-img {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
   }
   .btn-header-kirim {
     padding: 6px 14px;

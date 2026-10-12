@@ -1,10 +1,11 @@
 <template>
   <nav class="profile-nav" aria-label="Navigasi Profil Pengguna">
     <div class="container flex items-center justify-between flex-wrap gap-3">
-      <router-link to="/feed" class="brand-logo" aria-label="Base Confess — Kembali ke Feed">
+      <router-link to="/feed" class="brand-logo" aria-label="Fess n Curious — Kembali ke Feed">
         <div class="speech-bubble-logo">
-          <span class="logo-base">BASE</span>
-          <span class="logo-club">CONFESS</span>
+          <img src="/logo.png" alt="Logo" class="profile-nav-logo-img" />
+          <span class="logo-base">FESS</span>
+          <span class="logo-club">CURIOUS</span>
         </div>
       </router-link>
 
@@ -71,6 +72,14 @@ const authStore = useAuthStore();
   gap: 4px;
   font-weight: 900;
   font-size: 14px;
+}
+
+.profile-nav-logo-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .logo-club {

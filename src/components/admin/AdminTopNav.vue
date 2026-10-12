@@ -4,7 +4,7 @@
       <!-- Admin Portal Brand -->
       <router-link to="/base-admin" class="brand-logo" aria-label="Portal Admin — Beranda">
         <div class="speech-bubble-logo">
-          <Shield :size="16" class="admin-brand-icon" />
+          <img src="/logo.png" alt="Logo" class="admin-logo-img" />
           <span class="logo-base">BASE</span>
           <span class="logo-admin">ADMIN PORTAL</span>
         </div>
@@ -108,8 +108,12 @@ function logout() {
   font-size: 14px;
 }
 
-.admin-brand-icon {
-  color: var(--brand-blue);
+.admin-logo-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .logo-admin {

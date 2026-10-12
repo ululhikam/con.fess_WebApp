@@ -2,12 +2,8 @@
   <nav class="lp-nav" :class="{ scrolled: isScrolled }" aria-label="Navigasi utama">
     <div class="nav-left">
       <router-link to="/" class="nav-logo-pill">
-        <span class="logo-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-          </svg>
-        </span>
-        <span class="logo-text">BASE <strong>CONFESS</strong></span>
+        <img src="/logo.png" alt="Fess n Curious Logo" class="nav-logo-img" />
+        <span class="logo-text">FESS <strong>N CURIOUS</strong></span>
       </router-link>
     </div>
 
@@ -70,10 +66,13 @@ defineProps({
   letter-spacing: -0.3px;
 }
 
-.logo-icon {
-  display: flex;
-  align-items: center;
-  color: var(--brand-blue);
+.nav-logo-img {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .nav-center {
@@ -153,9 +152,10 @@ defineProps({
     gap: 6px;
   }
 
-  .logo-icon svg {
-    width: 14px;
-    height: 14px;
+  .nav-logo-img {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
   }
 
   .nav-connect-btn {
