@@ -3,8 +3,10 @@
     <label class="base-selector__label" for="base-select">Base Fess</label>
     <div
       class="base-selector__trigger"
-      @click="open = true"
+      :class="{ disabled }"
+      @click="toggleOpen"
       :aria-expanded="open"
+      :aria-disabled="disabled ? 'true' : undefined"
       role="combobox"
       aria-controls="base-list"
       aria-label="Pilih base fess"
@@ -27,12 +29,17 @@
           <MessageSquare :size="16" />
         </span>
         <div class="base-selector__info">
-          <span class="base-selector__handle">{{ selectedBase?.handle || 'Pilih base fess' }}</span>
+          <span class="base-selector__handle">{{ selectedBase?.handle || modelValue || 'Pilih base fess' }}</span>
           <span class="base-selector__name" v-if="selectedBase">{{ selectedBase.name || selectedBase.handle }}</span>
         </div>
       </div>
-      <ChevronDown :size="18" class="base-selector__chevron" :class="{ rotated: open }" />
+      <Lock v-if="disabled" :size="16" class="base-selector__lock" aria-label="Base terkunci" />
+      <ChevronDown v-else :size="18" class="base-selector__chevron" :class="{ rotated: open }" />
     </div>
+
+    <p v-if="disabled" class="base-selector__lock-note">
+      Base terkunci mengikuti fess yang dikutip. Hapus kutipan untuk memilih base lain.
+    </p>
 
     <transition name="fade">
       <div
@@ -90,17 +97,24 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { ChevronDown, Search, Check, MessageSquare } from 'lucide-vue-next';
+import { ChevronDown, Search, Check, MessageSquare, Lock } from 'lucide-vue-next';
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
   bases: { type: Array, default: () => [] },
+  /** Kunci selector (mis. saat mengutip fess — base mengikuti base kutipan). */
+  disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
 
 const open = ref(false);
 const searchQuery = ref('');
+
+function toggleOpen() {
+  if (props.disabled) return;
+  open.value = true;
+}
 
 const selectedBase = computed(() => props.bases.find((b) => b.handle === props.modelValue));
 
@@ -173,6 +187,22 @@ function handleOutsideClick(e) {
   gap: 12px;
   cursor: pointer;
   padding: 4px 0;
+}
+
+.base-selector__trigger.disabled {
+  cursor: not-allowed;
+}
+
+.base-selector__lock {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.base-selector__lock-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 
 .base-selector__preview {

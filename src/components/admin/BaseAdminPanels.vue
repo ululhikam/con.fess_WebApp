@@ -29,7 +29,12 @@
            1. KONEKSI MEDSOS (Instagram, Twitter, Telegram)
            ======================================================== -->
       <template v-if="modelValue === 'medsos'">
-        <ContentSkeleton v-if="connectionsLoading" type="list" :count="3" label="Memuat koneksi…" />
+        <ContentSkeleton
+          v-if="connectionsLoading && !connections.length"
+          type="list"
+          :count="3"
+          label="Memuat koneksi…"
+        />
 
         <AppStateView
           v-else-if="connectionsError"
@@ -109,7 +114,12 @@
            ======================================================== -->
       <!-- SALDO -->
       <template v-else-if="modelValue === 'keuangan_saldo'">
-        <ContentSkeleton v-if="treasuryLoading" type="list" :count="2" label="Memuat saldo…" />
+        <ContentSkeleton
+          v-if="treasuryLoading && !treasury"
+          type="list"
+          :count="2"
+          label="Memuat saldo…"
+        />
 
         <AppStateView
           v-else-if="treasuryError"
@@ -158,7 +168,12 @@
 
       <!-- PENDAPATAN -->
       <template v-else-if="modelValue === 'keuangan_pendapatan'">
-        <ContentSkeleton v-if="treasuryLoading" type="list" :count="1" label="Memuat pendapatan…" />
+        <ContentSkeleton
+          v-if="treasuryLoading && !treasury"
+          type="list"
+          :count="1"
+          label="Memuat pendapatan…"
+        />
 
         <AppStateView
           v-else-if="treasuryError"
@@ -189,7 +204,12 @@
 
       <!-- PENARIKAN (PAYOUT) -->
       <template v-else-if="modelValue === 'keuangan_penarikan'">
-        <ContentSkeleton v-if="treasuryLoading" type="list" :count="1" label="Memuat saldo…" />
+        <ContentSkeleton
+          v-if="treasuryLoading && !treasury"
+          type="list"
+          :count="1"
+          label="Memuat saldo…"
+        />
 
         <AppStateView
           v-else-if="treasuryError"
@@ -285,7 +305,12 @@
            ======================================================== -->
       <!-- ANALITIK: RINGKASAN -->
       <template v-else-if="modelValue === 'analitik_ringkasan'">
-        <ContentSkeleton v-if="analyticsLoading" type="list" :count="4" label="Memuat analitik…" />
+        <ContentSkeleton
+          v-if="analyticsLoading && !analyticsStats"
+          type="list"
+          :count="4"
+          label="Memuat analitik…"
+        />
 
         <AppStateView
           v-else-if="analyticsError"
@@ -343,7 +368,12 @@
 
       <!-- ANALITIK: KONTEN -->
       <template v-else-if="modelValue === 'analitik_konten'">
-        <ContentSkeleton v-if="analyticsLoading" type="list" :count="3" label="Memuat konten…" />
+        <ContentSkeleton
+          v-if="analyticsLoading && !analyticsBase"
+          type="list"
+          :count="3"
+          label="Memuat konten…"
+        />
 
         <AppStateView
           v-else-if="analyticsError"
@@ -384,10 +414,15 @@
 
       <!-- ANALITIK: MODERASI -->
       <template v-else-if="modelValue === 'analitik_moderasi'">
-        <ContentSkeleton v-if="analyticsLoading" type="list" :count="3" label="Memuat moderasi…" />
+        <ContentSkeleton
+          v-if="analyticsLoading && !analyticsStats"
+          type="list"
+          :count="3"
+          label="Memuat moderasi…"
+        />
 
         <AppStateView
-          v-else-if="analyticsError"
+          v-else-if="analyticsError && !analyticsStats"
           variant="error"
           title="Gagal memuat moderasi"
           description="Tidak bisa mengambil statistik moderasi dari server."
@@ -411,17 +446,157 @@
             </div>
           </div>
 
-          <div class="section-title-sm mt-6 mb-3">Catatan Moderasi</div>
-          <p class="text-xs text-muted">
-            Filter kata otomatis (blacklist keyword) dan skor AI moderation belum tersedia dari
-            server. Saat ini semua fess masuk antrean review manual di tab Moderasi.
+          <!-- 1. Mode posting (Base.postMode) -->
+          <div class="section-title-sm mt-6 mb-3">Mode Posting Fess</div>
+          <div class="mod-mode-options" role="radiogroup" aria-label="Mode posting fess">
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="moderationForm.postMode === 'moderated'"
+              class="mod-mode-card"
+              :class="{ active: moderationForm.postMode === 'moderated' }"
+              @click="moderationForm.postMode = 'moderated'"
+            >
+              <ShieldCheck :size="18" aria-hidden="true" />
+              <div>
+                <div class="mod-mode-name">Moderasi Manual</div>
+                <div class="mod-mode-desc">
+                  Semua fess masuk antrean review dan terbit setelah kamu setujui.
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              role="radio"
+              :aria-checked="moderationForm.postMode === 'auto'"
+              class="mod-mode-card"
+              :class="{ active: moderationForm.postMode === 'auto' }"
+              @click="moderationForm.postMode = 'auto'"
+            >
+              <Zap :size="18" aria-hidden="true" />
+              <div>
+                <div class="mod-mode-name">Auto Post + Filter NLP</div>
+                <div class="mod-mode-desc">
+                  Fess langsung terbit. Konten yang terindikasi negatif oleh filter NLP tetap masuk
+                  antrean review.
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <!-- 2. Filter NLP -->
+          <div class="section-title-sm mt-6 mb-3">Filter NLP Otomatis</div>
+          <div class="admin-feature-card">
+            <p class="text-xs text-muted">
+              Saat mode auto post aktif, filter berikut memeriksa setiap fess sebelum terbit.
+              Kategori yang terdeteksi menjadi alasan flag di antrean moderasi:
+            </p>
+            <div class="nlp-category-chips mt-3">
+              <span v-for="cat in NLP_CATEGORIES" :key="cat" class="nlp-chip">{{ cat }}</span>
+            </div>
+          </div>
+
+          <!-- 3. Daftar kata terlarang (blacklist per base) -->
+          <div class="section-title-sm mt-6 mb-3">
+            Kata Terlarang ({{ moderationForm.bannedWords.length }}/50)
+          </div>
+          <div class="admin-feature-card">
+            <form class="add-keyword-row" @submit.prevent="addBannedWord">
+              <input
+                v-model="newBannedWord"
+                type="text"
+                class="admin-input-control"
+                placeholder="Tambah kata/frasa, lalu Enter"
+                maxlength="40"
+                aria-label="Kata terlarang baru"
+              />
+              <button
+                type="submit"
+                class="btn-add-kw"
+                :disabled="!newBannedWord.trim() || moderationForm.bannedWords.length >= 50"
+              >
+                <Plus :size="15" aria-hidden="true" />
+                Tambah
+              </button>
+            </form>
+
+            <div v-if="moderationForm.bannedWords.length" class="chips-wrap mt-3">
+              <span
+                v-for="(word, index) in moderationForm.bannedWords"
+                :key="word"
+                class="blocked-chip"
+              >
+                {{ word }}
+                <button
+                  type="button"
+                  class="btn-remove-chip"
+                  :aria-label="`Hapus kata ${word}`"
+                  @click="removeBannedWord(index)"
+                >
+                  <X :size="12" />
+                </button>
+              </span>
+            </div>
+            <p v-else class="text-xs text-muted mt-3">
+              Belum ada kata terlarang. Kata yang ditambahkan langsung dipakai filter NLP saat mode
+              auto post aktif.
+            </p>
+            <p class="text-xs text-muted mt-2">
+              Pencocokan bersifat word-boundary dan tahan variasi leetspeak — mis. “judi” menandai
+              “judi online” tetapi tidak menandai kata lain yang memuat rangkaian huruf sama.
+            </p>
+
+            <button
+              type="button"
+              class="btn-submit-payout mt-4"
+              :disabled="isSavingModeration"
+              @click="saveModerationSettings"
+            >
+              <Save :size="16" aria-hidden="true" />
+              <span>{{ isSavingModeration ? 'Menyimpan...' : 'Simpan Pengaturan Moderasi' }}</span>
+            </button>
+
+            <div v-if="moderationError" class="alert-error-box mt-4">
+              <span>{{ moderationError }}</span>
+            </div>
+            <div v-if="moderationMessage" class="alert-success-box mt-4">
+              <CheckCircle2 :size="16" />
+              <span>{{ moderationMessage }}</span>
+            </div>
+          </div>
+
+          <!-- 4. Fess terakhir yang ditandai filter NLP -->
+          <div class="section-title-sm mt-6 mb-3">Terakhir Ditandai Filter NLP</div>
+          <div v-if="analyticsFlagged.length" class="flagged-list">
+            <div v-for="fess in analyticsFlagged" :key="fess.id" class="flagged-item">
+              <p class="flagged-content">“{{ fess.content }}”</p>
+              <div class="flagged-meta">
+                <span class="flagged-reason">
+                  {{ fess.flag_reason || 'Terindikasi filter NLP' }}
+                </span>
+                <span class="text-xs text-muted">{{ formatFessTime(fess.created_at) }}</span>
+              </div>
+            </div>
+            <p class="text-xs text-muted mt-2">
+              Setujui atau tolak fess ini dari tab Moderasi di profil base-mu.
+            </p>
+          </div>
+          <p v-else class="text-xs text-muted">
+            Belum ada fess yang ditandai filter NLP. Fess yang terindikasi akan muncul di sini
+            beserta alasan flag-nya.
           </p>
         </template>
       </template>
 
       <!-- ANALITIK: KOMUNITAS -->
       <template v-else-if="modelValue === 'analitik_komunitas'">
-        <ContentSkeleton v-if="analyticsLoading" type="list" :count="2" label="Memuat komunitas…" />
+        <ContentSkeleton
+          v-if="analyticsLoading && !analyticsBase"
+          type="list"
+          :count="2"
+          label="Memuat komunitas…"
+        />
 
         <AppStateView
           v-else-if="analyticsError"
@@ -639,6 +814,11 @@ import {
   MessageSquare,
   Users,
   Heart,
+  ShieldCheck,
+  Zap,
+  Plus,
+  Save,
+  X,
 } from 'lucide-vue-next';
 
 import { api } from '../../api';
@@ -808,6 +988,7 @@ async function submitPayout() {
 const analyticsStats = ref(null);
 const analyticsBase = ref(null);
 const analyticsPopular = ref([]);
+const analyticsFlagged = ref([]);
 const analyticsLoading = ref(false);
 const analyticsError = ref(null);
 
@@ -821,16 +1002,113 @@ async function loadAnalytics() {
       requests.push(
         api.getFesses({ base: baseHandle.value, status: 'approved', sort: 'popular', limit: 5 }),
       );
+      // Fess pending terbaru untuk memantau hasil filter NLP di panel moderasi.
+      requests.push(
+        api.getFesses({ base: baseHandle.value, status: 'pending', limit: 20 }),
+      );
     }
-    const [statsRes, baseRes, popularRes] = await Promise.all(requests);
+    const [statsRes, baseRes, popularRes, pendingRes] = await Promise.all(requests);
     analyticsStats.value = statsRes || null;
-    if (baseRes) analyticsBase.value = baseRes;
+    if (baseRes) {
+      analyticsBase.value = baseRes;
+      syncModerationForm(baseRes);
+    }
     analyticsPopular.value = popularRes?.data || [];
+    analyticsFlagged.value = (pendingRes?.data || []).filter((f) => f.auto_flagged);
   } catch (e) {
     analyticsError.value = e;
   } finally {
     analyticsLoading.value = false;
   }
+}
+
+/* 3b. Moderasi & filter kata — disambungkan ke Base.postMode + filter NLP */
+const NLP_CATEGORIES = [
+  'ujaran kebencian',
+  'ancaman',
+  'SARA',
+  'konten seksual',
+  'judi/spam online',
+  'ajakan menyakiti diri',
+  'spam link (≥ 3 tautan)',
+];
+
+const moderationForm = reactive({ postMode: 'moderated', bannedWords: [] });
+const newBannedWord = ref('');
+const isSavingModeration = ref(false);
+const moderationError = ref('');
+const moderationMessage = ref('');
+
+/** Sinkronkan form dari payload base (GET/PATCH /bases/:handle). */
+function syncModerationForm(base) {
+  moderationForm.postMode = base?.post_mode || 'moderated';
+  moderationForm.bannedWords = Array.isArray(base?.banned_words)
+    ? [...base.banned_words]
+    : [];
+}
+
+function addBannedWord() {
+  const word = newBannedWord.value.trim();
+  if (!word) return;
+  if (word.length < 2 || word.length > 40) {
+    moderationError.value = 'Panjang kata harus 2–40 karakter.';
+    return;
+  }
+  if (moderationForm.bannedWords.some((w) => w.toLowerCase() === word.toLowerCase())) {
+    moderationError.value = `"${word}" sudah ada di daftar.`;
+    return;
+  }
+  if (moderationForm.bannedWords.length >= 50) {
+    moderationError.value = 'Maksimal 50 kata terlarang.';
+    return;
+  }
+  moderationError.value = '';
+  newBannedWord.value = '';
+  moderationForm.bannedWords.push(word);
+}
+
+function removeBannedWord(index) {
+  moderationForm.bannedWords.splice(index, 1);
+}
+
+async function saveModerationSettings() {
+  if (isSavingModeration.value) return;
+  if (!baseHandle.value) {
+    moderationError.value = 'Base tidak ditemukan untuk akun ini.';
+    return;
+  }
+
+  isSavingModeration.value = true;
+  moderationError.value = '';
+  moderationMessage.value = '';
+  try {
+    const updated = await api.updateBaseSettings(baseHandle.value, {
+      postMode: moderationForm.postMode,
+      bannedWords: moderationForm.bannedWords,
+    });
+    if (updated) {
+      analyticsBase.value = updated;
+      syncModerationForm(updated);
+    }
+    moderationMessage.value = 'Pengaturan moderasi & filter kata tersimpan.';
+  } catch (e) {
+    moderationError.value = e?.message || 'Gagal menyimpan pengaturan moderasi.';
+  } finally {
+    isSavingModeration.value = false;
+  }
+}
+
+/** Waktu relatif sederhana untuk daftar fess ter-flag. */
+function formatFessTime(value) {
+  if (!value) return '';
+  const diff = Date.now() - new Date(value).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'baru saja';
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days} hari lalu`;
 }
 
 /* 4. Pengaturan State — preferensi notifikasi disimpan lokal di perangkat ini */
@@ -1414,6 +1692,112 @@ watch(
   color: var(--shell-text-muted);
 }
 
+/* ---------- moderasi & filter kata ---------- */
+.mod-mode-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mod-mode-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--shell-card);
+  border: 1.5px solid var(--shell-border);
+  color: var(--shell-text);
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.mod-mode-card:hover {
+  border-color: var(--shell-border-strong);
+}
+
+.mod-mode-card.active {
+  border-color: var(--brand-blue);
+  background: rgba(0, 85, 255, 0.08);
+}
+
+.mod-mode-name {
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.mod-mode-desc {
+  font-size: 12px;
+  color: var(--shell-text-muted);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+.nlp-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nlp-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border);
+}
+
+.add-keyword-row .admin-input-control {
+  flex: 1;
+}
+
+.btn-add-kw:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.flagged-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flagged-item {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.flagged-content {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.flagged-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.flagged-reason {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
 .blacklist-chips-box {
   background: var(--shell-card);
   border: 1px solid var(--shell-border);
@@ -1464,6 +1848,10 @@ watch(
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .community-overview-card {

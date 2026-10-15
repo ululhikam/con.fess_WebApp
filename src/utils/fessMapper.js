@@ -61,12 +61,27 @@ export function mapQuotedFess(q) {
   };
 }
 
+/** Avatar base bisa berupa URL/data-URL foto atau inisial teks. */
+const IMAGE_URL_RE = /^(data:image\/|https?:\/\/|\/)/i;
+
 /** API Fess → card model used by FessCard / FeedHomeTab / moderation. */
 export function mapFessToPost(f) {
   if (!f) return null;
   const rawHandle = f.base_handle || f.baseHandle || f.handle || '@anonim';
   const handle = String(rawHandle).startsWith('@') ? String(rawHandle) : `@${rawHandle}`;
   const clean = handle.replace(/^@/, '');
+
+  // Avatar kartu fess = foto profil base (kalau ada). Backend mengirim
+  // `base_avatar` yang bisa berupa foto (URL/data-URL) atau inisial teks.
+  const rawBaseAvatar = f.base_avatar ?? f.baseAvatar ?? null;
+  const avatarImg =
+    typeof rawBaseAvatar === 'string' && IMAGE_URL_RE.test(rawBaseAvatar)
+      ? rawBaseAvatar
+      : null;
+  const avatarText =
+    !avatarImg && typeof rawBaseAvatar === 'string' && rawBaseAvatar.trim() && rawBaseAvatar.length <= 3
+      ? rawBaseAvatar.trim().toUpperCase()
+      : clean.slice(0, 2).toUpperCase() || 'FS';
 
   return {
     id: f.id,
@@ -97,7 +112,8 @@ export function mapFessToPost(f) {
     // Hasil filter NLP saat mode auto post (dipakai badge admin).
     autoFlagged: f.auto_flagged ?? f.autoFlagged ?? false,
     flagReason: f.flag_reason ?? f.flagReason ?? null,
-    avatarBg: colorForHandle(handle),
-    avatarText: clean.slice(0, 2).toUpperCase() || 'FS',
+    avatarImg,
+    avatarBg: f.base_color ?? f.baseColor ?? colorForHandle(handle),
+    avatarText,
   };
 }

@@ -30,8 +30,13 @@
     <div class="create-content">
       <!-- Main Editor Area -->
       <main class="editor-main">
-        <!-- Base Selector (Top) -->
-        <BaseSelector v-model="form.baseHandle" :bases="availableBases" @change="onBaseChange" />
+        <!-- Base Selector (Top) — terkunci ke base asal saat ada kutipan -->
+        <BaseSelector
+          v-model="form.baseHandle"
+          :bases="availableBases"
+          :disabled="baseLocked"
+          @change="onBaseChange"
+        />
 
         <!-- Text Editor -->
         <EditorArea v-model="form.content" :placeholder="getPlaceholder" :max-length="2000" />
@@ -49,7 +54,7 @@
               class="btn-remove-quote"
               title="Hapus kutipan fess"
               aria-label="Hapus kutipan"
-              @click="form.quotedFess = null"
+              @click="applyQuotedFess(null)"
             >
               <X :size="14" />
             </button>
@@ -181,13 +186,18 @@
     <ScheduleModal v-model:show="showScheduleModal" v-model:date="form.scheduledAt" />
     <SongModal v-model:show="showSongModal" v-model:song="form.song" />
     <TemplateModal v-model:show="showTemplateModal" v-model:template="form.template" />
-    <QuoteModal v-model:show="showQuoteModal" v-model="form.quotedFess" />
+    <QuoteModal
+      v-model:show="showQuoteModal"
+      :model-value="form.quotedFess"
+      @update:model-value="applyQuotedFess"
+    />
 
     <!-- Publish Confirmation Modal -->
     <PublishModal
       v-model:show="showPublishModal"
       :form="form"
       :is-scheduled="isScheduled"
+      :confirming="publishing"
       @confirm="publishFess"
       @cancel="showPublishModal = false"
     />
@@ -321,8 +331,54 @@ async function exportCard() {
 }
 const currentUser = computed(() => authStore.user);
 
-const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
+const { bases, ensureLoaded: ensureBasesLoaded, fetchBase } = useBases();
 const availableBases = ref([]);
+
+/** Base terkunci selama composer memuat kutipan — fess harus dikirim ke base asal kutipan. */
+const baseLocked = computed(() => !!form.value.quotedFess);
+
+/** Normalisasi handle base ("concern_fess" → "@concern_fess"). */
+function normalizeBaseHandle(handle) {
+  const clean = String(handle || '').trim();
+  if (!clean) return '';
+  return clean.startsWith('@') ? clean : `@${clean}`;
+}
+
+/** Pastikan base asal kutipan ada di daftar selector (fetch sekali bila perlu). */
+async function ensureQuotedBaseInList(handle) {
+  const target = normalizeBaseHandle(handle);
+  if (!target) return;
+  if (availableBases.value.some((b) => b.handle === target)) return;
+
+  const fromCache = bases.value.find((b) => b.handle === target);
+  if (fromCache) {
+    availableBases.value = [...availableBases.value, fromCache];
+    return;
+  }
+
+  try {
+    const fetched = await fetchBase(target);
+    if (fetched && !availableBases.value.some((b) => b.handle === fetched.handle)) {
+      availableBases.value = [...availableBases.value, fetched];
+    }
+  } catch {
+    // Base tetap terisi lewat handle walau detailnya gagal dimuat.
+  }
+}
+
+/**
+ * Terapkan kutipan: base tujuan terkunci ke base asal fess yang dikutip
+ * (kebijakan dipilih user — fess kutipan hanya boleh dikirim ke base itu).
+ */
+function applyQuotedFess(quote) {
+  form.value.quotedFess = quote || null;
+  if (!quote) return;
+  const handle = normalizeBaseHandle(quote.handle || quote.senderHandle);
+  if (handle) {
+    form.value.baseHandle = handle;
+    ensureQuotedBaseInList(handle);
+  }
+}
 
 /** Load the bases available to post into: followed bases, else the directory. */
 async function loadAvailableBases() {
@@ -332,6 +388,9 @@ async function loadAvailableBases() {
       const list = (res?.data ?? []).map(mapBase);
       if (list.length) {
         availableBases.value = list;
+        if (baseLocked.value) {
+          await ensureQuotedBaseInList(form.value.quotedFess?.handle || form.value.quotedFess?.senderHandle);
+        }
         return;
       }
     }
@@ -344,6 +403,9 @@ async function loadAvailableBases() {
     // directory unavailable — the selector shows its own empty state
   }
   availableBases.value = bases.value;
+  if (baseLocked.value) {
+    await ensureQuotedBaseInList(form.value.quotedFess?.handle || form.value.quotedFess?.senderHandle);
+  }
 }
 
 const { topics, ensureLoaded: ensureTopicsLoaded, getTopicById } = useTopics();
@@ -434,10 +496,14 @@ async function saveDraft() {
 }
 
 function openPublishConfirm() {
+  if (publishing.value) return;
   showPublishModal.value = true;
 }
 
 async function publishFess() {
+  // Anti dobel-kirim: kunci di sini juga karena klik cepat berturut-turut
+  // bisa terjadi sebelum tombol sempat ter-disable.
+  if (publishing.value) return;
   if (!canPublish.value) return;
 
   publishing.value = true;
@@ -495,7 +561,7 @@ async function loadQuoteFess(id) {
   try {
     const res = await api.getFess(String(id));
     const fess = res?.fess ?? res?.data ?? res;
-    if (fess) form.value.quotedFess = mapFessToPost(fess);
+    if (fess) applyQuotedFess(mapFessToPost(fess));
   } catch {
     // quote target not found — silently ignore
   }
@@ -519,8 +585,10 @@ onMounted(async () => {
             scheduledAt: draft.scheduledAt || null,
             song: draft.song || null,
             template: draft.template || 'default',
-            quotedFess: draft.quotedFess || null,
+            quotedFess: null,
           });
+          // Kutipan dipulihkan lewat applier supaya base tujuan ikut terkunci.
+          if (draft.quotedFess) applyQuotedFess(draft.quotedFess);
         }
       }
     } catch (e) {
@@ -534,7 +602,7 @@ onMounted(async () => {
     try {
       const parsed = JSON.parse(pendingSessionQuote);
       if (parsed) {
-        form.value.quotedFess = parsed;
+        applyQuotedFess(parsed);
         sessionStorage.removeItem('pending_quote_fess');
       }
     } catch (e) {
@@ -548,8 +616,9 @@ onMounted(async () => {
   ensureTopicsLoaded().catch(() => {});
   await loadAvailableBases();
 
-  // Pre-fill base handle: query param > admin's managed base > first available
-  if (route.query.base) {
+  // Pre-fill base handle: query param > admin's managed base > first available.
+  // Saat ada kutipan, base sudah terkunci ke base asal kutipan — jangan ditimpa.
+  if (route.query.base && !baseLocked.value) {
     const qBase = String(route.query.base).startsWith('@')
       ? String(route.query.base)
       : `@${route.query.base}`;
@@ -590,7 +659,7 @@ watch(
         try {
           const parsed = JSON.parse(pendingSessionQuote);
           if (parsed) {
-            form.value.quotedFess = parsed;
+            applyQuotedFess(parsed);
             sessionStorage.removeItem('pending_quote_fess');
             return;
           }

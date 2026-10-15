@@ -31,10 +31,15 @@
       </button>
     </div>
 
-    <ContentSkeleton v-if="notifLoading" type="list" :count="3" label="Memuat aktivitas…" />
+    <ContentSkeleton
+      v-if="notifLoading && !notifications.length"
+      type="list"
+      :count="3"
+      label="Memuat aktivitas…"
+    />
 
     <AppStateView
-      v-else-if="notifError"
+      v-else-if="notifError && !notifications.length"
       variant="error"
       title="Aktivitas gagal dimuat"
       description="Terjadi kesalahan saat mengambil notifikasi. Coba muat ulang."
@@ -103,7 +108,7 @@
  * ActivityTab — notifications & activity feed for regular users.
  * Clean harmonized card layout, zero emojis.
  */
-import { computed, markRaw, onMounted, ref } from 'vue';
+import { computed, markRaw, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Inbox,
@@ -346,6 +351,14 @@ useInfiniteScroll(notifSentinel, {
 });
 
 onMounted(loadNotifications);
+
+/**
+ * Dengan KeepAlive, tab ini tidak di-unmount saat pindah tab — jadi
+ * penyegaran saat tab dipilih lagi cukup senyap (daftar lama tetap tampil).
+ */
+onActivated(() => {
+  if (notifications.value.length) refreshNotifications();
+});
 
 /** Sync ala native app: notifikasi baru muncul saat tab kembali aktif. */
 useVisibilityRefresh(refreshNotifications, { staleMs: 30_000 });

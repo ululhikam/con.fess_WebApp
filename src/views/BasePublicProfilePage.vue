@@ -39,14 +39,14 @@
       <div class="public-stage-container">
         <!-- Loading skeleton while the base detail is fetched -->
         <ContentSkeleton
-          v-if="baseLoading"
+          v-if="baseLoading && !baseData"
           type="profile"
           label="Memuat profil base…"
         />
 
         <!-- API error / 404 state -->
         <AppStateView
-          v-else-if="baseError"
+          v-else-if="baseError && !baseData"
           variant="error"
           :title="baseNotFound ? 'Base tidak ditemukan' : 'Profil base gagal dimuat'"
           :description="baseNotFound
@@ -318,10 +318,15 @@
 
         <!-- TAB CONTENT 1: FESS TERBIT -->
         <section v-if="activeTab === 'posts'" class="tab-pane-container mt-4">
-          <ContentSkeleton v-if="fessesLoading" type="feed-card" :count="3" label="Memuat fess…" />
+          <ContentSkeleton
+            v-if="fessesLoading && !baseFesses.length"
+            type="feed-card"
+            :count="3"
+            label="Memuat fess…"
+          />
 
           <AppStateView
-            v-else-if="fessesError"
+            v-else-if="fessesError && !baseFesses.length"
             variant="error"
             title="Fess gagal dimuat"
             description="Terjadi kesalahan saat mengambil fess base ini. Coba muat ulang."

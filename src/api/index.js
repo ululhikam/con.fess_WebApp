@@ -23,6 +23,11 @@ export const api = {
   me: () => client.get('/auth/me'),
   refreshToken: () => client.post('/auth/refresh'),
 
+  /* AUTH — reset kata sandi via OTP email (3 langkah) */
+  forgotPassword: (payload) => client.post('/auth/forgot-password', payload),
+  verifyResetOtp: (payload) => client.post('/auth/verify-reset-otp', payload),
+  resetPassword: (payload) => client.post('/auth/reset-password', payload),
+
   /* BASES */
   getBases: (params) => client.get('/bases', { params }),
   getBase: (handle) => client.get(`/bases/${encodeURIComponent(handle)}`),

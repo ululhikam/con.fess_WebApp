@@ -60,12 +60,14 @@
         @blur="touch('password')"
       >
         <template #aside>
-          <a href="#" class="auth-link text-xs font-bold">Lupa Sandi?</a>
+          <router-link :to="{ name: 'ForgotPassword' }" class="auth-link text-xs font-bold">
+            Lupa Sandi?
+          </router-link>
         </template>
       </FormField>
 
-      <p v-if="form.submitError" class="form-alert" role="alert">
-        {{ form.submitError }}
+      <p v-if="submitError" class="form-alert" role="alert">
+        {{ submitError }}
       </p>
 
       <button type="submit" class="btn-submit-blue mt-2" :disabled="isSubmitting">
@@ -186,6 +188,13 @@ const form = useValidatedForm({
     rules: [rules.required(), rules.minLength(8, 'Minimal 8 karakter')],
   },
 });
+
+/**
+ * `form.submitError` adalah ref di dalam objek biasa — template tidak
+ * meng-unwrap ref nested, jadi diambil ke binding top-level dulu supaya
+ * v-if / interpolasi membaca nilainya dengan benar.
+ */
+const submitError = form.submitError;
 
 const touch = (name) => {
   form.touched[name] = true;

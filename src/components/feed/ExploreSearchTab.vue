@@ -116,10 +116,15 @@
     <template v-else-if="mode === 'menfess'">
       <h3 class="section-title-md mb-4">Menfess Terkait &amp; Populer</h3>
 
-      <ContentSkeleton v-if="fessLoading" type="list" :count="3" label="Mencari menfess…" />
+      <ContentSkeleton
+        v-if="fessLoading && !visibleMenfess.length"
+        type="list"
+        :count="3"
+        label="Mencari menfess…"
+      />
 
       <AppStateView
-        v-else-if="fessError"
+        v-else-if="fessError && !visibleMenfess.length"
         variant="error"
         title="Menfess gagal dimuat"
         description="Terjadi kesalahan saat mencari menfess. Coba muat ulang."

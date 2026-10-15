@@ -104,6 +104,8 @@ const props = defineProps({
   show: { type: Boolean, default: false },
   form: { type: Object, required: true },
   isScheduled: { type: Boolean, default: false },
+  /** True saat request posting sedang berjalan — kunci tombol konfirmasi. */
+  confirming: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:show', 'confirm', 'cancel']);
@@ -164,6 +166,9 @@ function getTotalMediaSize() {
 }
 
 function handleConfirm() {
+  // Guard ganda: parent juga mengunci lewat `publishing`, tapi modal ini
+  // menolak emit kedua saat request pertama masih berjalan.
+  if (props.confirming) return;
   emit('confirm');
 }
 

@@ -2,55 +2,60 @@
   <div class="user-app-layout">
     <main class="app-main-centered-stage">
       <div class="centered-content-wrapper">
-        <!-- 1. HOME -->
-        <FeedHomeTab
-          v-if="activeNav === 'home'"
-          v-model="homeTab"
-          :posts="activeFeedPosts"
-          :followed-handles="followedHandles"
-          :loading="activeFeedLoading"
-          :error="activeFeedError"
-          :has-more="activeFeedHasMore"
-          :loading-more="activeFeedLoadingMore"
-          :load-more-error="activeFeedLoadMoreError"
-          @like="handleLike"
-          @findMore="onNavChange('search')"
-          @retry="reloadHome"
-          @loadMore="loadMoreHome"
-        />
+        <!-- Tab memakai KeepAlive: state (daftar, notifikasi, hasil pencarian)
+             tidak dibuang saat pindah tab — tidak ada skeleton berkedip dan
+             refresh tetap berjalan senyap lewat useVisibilityRefresh. -->
+        <KeepAlive>
+          <!-- 1. HOME -->
+          <FeedHomeTab
+            v-if="activeNav === 'home'"
+            v-model="homeTab"
+            :posts="activeFeedPosts"
+            :followed-handles="followedHandles"
+            :loading="activeFeedLoading"
+            :error="activeFeedError"
+            :has-more="activeFeedHasMore"
+            :loading-more="activeFeedLoadingMore"
+            :load-more-error="activeFeedLoadMoreError"
+            @like="handleLike"
+            @findMore="onNavChange('search')"
+            @retry="reloadHome"
+            @loadMore="loadMoreHome"
+          />
 
-        <!-- 2. SEARCH -->
-        <ExploreSearchTab
-          v-else-if="activeNav === 'search'"
-          v-model:query="searchQuery"
-          v-model:category="selectedCategory"
-          v-model:mode="searchTab"
-          :bases="filteredBases"
-          :categories="FEED_CATEGORIES"
-          :loading="loading"
-          :is-following="isFollowing"
-          @toggle-follow="toggleFollowBase"
-        />
+          <!-- 2. SEARCH -->
+          <ExploreSearchTab
+            v-else-if="activeNav === 'search'"
+            v-model:query="searchQuery"
+            v-model:category="selectedCategory"
+            v-model:mode="searchTab"
+            :bases="filteredBases"
+            :categories="FEED_CATEGORIES"
+            :loading="loading"
+            :is-following="isFollowing"
+            @toggle-follow="toggleFollowBase"
+          />
 
-        <!-- 3. NOTIF -->
-        <ActivityTab
-          v-else-if="activeNav === 'notif' || activeNav === 'aktivitas'"
-          v-model="aktivitasTab"
-          :filters="ACTIVITY_FILTERS"
-          :loading="loading"
-          :error="error"
-          @retry="reload"
-        />
+          <!-- 3. NOTIF -->
+          <ActivityTab
+            v-else-if="activeNav === 'notif' || activeNav === 'aktivitas'"
+            v-model="aktivitasTab"
+            :filters="ACTIVITY_FILTERS"
+            :loading="loading"
+            :error="error"
+            @retry="reload"
+          />
 
-        <!-- 4. USER PROFILE (Instagram Style) -->
-        <UserProfileTab
-          v-else-if="activeNav === 'profile' || activeNav === 'akun'"
-          :theme-mode="themeMode"
-          @setTheme="setMode"
-          @logout="handleLogout"
-          @openCompose="openComposePage"
-          @openSubPanel="handleAccountAction"
-        />
+          <!-- 4. USER PROFILE (Instagram Style) -->
+          <UserProfileTab
+            v-else-if="activeNav === 'profile' || activeNav === 'akun'"
+            :theme-mode="themeMode"
+            @setTheme="setMode"
+            @logout="handleLogout"
+            @openCompose="openComposePage"
+            @openSubPanel="handleAccountAction"
+          />
+        </KeepAlive>
       </div>
     </main>
 
@@ -119,6 +124,7 @@ const {
   hasMore,
   error,
   reload: reloadFeed,
+  ensureLoaded: ensureFeedLoaded,
   loadMore,
   followingPosts,
   followingLoading,
@@ -127,6 +133,7 @@ const {
   followingHasMore,
   followingError,
   reloadFollowing,
+  ensureFollowingLoaded,
   loadMoreFollowing,
   refresh,
   refreshFollowing,
@@ -176,8 +183,11 @@ const activeFeedLoadMoreError = computed(() =>
 );
 
 watch(homeTab, (tab) => {
-  // Always refetch the following timeline so follow/unfollow stays in sync.
-  if (tab === 'mengikuti') reloadFollowing().catch(() => {});
+  if (tab !== 'mengikuti') return;
+  // Sudah ada data → segarkan senyap (tanpa skeleton). Belum ada → SWR:
+  // skeleton hanya muncul saat benar-benar belum ada isi.
+  if (followingPosts.value.length) refreshFollowing();
+  else ensureFollowingLoaded().catch(() => {});
 });
 
 /**
@@ -241,7 +251,9 @@ function loadMoreHome() {
 }
 
 onMounted(() => {
-  reloadFeed().catch(() => {});
+  // SWR: kalau cache modul masih ada (mis. balik dari halaman Buat Fess),
+  // feed lama langsung tampil dan refresh terjadi senyap di belakang.
+  ensureFeedLoaded().catch(() => {});
   ensureBasesLoaded().catch(() => {});
   syncFollowing();
 });

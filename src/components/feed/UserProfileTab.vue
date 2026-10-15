@@ -136,10 +136,15 @@
           </button>
         </div>
 
-        <ContentSkeleton v-if="myFessLoading" type="list" :count="3" label="Memuat fess kamu…" />
+        <ContentSkeleton
+          v-if="myFessLoading && !myFesses.length"
+          type="list"
+          :count="3"
+          label="Memuat fess kamu…"
+        />
 
         <AppStateView
-          v-else-if="myFessError"
+          v-else-if="myFessError && !myFesses.length"
           variant="error"
           title="Fess kamu gagal dimuat"
           description="Terjadi kesalahan saat mengambil riwayat kirimanmu. Coba muat ulang."
@@ -222,10 +227,15 @@
           <span class="tab-pane-title">Komunitas Base Diikuti ({{ followedBasesCount }})</span>
         </div>
 
-        <ContentSkeleton v-if="followingLoading" type="list" :count="3" label="Memuat base diikuti…" />
+        <ContentSkeleton
+          v-if="followingLoading && !followingBases.length"
+          type="list"
+          :count="3"
+          label="Memuat base diikuti…"
+        />
 
         <AppStateView
-          v-else-if="followingError"
+          v-else-if="followingError && !followingBases.length"
           variant="error"
           title="Daftar base gagal dimuat"
           description="Terjadi kesalahan saat mengambil base yang kamu ikuti. Coba muat ulang."
@@ -630,7 +640,7 @@
  * 4. 3 interactive sub-tabs: Fess Saya, Base yang Diikuti, Saldo & Top Up.
  * 5. Pinned bottom navbar stays active and visible.
  */
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue';
 import {
   Menu,
   X,
@@ -1035,6 +1045,15 @@ async function refreshFollowingBases() {
 useVisibilityRefresh(() => {
   refreshMyFesses();
   refreshFollowingBases();
+});
+
+/**
+ * Dengan KeepAlive, tab profil tidak di-unmount saat pindah tab — segarkan
+ * senyap saat tab dipilih lagi supaya datanya tetap baru tanpa skeleton.
+ */
+onActivated(() => {
+  if (myFesses.value.length) refreshMyFesses();
+  if (followingBases.value.length) refreshFollowingBases();
 });
 
 /* ---------- Settings Panel Navigation ---------- */

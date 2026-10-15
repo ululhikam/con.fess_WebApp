@@ -18,13 +18,13 @@
       </div>
     </div>
 
-    <!-- Timeline -->
-    <div v-if="loading" class="flex flex-col gap-3 sm:gap-4">
+    <!-- Timeline — skeleton hanya untuk pemuatan pertama (belum ada data) -->
+    <div v-if="loading && !posts.length" class="flex flex-col gap-3 sm:gap-4">
       <ContentSkeleton type="feed-card" :count="3" label="Memuat feed…" />
     </div>
 
     <AppStateView
-      v-else-if="error"
+      v-else-if="error && !posts.length"
       variant="error"
       title="Feed gagal dimuat"
       description="Terjadi kesalahan saat mengambil confession. Coba muat ulang."

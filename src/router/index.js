@@ -23,6 +23,12 @@ const routes = [
     meta: { title: 'Masuk', layout: 'auth', guestOnly: true },
   },
   {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('../views/ForgotPasswordPage.vue'),
+    meta: { title: 'Lupa Kata Sandi', layout: 'auth', guestOnly: true },
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('../views/RegisterUserPage.vue'),
