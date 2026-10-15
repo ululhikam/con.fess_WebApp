@@ -45,7 +45,7 @@
           placeholder="@namabase"
           @input="handleTouched = true"
         />
-        <p class="onb-hint">3–20 karakter, hanya huruf, angka, dan underscore.</p>
+        <p class="onb-hint">3–20 karakter, hanya huruf, angka, underscore, dan titik.</p>
 
         <label class="onb-label">Kategori Base</label>
         <div class="onb-chips">
@@ -244,8 +244,8 @@ function suggestHandle() {
 
 function validateIdentity() {
   if (form.name.trim().length < 3) return 'Nama base minimal 3 karakter.';
-  if (!/^@?[a-zA-Z0-9_]{3,20}$/.test(form.handle.trim())) {
-    return 'Handle harus 3–20 karakter (huruf, angka, underscore).';
+  if (!/^@?[a-zA-Z0-9_.]{3,20}$/.test(form.handle.trim())) {
+    return 'Handle harus 3–20 karakter (huruf, angka, underscore, atau titik).';
   }
   return '';
 }

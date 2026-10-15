@@ -10,9 +10,13 @@
           :followed-handles="followedHandles"
           :loading="activeFeedLoading"
           :error="activeFeedError"
+          :has-more="activeFeedHasMore"
+          :loading-more="activeFeedLoadingMore"
+          :load-more-error="activeFeedLoadMoreError"
           @like="handleLike"
           @findMore="onNavChange('search')"
           @retry="reloadHome"
+          @loadMore="loadMoreHome"
         />
 
         <!-- 2. SEARCH -->
@@ -109,12 +113,20 @@ const { mode: themeMode, setMode } = useTheme();
 const {
   feedPosts,
   loading,
+  loadingMore,
+  loadMoreError,
+  hasMore,
   error,
   reload: reloadFeed,
+  loadMore,
   followingPosts,
   followingLoading,
+  followingLoadingMore,
+  followingLoadMoreError,
+  followingHasMore,
   followingError,
   reloadFollowing,
+  loadMoreFollowing,
   toggleLike,
 } = useFeedPosts();
 const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
@@ -149,6 +161,15 @@ const activeFeedLoading = computed(() =>
 );
 const activeFeedError = computed(() =>
   homeTab.value === 'mengikuti' ? followingError.value : error.value,
+);
+const activeFeedHasMore = computed(() =>
+  homeTab.value === 'mengikuti' ? followingHasMore.value : hasMore.value,
+);
+const activeFeedLoadingMore = computed(() =>
+  homeTab.value === 'mengikuti' ? followingLoadingMore.value : loadingMore.value,
+);
+const activeFeedLoadMoreError = computed(() =>
+  homeTab.value === 'mengikuti' ? followingLoadMoreError.value : loadMoreError.value,
 );
 
 watch(homeTab, (tab) => {
@@ -197,6 +218,13 @@ function reload() {
 /** Retry handler for the Home tab — reload whichever timeline is visible. */
 function reloadHome() {
   return homeTab.value === 'mengikuti' ? reloadFollowing().catch(() => {}) : reload();
+}
+
+/** Lazy load the next page of whichever timeline is visible. */
+function loadMoreHome() {
+  return homeTab.value === 'mengikuti'
+    ? loadMoreFollowing().catch(() => {})
+    : loadMore().catch(() => {});
 }
 
 onMounted(() => {

@@ -47,6 +47,18 @@
         :is-admin="isAdmin"
         @like="$emit('like', $event)"
       />
+
+      <!-- Lazy load: sentinel + status footer -->
+      <div ref="loadSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+      <p v-if="loadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+      <button
+        v-else-if="loadMoreError"
+        type="button"
+        class="feed-load-retry"
+        @click="$emit('loadMore')"
+      >
+        Coba lagi memuat
+      </button>
     </div>
   </section>
 </template>
@@ -59,13 +71,15 @@
 import FeedCard from './FeedCard.vue';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
+import { ref } from 'vue';
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 
 const TABS = [
   { key: 'forYou', label: 'For You' },
   { key: 'mengikuti', label: 'Mengikuti' },
 ];
 
-defineProps({
+const props = defineProps({
   posts: { type: Array, default: () => [] },
   followedHandles: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
@@ -73,9 +87,22 @@ defineProps({
   modelValue: { type: String, default: 'forYou' },
   /** Admin context (base dashboard): pemegang base boleh melihat status fess. */
   isAdmin: { type: Boolean, default: false },
+  /** Lazy load state for the active timeline. */
+  hasMore: { type: Boolean, default: false },
+  loadingMore: { type: Boolean, default: false },
+  loadMoreError: { type: [Error, Object, String], default: null },
 });
 
-defineEmits(['update:modelValue', 'like', 'findMore', 'retry']);
+const emit = defineEmits(['update:modelValue', 'like', 'findMore', 'retry', 'loadMore']);
+
+/** Infinite scroll: load the next page when the footer sentinel appears. */
+const loadSentinel = ref(null);
+useInfiniteScroll(loadSentinel, {
+  onLoad: () => emit('loadMore'),
+  canLoad: () =>
+    props.hasMore && !props.loading && !props.loadingMore && !props.loadMoreError,
+  deps: () => [props.posts.length, props.hasMore, props.loadingMore],
+});
 </script>
 
 <style scoped>
@@ -122,5 +149,38 @@ defineEmits(['update:modelValue', 'like', 'findMore', 'retry']);
 .sub-tab-btn.active {
   background: var(--shell-sub-accent);
   color: var(--text-on-accent);
+}
+
+/* Lazy-load footer */
+.feed-load-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed-load-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--shell-text-muted);
+  padding: 10px 0 4px;
+  margin: 0;
+}
+
+.feed-load-retry {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.feed-load-retry:hover {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
 }
 </style>

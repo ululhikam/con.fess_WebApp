@@ -139,15 +139,27 @@
     <!-- KONTEN FESS BASE (real dari GET /bases/:handle/fesses) -->
     <div class="ig-fess-content-area">
       <div v-if="actionError" class="state-banner state-banner-error mb-3">{{ actionError }}</div>
-      <div v-if="filteredFesses.length" class="fess-cards-stream">
+      <div v-if="fesses.length" class="fess-cards-stream">
         <AdminFessCard
-          v-for="item in filteredFesses"
+          v-for="item in fesses"
           :key="item.id"
           :post="item"
           :is-admin="true"
           @approve="approveFess"
           @reject="rejectFess"
         />
+
+        <!-- Lazy load: sentinel + status footer -->
+        <div ref="fessSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+        <p v-if="fessLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+        <button
+          v-else-if="fessLoadMoreError"
+          type="button"
+          class="feed-load-retry"
+          @click="loadMoreFesses"
+        >
+          Coba lagi memuat
+        </button>
       </div>
 
       <div v-else class="empty-fess-box">
@@ -449,7 +461,7 @@
 /**
  * BaseAdminProfileTab — Instagram-style Profile View for Base Admin.
  */
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Menu,
@@ -482,6 +494,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
 import { api } from '../../api';
 import { mapFessToPost } from '../../utils/fessMapper';
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import BaseAdminPanels from './BaseAdminPanels.vue';
 import AdminFessCard from './AdminFessCard.vue';
 
@@ -528,23 +541,80 @@ const approvedTotal = computed(() => stats.value?.published ?? 0);
 const rejectedTotal = computed(() => stats.value?.rejected ?? 0);
 const totalFesses = computed(() => stats.value?.total_fesses ?? fessCount.value);
 
-/** GET /bases/:handle/fesses — all statuses so the tabs can filter. */
+/** GET /bases/:handle/fesses — status difilter di server + pagination (lazy load). */
+const FESS_PAGE_SIZE = 20;
+
+const fessLoadingMore = ref(false);
+const fessLoadMoreError = ref(null);
+const fessQueryTotal = ref(0);
+const fessSentinel = ref(null);
+let fessPage = 1;
+
+const fessHasMore = computed(() => fesses.value.length < fessQueryTotal.value);
+
+function mapBaseFess(f) {
+  const post = mapFessToPost(f);
+  return post ? { ...post, baseHandle: post.handle, timestamp: post.time } : null;
+}
+
+function fessParams(page) {
+  const status = fessFilter.value === 'semua' ? undefined : fessFilter.value;
+  return {
+    page,
+    limit: FESS_PAGE_SIZE,
+    sort: 'newest',
+    ...(status ? { status } : {}),
+  };
+}
+
 async function loadFesses() {
   const handle = managedHandle.value;
   if (!handle) return;
+  fessLoadMoreError.value = null;
   try {
-    const res = await api.getBaseFesses(handle, { limit: 50 });
-    fesses.value = (res?.data || [])
-      .map((f) => {
-        const post = mapFessToPost(f);
-        return post ? { ...post, baseHandle: post.handle, timestamp: post.time } : null;
-      })
-      .filter(Boolean);
+    const res = await api.getBaseFesses(handle, fessParams(1));
+    fesses.value = (res?.data || []).map(mapBaseFess).filter(Boolean);
+    fessQueryTotal.value = res?.total ?? fesses.value.length;
+    fessPage = 1;
   } catch (e) {
     actionError.value = e?.message || 'Gagal memuat daftar fess base.';
     fesses.value = [];
   }
 }
+
+/** Lazy load halaman berikutnya pada daftar fess base. */
+async function loadMoreFesses() {
+  const handle = managedHandle.value;
+  if (!handle || fessLoadingMore.value || !fessHasMore.value) return;
+  fessLoadingMore.value = true;
+  fessLoadMoreError.value = null;
+  try {
+    const nextPage = fessPage + 1;
+    const res = await api.getBaseFesses(handle, fessParams(nextPage));
+    const seen = new Set(fesses.value.map((f) => String(f.id)));
+    const extra = (res?.data || [])
+      .map(mapBaseFess)
+      .filter((f) => f && !seen.has(String(f.id)));
+    fesses.value = [...fesses.value, ...extra];
+    fessQueryTotal.value = res?.total ?? fessQueryTotal.value;
+    fessPage = nextPage;
+  } catch (e) {
+    fessLoadMoreError.value = e;
+  } finally {
+    fessLoadingMore.value = false;
+  }
+}
+
+// Ganti tab status → muat ulang dari halaman pertama (server-side).
+watch(fessFilter, () => {
+  loadFesses();
+});
+
+useInfiniteScroll(fessSentinel, {
+  onLoad: loadMoreFesses,
+  canLoad: () => fessHasMore.value && !fessLoadingMore.value && !fessLoadMoreError.value,
+  deps: () => [fesses.value.length, fessHasMore.value],
+});
 
 /** GET /admin/stats — role-scoped moderation counters. */
 async function loadStats() {
@@ -625,11 +695,6 @@ onMounted(() => {
 });
 
 /* ---------- Fess tabs + moderation actions (real API) ---------- */
-const filteredFesses = computed(() => {
-  if (fessFilter.value === 'semua') return fesses.value;
-  if (fessFilter.value === 'approved') return fesses.value.filter((f) => f.status === 'approved');
-  return fesses.value.filter((f) => f.status === fessFilter.value);
-});
 
 /** POST /fesses/:id/approve — then refresh the list + counters. */
 async function approveFess(id) {
@@ -972,6 +1037,39 @@ async function handleAdminLogout() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Lazy-load footer */
+.feed-load-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed-load-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--shell-text-muted);
+  padding: 10px 0 4px;
+  margin: 0;
+}
+
+.feed-load-retry {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.feed-load-retry:hover {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
 }
 
 .base-fess-card {

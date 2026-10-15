@@ -35,15 +35,16 @@
           <span>Story</span>
         </span>
 
-        <!-- Status Badge — hanya untuk pemilik base (atau Super Admin) -->
+        <!-- Status Badge — pemilik base (atau Super Admin), plus daftar Fess Saya -->
         <span
           v-if="showStatusBadge"
           class="badge-subtle"
-          :class="post.status === 'approved' ? 'badge-approved' : 'badge-pending'"
+          :class="statusBadgeClass"
         >
           <Check v-if="post.status === 'approved'" :size="12" />
-          <Clock v-else :size="12" />
-          <span>{{ post.status === 'approved' ? 'Terbit' : 'Antrean' }}</span>
+          <Clock v-else-if="post.status === 'pending'" :size="12" />
+          <X v-else :size="12" />
+          <span>{{ statusBadgeLabel }}</span>
         </span>
 
         <!-- LAPORKAN KONTEN (FLAG BUTTON) -->
@@ -464,6 +465,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** Daftar "Fess Saya": badge status milik sendiri selalu terlihat. */
+  showOwnStatus: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -480,11 +486,14 @@ const emit = defineEmits([
 const authStore = useAuthStore();
 
 /**
- * Badge status "Terbit"/"Antrean" hanya terlihat oleh yang memegang base
- * dari fess tersebut (Base Admin pemiliknya) atau Super Admin.
+ * Badge status "Terbit"/"Antrean"/"Ditolak" hanya terlihat oleh yang memegang
+ * base dari fess tersebut (Base Admin pemiliknya / Super Admin), atau di
+ * daftar "Fess Saya" milik pengirim itu sendiri (showOwnStatus).
  */
 const showStatusBadge = computed(() => {
-  if (!props.isAdmin || !props.post?.status) return false;
+  if (!props.post?.status) return false;
+  if (props.showOwnStatus) return true;
+  if (!props.isAdmin) return false;
   if (authStore.user?.role === 'Super Admin') return true;
 
   const postHandle = String(props.post?.handle || '')
@@ -494,6 +503,19 @@ const showStatusBadge = computed(() => {
 
   const managed = authStore.user?.managedBases || [];
   return managed.some((h) => String(h).replace(/^@/, '').toLowerCase() === postHandle);
+});
+
+const statusBadgeLabel = computed(() => {
+  if (props.post?.status === 'approved') return 'Terbit';
+  if (props.post?.status === 'pending') return 'Antrean';
+  if (props.post?.status === 'rejected') return 'Ditolak';
+  return '';
+});
+
+const statusBadgeClass = computed(() => {
+  if (props.post?.status === 'approved') return 'badge-approved';
+  if (props.post?.status === 'rejected') return 'badge-rejected';
+  return 'badge-pending';
 });
 
 /* 1. LIKE STATE */
@@ -914,6 +936,11 @@ function formatCount(num) {
 .badge-pending {
   background: rgba(245, 158, 11, 0.15);
   color: #f59e0b;
+}
+
+.badge-rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
 }
 
 .btn-flag-report {

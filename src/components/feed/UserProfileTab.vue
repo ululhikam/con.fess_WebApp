@@ -147,35 +147,73 @@
           @action="loadMyFesses"
         />
 
-        <div v-else-if="myFesses.length" class="my-fess-list">
-          <article v-for="item in myFesses" :key="item.id" class="my-fess-card">
-            <div class="my-fess-top">
-              <span class="my-fess-base">{{ item.handle }}</span>
-              <span class="my-fess-status" :class="`status--${item.status}`">
-                {{ fessStatusLabel(item.status) }}
-              </span>
+        <template v-else>
+          <!-- Filter status + urutan (server-side) -->
+          <div class="tab-filter-row mb-4">
+            <div class="segmented-tabs-container" role="tablist" aria-label="Filter status fess">
+              <button
+                v-for="filter in MY_FESS_FILTERS"
+                :key="filter.key"
+                type="button"
+                role="tab"
+                :aria-selected="myFessFilter === filter.key"
+                :class="['segmented-btn', { active: myFessFilter === filter.key }]"
+                @click="myFessFilter = filter.key"
+              >
+                {{ filter.label }}
+              </button>
             </div>
 
-            <p class="my-fess-text">{{ item.content }}</p>
+            <select v-model="myFessSort" class="filter-select" aria-label="Urutkan fess">
+              <option value="newest">Terbaru</option>
+              <option value="popular">Terpopuler</option>
+            </select>
+          </div>
 
-            <div class="my-fess-footer">
-              <span class="my-fess-time">{{ item.time }}</span>
-              <div class="my-fess-metrics">
-                <span class="inline-flex items-center gap-1"><Heart :size="13" /> {{ item.likes }}</span>
-                <span class="inline-flex items-center gap-1"><MessageCircle :size="13" /> {{ item.commentsCount }}</span>
-              </div>
-            </div>
-          </article>
-        </div>
+          <div v-if="myFesses.length" class="my-fess-list">
+            <FessCard
+              v-for="item in myFesses"
+              :key="item.id"
+              :post="item"
+              :show-own-status="true"
+              @like="handleMyFessLike"
+            />
 
-        <div v-else class="empty-tab-state">
-          <MessageSquare :size="40" class="empty-tab-icon" />
-          <p class="empty-tab-title">Belum ada fess terkirim</p>
-          <p class="empty-tab-sub">Confession yang kamu kirimkan akan tersimpan secara anonim di sini.</p>
-          <button type="button" class="btn-primary-pill mt-4" @click="$emit('openCompose')">
-            Kirim Fess Sekarang
-          </button>
-        </div>
+            <!-- Lazy load: sentinel + status footer -->
+            <div ref="myFessSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+            <p v-if="myFessLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+            <button
+              v-else-if="myFessLoadMoreError"
+              type="button"
+              class="feed-load-retry"
+              @click="loadMoreMyFesses"
+            >
+              Coba lagi memuat
+            </button>
+          </div>
+
+          <div v-else class="empty-tab-state">
+            <MessageSquare :size="40" class="empty-tab-icon" />
+            <p class="empty-tab-title">
+              {{ myFessFilter === 'semua' ? 'Belum ada fess terkirim' : 'Tidak ada fess dengan status ini' }}
+            </p>
+            <p class="empty-tab-sub">
+              {{
+                myFessFilter === 'semua'
+                  ? 'Confession yang kamu kirimkan akan tersimpan secara anonim di sini.'
+                  : 'Coba pilih filter status yang lain.'
+              }}
+            </p>
+            <button
+              v-if="myFessFilter === 'semua'"
+              type="button"
+              class="btn-primary-pill mt-4"
+              @click="$emit('openCompose')"
+            >
+              Kirim Fess Sekarang
+            </button>
+          </div>
+        </template>
       </div>
 
       <!-- TAB 2: BASE YANG DIIKUTI -->
@@ -206,9 +244,17 @@
             />
           </div>
 
-          <div v-if="filteredFollowedBases.length" class="following-list">
+          <div class="tab-filter-row mb-4">
+            <select v-model="followingSort" class="filter-select" aria-label="Urutkan base diikuti">
+              <option value="newest">Terbaru Diikuti</option>
+              <option value="name">Nama A-Z</option>
+              <option value="members">Anggota Terbanyak</option>
+            </select>
+          </div>
+
+          <div v-if="followingBases.length" class="following-list">
             <div
-              v-for="base in filteredFollowedBases"
+              v-for="base in followingBases"
               :key="base.handle"
               class="following-card"
             >
@@ -233,12 +279,32 @@
                 Mengikuti
               </button>
             </div>
+
+            <!-- Lazy load: sentinel + status footer -->
+            <div ref="followingSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+            <p v-if="followingLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+            <button
+              v-else-if="followingLoadMoreError"
+              type="button"
+              class="feed-load-retry"
+              @click="loadMoreFollowing"
+            >
+              Coba lagi memuat
+            </button>
           </div>
 
           <div v-else class="empty-tab-state">
             <Star :size="40" class="empty-tab-icon" />
-            <p class="empty-tab-title">Tidak ada base ditemukan</p>
-            <p class="empty-tab-sub">Jelajahi dan ikuti base confession favoritmu di tab Search.</p>
+            <p class="empty-tab-title">
+              {{ baseSearchQuery.trim() ? 'Tidak ada base ditemukan' : 'Belum mengikuti base' }}
+            </p>
+            <p class="empty-tab-sub">
+              {{
+                baseSearchQuery.trim()
+                  ? 'Coba kata kunci lain.'
+                  : 'Jelajahi dan ikuti base confession favoritmu di tab Search.'
+              }}
+            </p>
           </div>
         </template>
       </div>
@@ -564,7 +630,7 @@
  * 4. 3 interactive sub-tabs: Fess Saya, Base yang Diikuti, Saldo & Top Up.
  * 5. Pinned bottom navbar stays active and visible.
  */
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import {
   Menu,
   X,
@@ -585,19 +651,19 @@ import {
   Plus,
   Search,
   ChevronRight,
-  Heart,
-  MessageCircle,
   Upload,
 } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'vue-router';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
+import FessCard from '../common/FessCard.vue';
 import { api } from '../../api';
 import { mapFessToPost } from '../../utils/fessMapper';
 import { formatNumber } from '../../utils/format';
-import { useBases } from '../../composables/useBases';
+import { mapBase } from '../../composables/useBases';
 import { useFollowBase } from '../../composables/useFollowBase';
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 
 const props = defineProps({
   themeMode: { type: String, default: 'system' },
@@ -612,8 +678,7 @@ const emit = defineEmits([
 
 const authStore = useAuthStore();
 const router = useRouter();
-const { followedHandles, toggleFollowBase, syncFollowing } = useFollowBase();
-const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
+const { followedHandles, toggleFollowBase } = useFollowBase();
 
 function goToBase(handle) {
   if (!handle) return;
@@ -698,17 +763,48 @@ function onAvatarError(e) {
   e.target.style.display = 'none';
 }
 
-/* ---------- Tab 1: Fess Saya —— GET /users/me/fesses ---------- */
+/* ---------- Tab 1: Fess Saya —— GET /users/me/fesses (filter + sort + lazy load) ---------- */
+const MY_FESS_FILTERS = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'published', label: 'Terbit' },
+  { key: 'pending', label: 'Antrean' },
+  { key: 'rejected', label: 'Ditolak' },
+];
+const MY_FESS_PAGE_SIZE = 20;
+
 const myFesses = ref([]);
 const myFessLoading = ref(false);
+const myFessLoadingMore = ref(false);
+const myFessLoadMoreError = ref(null);
 const myFessError = ref(null);
+const myFessFilter = ref('semua');
+const myFessSort = ref('newest');
+const myFessTotal = ref(0); // total semua status (strip statistik)
+const myFessQueryTotal = ref(0); // total untuk filter aktif (lazy load)
+const myFessSentinel = ref(null);
+let myFessPage = 1;
+
+const myFessHasMore = computed(() => myFesses.value.length < myFessQueryTotal.value);
+
+function myFessParams(page) {
+  return {
+    page,
+    limit: MY_FESS_PAGE_SIZE,
+    sort: myFessSort.value,
+    ...(myFessFilter.value !== 'semua' ? { status: myFessFilter.value } : {}),
+  };
+}
 
 async function loadMyFesses() {
   myFessLoading.value = true;
   myFessError.value = null;
+  myFessLoadMoreError.value = null;
   try {
-    const res = await api.getMyFesses({ page: 1, limit: 30 });
+    const res = await api.getMyFesses(myFessParams(1));
     myFesses.value = (res?.data ?? []).map(mapFessToPost);
+    myFessQueryTotal.value = res?.total ?? myFesses.value.length;
+    if (myFessFilter.value === 'semua') myFessTotal.value = myFessQueryTotal.value;
+    myFessPage = 1;
   } catch (e) {
     myFessError.value = e;
   } finally {
@@ -716,27 +812,110 @@ async function loadMyFesses() {
   }
 }
 
-const myFessCount = computed(() => myFesses.value.length);
-
-/** Status badge label for the user's own fess history. */
-function fessStatusLabel(status) {
-  if (status === 'approved') return 'Terbit';
-  if (status === 'pending') return 'Antrean';
-  if (status === 'rejected') return 'Ditolak';
-  return status || '';
+/** Lazy load halaman berikutnya dari daftar Fess Saya. */
+async function loadMoreMyFesses() {
+  if (myFessLoading.value || myFessLoadingMore.value || !myFessHasMore.value) return;
+  myFessLoadingMore.value = true;
+  myFessLoadMoreError.value = null;
+  try {
+    const nextPage = myFessPage + 1;
+    const res = await api.getMyFesses(myFessParams(nextPage));
+    const seen = new Set(myFesses.value.map((p) => String(p.id)));
+    const extra = (res?.data ?? [])
+      .map(mapFessToPost)
+      .filter((p) => p && !seen.has(String(p.id)));
+    myFesses.value = [...myFesses.value, ...extra];
+    myFessQueryTotal.value = res?.total ?? myFessQueryTotal.value;
+    myFessPage = nextPage;
+  } catch (e) {
+    myFessLoadMoreError.value = e;
+  } finally {
+    myFessLoadingMore.value = false;
+  }
 }
 
-/* ---------- Tab 2: Base yang Diikuti —— GET /users/me/following ---------- */
+// Ganti filter/urutan → muat ulang dari halaman pertama (server-side).
+watch([myFessFilter, myFessSort], () => {
+  loadMyFesses();
+});
+
+/** Like dari kartu Fess Saya (optimistic, disinkronkan dengan respons vote). */
+async function handleMyFessLike(payload) {
+  const id = payload && typeof payload === 'object' ? payload.id : payload;
+  const item = myFesses.value.find((p) => String(p.id) === String(id));
+  if (!item) return;
+
+  const wasLiked = item.isLiked;
+  const prevLikes = item.likes;
+  item.isLiked = !wasLiked;
+  item.likes = prevLikes + (item.isLiked ? 1 : -1);
+
+  try {
+    const res = await api.voteFess(id, item.isLiked ? 'up' : 'down');
+    if (res && typeof res.upvotes === 'number') {
+      item.likes = res.upvotes;
+      item.isLiked = res.user_vote === 'up';
+      item.userVote = res.user_vote ?? null;
+    }
+  } catch {
+    item.isLiked = wasLiked;
+    item.likes = prevLikes;
+  }
+}
+
+const myFessCount = computed(() => myFessTotal.value);
+
+useInfiniteScroll(myFessSentinel, {
+  onLoad: loadMoreMyFesses,
+  canLoad: () =>
+    activeSubTab.value === 'fess' &&
+    myFessHasMore.value &&
+    !myFessLoading.value &&
+    !myFessLoadingMore.value &&
+    !myFessLoadMoreError.value,
+  deps: () => [myFesses.value.length, myFessHasMore.value, activeSubTab.value],
+});
+
+/* ---------- Tab 2: Base yang Diikuti —— GET /users/me/following (search + sort + lazy load) ---------- */
+const FOLLOWING_PAGE_SIZE = 20;
+const FOLLOWING_SEARCH_DEBOUNCE_MS = 300;
+
 const baseSearchQuery = ref('');
+const followingSort = ref('newest');
+const followingBases = ref([]);
 const followingLoading = ref(false);
+const followingLoadingMore = ref(false);
+const followingLoadMoreError = ref(null);
 const followingError = ref(null);
+const followingQueryTotal = ref(0);
+const followingLoaded = ref(false);
+const followingSentinel = ref(null);
+let followingPage = 1;
+let followingSearchTimer = null;
+
+const followingHasMore = computed(
+  () => followingBases.value.length < followingQueryTotal.value,
+);
+
+function followingParams(page) {
+  return {
+    page,
+    limit: FOLLOWING_PAGE_SIZE,
+    sort: followingSort.value,
+    ...(baseSearchQuery.value.trim() ? { search: baseSearchQuery.value.trim() } : {}),
+  };
+}
 
 async function loadFollowing() {
   followingLoading.value = true;
   followingError.value = null;
+  followingLoadMoreError.value = null;
   try {
-    await syncFollowing();
-    await ensureBasesLoaded();
+    const res = await api.getMyFollowing(followingParams(1));
+    followingBases.value = (res?.data ?? []).map(mapBase).filter(Boolean);
+    followingQueryTotal.value = res?.total ?? followingBases.value.length;
+    followingPage = 1;
+    followingLoaded.value = true;
   } catch (e) {
     followingError.value = e;
   } finally {
@@ -744,27 +923,76 @@ async function loadFollowing() {
   }
 }
 
-const myFollowedBases = computed(() =>
-  bases.value.filter((b) => followedHandles.value.includes(b.handle)),
-);
+/** Lazy load halaman berikutnya dari daftar base diikuti. */
+async function loadMoreFollowing() {
+  if (followingLoading.value || followingLoadingMore.value || !followingHasMore.value) return;
+  followingLoadingMore.value = true;
+  followingLoadMoreError.value = null;
+  try {
+    const nextPage = followingPage + 1;
+    const res = await api.getMyFollowing(followingParams(nextPage));
+    const seen = new Set(followingBases.value.map((b) => b.handle));
+    const extra = (res?.data ?? [])
+      .map(mapBase)
+      .filter((b) => b && !seen.has(b.handle));
+    followingBases.value = [...followingBases.value, ...extra];
+    followingQueryTotal.value = res?.total ?? followingQueryTotal.value;
+    followingPage = nextPage;
+  } catch (e) {
+    followingLoadMoreError.value = e;
+  } finally {
+    followingLoadingMore.value = false;
+  }
+}
 
-const followedBasesCount = computed(() => myFollowedBases.value.length);
-
-const filteredFollowedBases = computed(() => {
-  const q = baseSearchQuery.value.trim().toLowerCase();
-  if (!q) return myFollowedBases.value;
-  return myFollowedBases.value.filter(
-    (b) => b.name.toLowerCase().includes(q) || b.handle.toLowerCase().includes(q),
-  );
+// Pencarian server-side dengan debounce; sort langsung memuat ulang.
+watch(baseSearchQuery, () => {
+  clearTimeout(followingSearchTimer);
+  followingSearchTimer = setTimeout(() => {
+    loadFollowing();
+  }, FOLLOWING_SEARCH_DEBOUNCE_MS);
 });
+
+watch(followingSort, () => {
+  loadFollowing();
+});
+
+/** Strip statistik "Mengikuti": total server, fallback cache lokal. */
+const followedBasesCount = computed(() =>
+  followingLoaded.value ? followingQueryTotal.value : followedHandles.value.length,
+);
 
 async function handleUnfollow(handle) {
   try {
-    await toggleFollowBase(handle);
+    const stillFollowing = await toggleFollowBase(handle);
+    if (!stillFollowing) {
+      const target = String(handle).startsWith('@') ? String(handle) : `@${handle}`;
+      const before = followingBases.value.length;
+      followingBases.value = followingBases.value.filter((b) => b.handle !== target);
+      if (followingBases.value.length < before) {
+        followingQueryTotal.value = Math.max(0, followingQueryTotal.value - 1);
+      }
+    }
   } catch {
     // the composable already rolled back the optimistic update
   }
 }
+
+useInfiniteScroll(followingSentinel, {
+  onLoad: loadMoreFollowing,
+  canLoad: () =>
+    activeSubTab.value === 'following' &&
+    followingLoaded.value &&
+    followingHasMore.value &&
+    !followingLoading.value &&
+    !followingLoadingMore.value &&
+    !followingLoadMoreError.value,
+  deps: () => [followingBases.value.length, followingHasMore.value, activeSubTab.value],
+});
+
+onBeforeUnmount(() => {
+  clearTimeout(followingSearchTimer);
+});
 
 /* ---------- Tab 3: Saldo (read-only, from the session user) ---------- */
 const balance = computed(() => authStore.user?.balance ?? 0);
@@ -1113,6 +1341,93 @@ function confirmLogout() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Filter status + urutan pada sub-tab (server-side) */
+.tab-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tab-filter-row .segmented-tabs-container {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--shell-card);
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--shell-border);
+  gap: 2px;
+}
+
+.tab-filter-row .segmented-btn {
+  background: transparent;
+  border: none;
+  color: var(--shell-text-muted);
+  font-family: inherit;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 12.5px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab-filter-row .segmented-btn.active {
+  background: var(--shell-chip);
+  color: var(--shell-text);
+}
+
+.filter-select {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  outline: none;
+}
+
+.filter-select:focus {
+  border-color: var(--shell-border-strong);
+}
+
+/* Lazy-load footer */
+.feed-load-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed-load-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--shell-text-muted);
+  padding: 10px 0 4px;
+  margin: 0;
+}
+
+.feed-load-retry {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.feed-load-retry:hover {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
 }
 
 .my-fess-card {

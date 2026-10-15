@@ -53,7 +53,7 @@ export function useFollowBase() {
     if (syncInflight) return syncInflight;
 
     syncInflight = api
-      .getMyFollowing()
+      .getMyFollowing({ limit: 100 })
       .then((res) => {
         const list = (res?.data ?? res ?? []).map((b) => clean(b.handle || b));
         sharedFollowedHandles.value = list;

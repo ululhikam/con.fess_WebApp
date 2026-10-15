@@ -10,9 +10,13 @@
           :loading="homeFeedLoading"
           :error="homeFeedError"
           :is-admin="true"
+          :has-more="homeFeedHasMore"
+          :loading-more="homeFeedLoadingMore"
+          :load-more-error="homeFeedLoadMoreError"
           @like="toggleLikePost"
           @findMore="activeNav = 'search'"
           @retry="reloadHomeFeed"
+          @loadMore="loadMoreHomeFeed"
         />
 
         <!-- 2. SEARCH: Jelajah Postingan & Base (Sama persis seperti User Biasa) -->
@@ -50,36 +54,73 @@
 
           <p v-if="notifLoading" class="pane-sub mb-4">Memuat notifikasi…</p>
 
-          <div v-else-if="filteredAdminNotifs.length" class="notif-stream-list">
-            <div
-              v-for="notif in filteredAdminNotifs"
-              :key="notif.id"
-              class="notif-card-item"
-              :class="{ unread: notif.unread }"
-              role="button"
-              tabindex="0"
-              @click="openAdminNotification(notif)"
-              @keydown.enter.prevent="openAdminNotification(notif)"
-            >
-              <div class="notif-icon-col" :class="notif.type">
-                <component :is="notif.icon" :size="18" />
-              </div>
-              <div class="notif-content-col">
-                <div class="notif-title-row">
-                  <span class="notif-title">{{ notif.title }}</span>
-                  <span class="notif-time">{{ notif.time }}</span>
-                </div>
-                <p class="notif-desc">{{ notif.desc }}</p>
-              </div>
+          <template v-else>
+            <!-- Aksi notifikasi: baca semua -->
+            <div v-if="notifItems.length" class="notif-toolbar mb-4">
+              <button
+                type="button"
+                class="notif-toolbar-btn"
+                :disabled="!adminUnreadCount || markingAllNotifsRead"
+                @click="markAllAdminNotificationsRead"
+              >
+                <CheckCheck :size="14" />
+                <span>Baca semua</span>
+              </button>
             </div>
-          </div>
 
-          <!-- Empty State -->
-          <div v-else class="empty-aktivitas-center">
-            <Inbox class="empty-icon" :size="34" :stroke-width="1.5" aria-hidden="true" />
-            <p class="empty-main-text">Belum ada notifikasi.</p>
-            <p class="empty-sub-text">Tidak ada notifikasi dalam kategori ini.</p>
-          </div>
+            <div v-if="filteredAdminNotifs.length" class="notif-stream-list">
+              <div
+                v-for="notif in filteredAdminNotifs"
+                :key="notif.id"
+                class="notif-card-item"
+                :class="{ unread: notif.unread }"
+                role="button"
+                tabindex="0"
+                @click="openAdminNotification(notif)"
+                @keydown.enter.prevent="openAdminNotification(notif)"
+              >
+                <div class="notif-icon-col" :class="notif.type">
+                  <component :is="notif.icon" :size="18" />
+                </div>
+                <div class="notif-content-col">
+                  <div class="notif-title-row">
+                    <span class="notif-title">{{ notif.title }}</span>
+                    <span class="notif-time">{{ notif.time }}</span>
+                    <button
+                      type="button"
+                      class="notif-delete-btn"
+                      title="Hapus notifikasi"
+                      aria-label="Hapus notifikasi"
+                      @click.stop="deleteAdminNotification(notif)"
+                      @keydown.enter.stop
+                    >
+                      <X :size="14" />
+                    </button>
+                  </div>
+                  <p class="notif-desc">{{ notif.desc }}</p>
+                </div>
+              </div>
+
+              <!-- Lazy load: sentinel + status footer -->
+              <div ref="adminNotifSentinel" class="notif-load-sentinel" aria-hidden="true"></div>
+              <p v-if="notifLoadingMore" class="notif-load-hint">Memuat lebih banyak…</p>
+              <button
+                v-else-if="notifLoadMoreError"
+                type="button"
+                class="notif-load-retry"
+                @click="loadMoreAdminNotifs"
+              >
+                Coba lagi memuat
+              </button>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="empty-aktivitas-center">
+              <Inbox class="empty-icon" :size="34" :stroke-width="1.5" aria-hidden="true" />
+              <p class="empty-main-text">Belum ada notifikasi.</p>
+              <p class="empty-sub-text">Tidak ada notifikasi dalam kategori ini.</p>
+            </div>
+          </template>
         </section>
 
         <!-- 4. AKUN: PROFIL BASE ADMIN (Instagram Style!) -->
@@ -118,6 +159,8 @@ import {
   CheckCircle2,
   MessageCircle,
   Inbox,
+  CheckCheck,
+  X,
 } from 'lucide-vue-next';
 
 import BaseAdminBottomNav from '../components/admin/BaseAdminBottomNav.vue';
@@ -128,6 +171,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFollowBase } from '../composables/useFollowBase';
 import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases } from '../composables/useBases';
+import { useInfiniteScroll } from '../composables/useInfiniteScroll';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 
@@ -182,12 +226,20 @@ const filteredBases = computed(() => {
 const {
   feedPosts: publicFeedPosts,
   loading: feedLoading,
+  loadingMore: feedLoadingMore,
+  loadMoreError: feedLoadMoreError,
+  hasMore: feedHasMore,
   error: feedError,
   reload: reloadFeed,
+  loadMore: loadMoreFeed,
   followingPosts,
   followingLoading,
+  followingLoadingMore,
+  followingLoadMoreError,
+  followingHasMore,
   followingError,
   reloadFollowing,
+  loadMoreFollowing,
   toggleLike,
 } = useFeedPosts();
 
@@ -201,6 +253,15 @@ const homeFeedLoading = computed(() =>
 const homeFeedError = computed(() =>
   homeTab.value === 'mengikuti' ? followingError.value : feedError.value,
 );
+const homeFeedHasMore = computed(() =>
+  homeTab.value === 'mengikuti' ? followingHasMore.value : feedHasMore.value,
+);
+const homeFeedLoadingMore = computed(() =>
+  homeTab.value === 'mengikuti' ? followingLoadingMore.value : feedLoadingMore.value,
+);
+const homeFeedLoadMoreError = computed(() =>
+  homeTab.value === 'mengikuti' ? followingLoadMoreError.value : feedLoadMoreError.value,
+);
 
 watch(homeTab, (tab) => {
   if (tab === 'mengikuti') reloadFollowing().catch(() => {});
@@ -211,6 +272,13 @@ function reloadHomeFeed() {
   return homeTab.value === 'mengikuti'
     ? reloadFollowing().catch(() => {})
     : reloadFeed().catch(() => {});
+}
+
+/** Lazy load the next page of whichever timeline is visible. */
+function loadMoreHomeFeed() {
+  return homeTab.value === 'mengikuti'
+    ? loadMoreFollowing().catch(() => {})
+    : loadMoreFeed().catch(() => {});
 }
 
 function toggleLikePost(payload) {
@@ -229,7 +297,28 @@ const ADMIN_NOTIF_FILTERS = [
 const notifFilter = ref('semua');
 const notifItems = ref([]);
 const notifLoading = ref(false);
+const notifLoadingMore = ref(false);
+const notifLoadMoreError = ref(null);
 const notifError = ref(null);
+const notifTotal = ref(0);
+const markingAllNotifsRead = ref(false);
+const adminNotifSentinel = ref(null);
+let notifPage = 1;
+
+const notifHasMore = computed(() => notifItems.value.length < notifTotal.value);
+const adminUnreadCount = computed(() => notifItems.value.filter((n) => n.unread).length);
+
+/** Infinite scroll untuk daftar notifikasi (lazy load). */
+useInfiniteScroll(adminNotifSentinel, {
+  onLoad: () => loadMoreAdminNotifs(),
+  canLoad: () =>
+    activeNav.value === 'notif' &&
+    notifHasMore.value &&
+    !notifLoading.value &&
+    !notifLoadingMore.value &&
+    !notifLoadMoreError.value,
+  deps: () => [notifItems.value.length, notifHasMore.value, activeNav.value],
+});
 
 /** Presentation mapping for API notification types (icons are UI assets). */
 const NOTIF_PRESENTATION = {
@@ -260,13 +349,71 @@ function mapNotification(n) {
 async function loadNotifications() {
   notifLoading.value = true;
   notifError.value = null;
+  notifLoadMoreError.value = null;
   try {
-    const res = await api.getNotifications({ page: 1, limit: 50 });
+    const res = await api.getNotifications({ page: 1, limit: 20 });
     notifItems.value = (res?.data ?? []).map(mapNotification);
+    notifTotal.value = res?.total ?? notifItems.value.length;
+    notifPage = 1;
   } catch (e) {
     notifError.value = e;
   } finally {
     notifLoading.value = false;
+  }
+}
+
+/** Lazy load halaman berikutnya pada daftar notifikasi. */
+async function loadMoreAdminNotifs() {
+  if (notifLoading.value || notifLoadingMore.value || !notifHasMore.value) return;
+  notifLoadingMore.value = true;
+  notifLoadMoreError.value = null;
+  try {
+    const nextPage = notifPage + 1;
+    const res = await api.getNotifications({ page: nextPage, limit: 20 });
+    const seen = new Set(notifItems.value.map((n) => String(n.id)));
+    const extra = (res?.data ?? [])
+      .filter((n) => !seen.has(String(n.id)))
+      .map(mapNotification);
+    notifItems.value = [...notifItems.value, ...extra];
+    notifPage = nextPage;
+    notifTotal.value = res?.total ?? notifTotal.value;
+  } catch (e) {
+    notifLoadMoreError.value = e;
+  } finally {
+    notifLoadingMore.value = false;
+  }
+}
+
+/** Tandai semua notifikasi sudah dibaca (optimistic). */
+async function markAllAdminNotificationsRead() {
+  if (markingAllNotifsRead.value || !adminUnreadCount.value) return;
+  const prev = notifItems.value.map((n) => n.unread);
+  notifItems.value.forEach((n) => {
+    n.unread = false;
+  });
+  markingAllNotifsRead.value = true;
+  try {
+    await api.markAllNotificationsRead();
+  } catch {
+    notifItems.value.forEach((n, idx) => {
+      n.unread = prev[idx];
+    });
+  } finally {
+    markingAllNotifsRead.value = false;
+  }
+}
+
+/** Hapus satu notifikasi supaya tidak menumpuk (optimistic). */
+async function deleteAdminNotification(notif) {
+  const idx = notifItems.value.findIndex((n) => String(n.id) === String(notif.id));
+  if (idx < 0) return;
+  const [removed] = notifItems.value.splice(idx, 1);
+  notifTotal.value = Math.max(0, notifTotal.value - 1);
+  try {
+    await api.deleteNotification(notif.id);
+  } catch {
+    notifItems.value.splice(idx, 0, removed);
+    notifTotal.value += 1;
   }
 }
 
@@ -606,6 +753,90 @@ onMounted(() => {
 .segmented-btn.active {
   background: var(--shell-chip);
   color: var(--shell-text);
+}
+
+/* Notif toolbar (baca semua) */
+.notif-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notif-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.notif-toolbar-btn:hover:not(:disabled) {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
+}
+
+.notif-toolbar-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Hapus notifikasi per kartu */
+.notif-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--shell-text-dim);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.notif-delete-btn:hover {
+  color: #ef4444;
+}
+
+/* Lazy-load footer notifikasi */
+.notif-load-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.notif-load-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--shell-text-muted);
+  padding: 10px 0 4px;
+  margin: 0;
+}
+
+.notif-load-retry {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.notif-load-retry:hover {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
 }
 
 /* Notif stream */

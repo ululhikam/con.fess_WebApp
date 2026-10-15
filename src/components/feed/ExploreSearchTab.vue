@@ -97,6 +97,18 @@
             {{ isFollowing(base.handle) ? 'Diikuti' : 'Ikuti' }}
           </button>
         </article>
+
+        <!-- Lazy load: sentinel + status footer -->
+        <div ref="baseSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+        <p v-if="baseLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+        <button
+          v-else-if="baseLoadMoreError"
+          type="button"
+          class="feed-load-retry"
+          @click="loadMoreBases"
+        >
+          Coba lagi memuat
+        </button>
       </div>
     </template>
 
@@ -131,6 +143,18 @@
           :post="post"
           :is-admin="false"
         />
+
+        <!-- Lazy load: sentinel + status footer -->
+        <div ref="fessSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+        <p v-if="fessLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+        <button
+          v-else-if="fessLoadMoreError"
+          type="button"
+          class="feed-load-retry"
+          @click="loadMoreMenfess"
+        >
+          Coba lagi memuat
+        </button>
       </div>
     </template>
   </section>
@@ -149,6 +173,7 @@ import AppStateView from '../ui/AppStateView.vue';
 import FessCard from '../common/FessCard.vue';
 import { api } from '../../api';
 import { mapBase } from '../../composables/useBases';
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { mapFessToPost } from '../../utils/fessMapper';
 
 const router = useRouter();
@@ -176,16 +201,24 @@ const props = defineProps({
 
 defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
 
-/* ---------- Menfess search (GET /fesses, debounced) ---------- */
+/* ---------- Menfess search (GET /fesses, debounced + lazy load) ---------- */
 const MENFESS_DEBOUNCE_MS = 300;
+const MENFESS_PAGE_SIZE = 20;
 
 const fessPosts = ref([]);
 const fessLoading = ref(false);
+const fessLoadingMore = ref(false);
+const fessLoadMoreError = ref(null);
 const fessError = ref(null);
+const fessTotal = ref(0);
+const fessSentinel = ref(null);
 
 let debounceTimer = null;
 let requestSeq = 0;
 let lastFetchedQuery = null;
+let fessPage = 1;
+
+const fessHasMore = computed(() => fessPosts.value.length < fessTotal.value);
 
 /** Fetch fess search results from the backend (query + newest first). */
 async function fetchMenfess() {
@@ -198,14 +231,18 @@ async function fetchMenfess() {
 
   fessLoading.value = true;
   fessError.value = null;
+  fessLoadMoreError.value = null;
   try {
     const res = await api.getFesses({
       query: q || undefined,
-      limit: 20,
+      limit: MENFESS_PAGE_SIZE,
+      page: 1,
       sort: 'newest',
     });
     if (seq !== requestSeq) return;
     fessPosts.value = (res?.data || []).map(mapFessToPost);
+    fessTotal.value = res?.total ?? fessPosts.value.length;
+    fessPage = 1;
   } catch (e) {
     if (seq !== requestSeq) return;
     fessError.value = e;
@@ -214,6 +251,44 @@ async function fetchMenfess() {
     if (seq === requestSeq) fessLoading.value = false;
   }
 }
+
+/** Lazy load halaman berikutnya hasil pencarian menfess. */
+async function loadMoreMenfess() {
+  if (fessLoading.value || fessLoadingMore.value || !fessHasMore.value) return;
+  fessLoadingMore.value = true;
+  fessLoadMoreError.value = null;
+  try {
+    const nextPage = fessPage + 1;
+    const res = await api.getFesses({
+      query: props.query.trim() || undefined,
+      limit: MENFESS_PAGE_SIZE,
+      page: nextPage,
+      sort: 'newest',
+    });
+    const seen = new Set(fessPosts.value.map((p) => String(p.id)));
+    const extra = (res?.data || [])
+      .map(mapFessToPost)
+      .filter((p) => p && !seen.has(String(p.id)));
+    fessPosts.value = [...fessPosts.value, ...extra];
+    fessTotal.value = res?.total ?? fessTotal.value;
+    fessPage = nextPage;
+  } catch (e) {
+    fessLoadMoreError.value = e;
+  } finally {
+    fessLoadingMore.value = false;
+  }
+}
+
+useInfiniteScroll(fessSentinel, {
+  onLoad: loadMoreMenfess,
+  canLoad: () =>
+    props.mode === 'menfess' &&
+    fessHasMore.value &&
+    !fessLoading.value &&
+    !fessLoadingMore.value &&
+    !fessLoadMoreError.value,
+  deps: () => [fessPosts.value.length, fessHasMore.value, props.mode],
+});
 
 /** Debounce so we only query the API once the user pauses typing. */
 function scheduleMenfessFetch() {
@@ -263,16 +338,24 @@ const emptyMenfessDescription = computed(() =>
     : 'Belum ada menfess yang dapat ditampilkan saat ini.',
 );
 
-/* ---------- Base search (GET /bases, debounced, server-side) ---------- */
+/* ---------- Base search (GET /bases, debounced, server-side + lazy load) ---------- */
 const BASE_DEBOUNCE_MS = 300;
+const BASE_PAGE_SIZE = 20;
 
 const baseResults = ref([]);
 const baseLoading = ref(false);
+const baseLoadingMore = ref(false);
+const baseLoadMoreError = ref(null);
 const baseError = ref(null);
 const baseLoaded = ref(false);
+const baseTotal = ref(0);
+const baseSentinel = ref(null);
 
 let baseDebounceTimer = null;
 let baseRequestSeq = 0;
+let basePage = 1;
+
+const baseHasMore = computed(() => baseResults.value.length < baseTotal.value);
 
 /** Fetch base search results from the backend (search + category + newest). */
 async function fetchBaseSearch() {
@@ -285,10 +368,18 @@ async function fetchBaseSearch() {
 
   baseLoading.value = true;
   baseError.value = null;
+  baseLoadMoreError.value = null;
   try {
-    const res = await api.getBases({ search: q || undefined, category: cat, limit: 50 });
+    const res = await api.getBases({
+      search: q || undefined,
+      category: cat,
+      limit: BASE_PAGE_SIZE,
+      page: 1,
+    });
     if (seq !== baseRequestSeq) return;
     baseResults.value = (res?.data || []).map(mapBase).filter(Boolean);
+    baseTotal.value = res?.total ?? baseResults.value.length;
+    basePage = 1;
     baseLoaded.value = true;
   } catch (e) {
     if (seq !== baseRequestSeq) return;
@@ -299,6 +390,47 @@ async function fetchBaseSearch() {
     if (seq === baseRequestSeq) baseLoading.value = false;
   }
 }
+
+/** Lazy load halaman berikutnya hasil pencarian base. */
+async function loadMoreBases() {
+  if (baseLoading.value || baseLoadingMore.value || !baseHasMore.value) return;
+  baseLoadingMore.value = true;
+  baseLoadMoreError.value = null;
+  try {
+    const q = props.query.trim();
+    const cat = props.category && props.category !== 'Semua' ? props.category : undefined;
+    const nextPage = basePage + 1;
+    const res = await api.getBases({
+      search: q || undefined,
+      category: cat,
+      limit: BASE_PAGE_SIZE,
+      page: nextPage,
+    });
+    const seen = new Set(baseResults.value.map((b) => b.handle));
+    const extra = (res?.data || [])
+      .map(mapBase)
+      .filter((b) => b && !seen.has(b.handle));
+    baseResults.value = [...baseResults.value, ...extra];
+    baseTotal.value = res?.total ?? baseTotal.value;
+    basePage = nextPage;
+  } catch (e) {
+    baseLoadMoreError.value = e;
+  } finally {
+    baseLoadingMore.value = false;
+  }
+}
+
+useInfiniteScroll(baseSentinel, {
+  onLoad: loadMoreBases,
+  canLoad: () =>
+    props.mode === 'base' &&
+    baseLoaded.value &&
+    baseHasMore.value &&
+    !baseLoading.value &&
+    !baseLoadingMore.value &&
+    !baseLoadMoreError.value,
+  deps: () => [baseResults.value.length, baseHasMore.value, props.mode],
+});
 
 /** Debounce so we only query the API once the user pauses typing. */
 function scheduleBaseFetch() {
@@ -549,5 +681,38 @@ const emptyBaseDescription = computed(() => {
   background: var(--shell-chip);
   border-color: transparent;
   color: var(--shell-text-muted);
+}
+
+/* Lazy-load footer */
+.feed-load-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.feed-load-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--shell-text-muted);
+  padding: 10px 0 4px;
+  margin: 0;
+}
+
+.feed-load-retry {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.feed-load-retry:hover {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
 }
 </style>

@@ -50,12 +50,14 @@ export const api = {
   /* NOTIFICATIONS */
   getNotifications: (params) => client.get('/notifications', { params }),
   markNotificationsRead: (ids) => client.post('/notifications/read', { ids }),
+  markAllNotificationsRead: () => client.post('/notifications/read-all'),
+  deleteNotification: (id) => client.delete(`/notifications/${encodeURIComponent(id)}`),
 
   /* USERS */
   getProfile: (userId) => client.get(`/users/${userId}`),
   updateProfile: (data) => client.patch('/users/me', data),
   getMyFesses: (params) => client.get('/users/me/fesses', { params }),
-  getMyFollowing: () => client.get('/users/me/following'),
+  getMyFollowing: (params) => client.get('/users/me/following', { params }),
 
   /* UPLOAD */
   uploadMedia: (file, type) => {

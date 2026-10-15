@@ -18,6 +18,19 @@
       </div>
     </div>
 
+    <!-- Aksi: tandai semua sudah dibaca -->
+    <div v-if="!notifLoading && !notifError && notifications.length" class="notif-toolbar mb-4">
+      <button
+        type="button"
+        class="notif-toolbar-btn"
+        :disabled="!unreadCount || markingAllRead"
+        @click="markAllRead"
+      >
+        <CheckCheck :size="14" />
+        <span>Baca semua</span>
+      </button>
+    </div>
+
     <ContentSkeleton v-if="notifLoading" type="list" :count="3" label="Memuat aktivitas…" />
 
     <AppStateView
@@ -48,10 +61,32 @@
           <div class="notif-title-row">
             <span class="notif-title">{{ notif.title }}</span>
             <span class="notif-time">{{ notif.time }}</span>
+            <button
+              type="button"
+              class="notif-delete-btn"
+              title="Hapus notifikasi"
+              aria-label="Hapus notifikasi"
+              @click.stop="deleteNotification(notif)"
+              @keydown.enter.stop
+            >
+              <X :size="14" />
+            </button>
           </div>
           <p class="notif-desc">{{ notif.desc }}</p>
         </div>
       </div>
+
+      <!-- Lazy load: sentinel + status footer -->
+      <div ref="notifSentinel" class="notif-load-sentinel" aria-hidden="true"></div>
+      <p v-if="notifLoadingMore" class="notif-load-hint">Memuat lebih banyak…</p>
+      <button
+        v-else-if="notifLoadMoreError"
+        type="button"
+        class="notif-load-retry"
+        @click="loadMoreNotifications"
+      >
+        Coba lagi memuat
+      </button>
     </div>
 
     <!-- Empty State -->
@@ -76,11 +111,14 @@ import {
   Heart,
   MessageCircle,
   Flag,
+  CheckCheck,
+  X,
 } from 'lucide-vue-next';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import { api } from '../../api';
 import { formatRelativeTime, truncate } from '../../utils/format';
+import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 
 /**
  * `loading` / `error` are kept as optional props for backwards compatibility
@@ -187,17 +225,29 @@ function openNotification(notif) {
 
 const notifications = ref([]);
 const notifLoading = ref(false);
+const notifLoadingMore = ref(false);
+const notifLoadMoreError = ref(null);
 const notifError = ref(null);
+const notifTotal = ref(0);
+const markingAllRead = ref(false);
+const notifSentinel = ref(null);
 let requestSeq = 0;
+let notifPage = 1;
+
+const notifHasMore = computed(() => notifications.value.length < notifTotal.value);
+const unreadCount = computed(() => notifications.value.filter((n) => n.unread).length);
 
 async function loadNotifications() {
   const seq = ++requestSeq;
   notifLoading.value = true;
   notifError.value = null;
+  notifLoadMoreError.value = null;
   try {
-    const res = await api.getNotifications({ page: 1, limit: 50 });
+    const res = await api.getNotifications({ page: 1, limit: 20 });
     if (seq !== requestSeq) return;
     notifications.value = (res?.data || []).map(mapNotification);
+    notifTotal.value = res?.total ?? notifications.value.length;
+    notifPage = 1;
   } catch (e) {
     if (seq !== requestSeq) return;
     notifError.value = e;
@@ -206,6 +256,74 @@ async function loadNotifications() {
     if (seq === requestSeq) notifLoading.value = false;
   }
 }
+
+/** Lazy load halaman berikutnya pada daftar notifikasi. */
+async function loadMoreNotifications() {
+  if (notifLoading.value || notifLoadingMore.value || !notifHasMore.value) return;
+  const seq = requestSeq;
+  notifLoadingMore.value = true;
+  notifLoadMoreError.value = null;
+  try {
+    const nextPage = notifPage + 1;
+    const res = await api.getNotifications({ page: nextPage, limit: 20 });
+    if (seq !== requestSeq) return;
+    const seen = new Set(notifications.value.map((n) => String(n.id)));
+    const extra = (res?.data || [])
+      .filter((n) => !seen.has(String(n.id)))
+      .map(mapNotification);
+    notifications.value = [...notifications.value, ...extra];
+    notifTotal.value = res?.total ?? notifTotal.value;
+    notifPage = nextPage;
+  } catch (e) {
+    notifLoadMoreError.value = e;
+  } finally {
+    notifLoadingMore.value = false;
+  }
+}
+
+/** Tandai semua notifikasi sudah dibaca (optimistic). */
+async function markAllRead() {
+  if (markingAllRead.value || !unreadCount.value) return;
+  const prev = notifications.value.map((n) => n.unread);
+  notifications.value.forEach((n) => {
+    n.unread = false;
+  });
+  markingAllRead.value = true;
+  try {
+    await api.markAllNotificationsRead();
+  } catch {
+    notifications.value.forEach((n, idx) => {
+      n.unread = prev[idx];
+    });
+  } finally {
+    markingAllRead.value = false;
+  }
+}
+
+/** Hapus satu notifikasi supaya tidak menumpuk (optimistic). */
+async function deleteNotification(notif) {
+  const idx = notifications.value.findIndex((n) => String(n.id) === String(notif.id));
+  if (idx < 0) return;
+  const [removed] = notifications.value.splice(idx, 1);
+  notifTotal.value = Math.max(0, notifTotal.value - 1);
+  try {
+    await api.deleteNotification(notif.id);
+  } catch {
+    notifications.value.splice(idx, 0, removed);
+    notifTotal.value += 1;
+  }
+}
+
+/** Infinite scroll untuk daftar notifikasi (lazy load). */
+useInfiniteScroll(notifSentinel, {
+  onLoad: loadMoreNotifications,
+  canLoad: () =>
+    notifHasMore.value &&
+    !notifLoading.value &&
+    !notifLoadingMore.value &&
+    !notifLoadMoreError.value,
+  deps: () => [notifications.value.length, notifHasMore.value],
+});
 
 onMounted(loadNotifications);
 
@@ -256,6 +374,90 @@ const filteredNotifications = computed(() => {
 .segmented-btn.active {
   background: var(--shell-chip);
   color: var(--shell-text);
+}
+
+/* Toolbar notifikasi (baca semua) */
+.notif-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notif-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.notif-toolbar-btn:hover:not(:disabled) {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
+}
+
+.notif-toolbar-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Hapus notifikasi per kartu */
+.notif-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--shell-text-dim);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.notif-delete-btn:hover {
+  color: #ef4444;
+}
+
+/* Lazy-load footer notifikasi */
+.notif-load-sentinel {
+  height: 1px;
+  width: 100%;
+}
+
+.notif-load-hint {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--shell-text-muted);
+  padding: 10px 0 4px;
+  margin: 0;
+}
+
+.notif-load-retry {
+  display: block;
+  margin: 8px auto 0;
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-muted);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.notif-load-retry:hover {
+  color: var(--shell-text);
+  border-color: var(--shell-border-strong);
 }
 
 /* Notification stream list */

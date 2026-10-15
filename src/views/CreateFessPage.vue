@@ -229,6 +229,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases, mapBase } from '../composables/useBases';
 import { useTopics } from '../composables/useTopics';
+import { useFollowBase } from '../composables/useFollowBase';
 import { api } from '../api';
 import { validateFessContent, generateClientId } from '../utils/format';
 import { mapFessToPost, mapQuotedFess } from '../utils/fessMapper';
@@ -240,6 +241,7 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const { publish } = useFeedPosts();
+const { syncFollowing } = useFollowBase();
 
 // Form state
 const form = ref({
@@ -326,7 +328,7 @@ const availableBases = ref([]);
 async function loadAvailableBases() {
   try {
     if (authStore.isAuthenticated) {
-      const res = await api.getMyFollowing();
+      const res = await api.getMyFollowing({ limit: 100 });
       const list = (res?.data ?? []).map(mapBase);
       if (list.length) {
         availableBases.value = list;
@@ -467,6 +469,9 @@ async function publishFess() {
 
     // Publish through the API — the shared feed store picks up the response.
     await publish(payload);
+
+    // Kirim fess = otomatis mengikuti base tujuan (backend) — segarkan cache follow.
+    syncFollowing().catch(() => {});
 
     // Clear draft
     localStorage.removeItem('fess_draft');
