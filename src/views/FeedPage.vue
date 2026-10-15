@@ -95,6 +95,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases } from '../composables/useBases';
 import { useFollowBase } from '../composables/useFollowBase';
+import { useVisibilityRefresh } from '../composables/useVisibilityRefresh';
 import { useTheme } from '../composables/useTheme';
 
 /** UI filter enums (presentation config, not server data). */
@@ -127,6 +128,8 @@ const {
   followingError,
   reloadFollowing,
   loadMoreFollowing,
+  refresh,
+  refreshFollowing,
   toggleLike,
 } = useFeedPosts();
 const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
@@ -175,6 +178,16 @@ const activeFeedLoadMoreError = computed(() =>
 watch(homeTab, (tab) => {
   // Always refetch the following timeline so follow/unfollow stays in sync.
   if (tab === 'mengikuti') reloadFollowing().catch(() => {});
+});
+
+/**
+ * Sync ala native app: ketika tab/app kembali aktif setelah 60 detik,
+ * segarkan timeline yang sedang tampil secara senyap (tanpa skeleton).
+ */
+useVisibilityRefresh(() => {
+  if (activeNav.value !== 'home') return;
+  if (homeTab.value === 'mengikuti') refreshFollowing();
+  else refresh();
 });
 
 function onNavChange(key) {

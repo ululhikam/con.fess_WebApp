@@ -664,6 +664,7 @@ import { formatNumber } from '../../utils/format';
 import { mapBase } from '../../composables/useBases';
 import { useFollowBase } from '../../composables/useFollowBase';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
+import { useVisibilityRefresh } from '../../composables/useVisibilityRefresh';
 
 const props = defineProps({
   themeMode: { type: String, default: 'system' },
@@ -1003,6 +1004,37 @@ const hasBalance = computed(() => balance.value > 0);
 onMounted(() => {
   loadMyFesses();
   loadFollowing();
+});
+
+/** Refresh senyap halaman 1 (tanpa skeleton) untuk kedua daftar profil. */
+async function refreshMyFesses() {
+  try {
+    const res = await api.getMyFesses(myFessParams(1));
+    myFesses.value = (res?.data ?? []).map(mapFessToPost);
+    myFessQueryTotal.value = res?.total ?? myFesses.value.length;
+    if (myFessFilter.value === 'semua') myFessTotal.value = myFessQueryTotal.value;
+    myFessPage = 1;
+  } catch {
+    // Diamkan — data lama tetap ditampilkan.
+  }
+}
+
+async function refreshFollowingBases() {
+  try {
+    const res = await api.getMyFollowing(followingParams(1));
+    followingBases.value = (res?.data ?? []).map(mapBase).filter(Boolean);
+    followingQueryTotal.value = res?.total ?? followingBases.value.length;
+    followingPage = 1;
+    followingLoaded.value = true;
+  } catch {
+    // Diamkan — data lama tetap ditampilkan.
+  }
+}
+
+/** Sync ala native app: daftar profil disegarkan saat tab kembali aktif. */
+useVisibilityRefresh(() => {
+  refreshMyFesses();
+  refreshFollowingBases();
 });
 
 /* ---------- Settings Panel Navigation ---------- */

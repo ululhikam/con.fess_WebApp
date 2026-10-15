@@ -14,6 +14,7 @@
           :loading-more="homeFeedLoadingMore"
           :load-more-error="homeFeedLoadMoreError"
           @like="toggleLikePost"
+          @takeDown="handleTakeDownFess"
           @findMore="activeNav = 'search'"
           @retry="reloadHomeFeed"
           @loadMore="loadMoreHomeFeed"
@@ -172,6 +173,7 @@ import { useFollowBase } from '../composables/useFollowBase';
 import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases } from '../composables/useBases';
 import { useInfiniteScroll } from '../composables/useInfiniteScroll';
+import { useVisibilityRefresh } from '../composables/useVisibilityRefresh';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 
@@ -240,6 +242,8 @@ const {
   followingError,
   reloadFollowing,
   loadMoreFollowing,
+  refresh,
+  refreshFollowing,
   toggleLike,
 } = useFeedPosts();
 
@@ -284,6 +288,24 @@ function loadMoreHomeFeed() {
 function toggleLikePost(payload) {
   const targetId = typeof payload === 'object' && payload !== null ? payload.id : payload;
   Promise.resolve(toggleLike(targetId)).catch(() => {});
+}
+
+/**
+ * Take down (admin base): hapus fess terbit dari feed publik.
+ * Konfirmasi dulu karena permanen; server mencatat audit + memberi tahu author.
+ */
+async function handleTakeDownFess(id) {
+  if (!id) return;
+  const confirmed = window.confirm(
+    'Take down fess ini? Fess akan dihapus dari feed dan tidak bisa dikembalikan.'
+  );
+  if (!confirmed) return;
+  try {
+    await api.deleteFess(id);
+    await reloadHomeFeed();
+  } catch (e) {
+    window.alert(e?.message || 'Gagal melakukan take down. Coba lagi.');
+  }
 }
 
 /* Notifications State — loaded from GET /notifications */
@@ -334,13 +356,21 @@ function mapNotification(n) {
     type: 'type-pending',
     title: 'Notifikasi',
   };
+
+  // Label aktor ala Instagram: prefix nama user; handle base (@...) atau
+  // 'Anonim' tidak diulang karena teksnya sudah memuat konteks sendiri.
+  const rawActor = String(n.actor || '').trim();
+  const actorLabel =
+    rawActor && rawActor !== 'Anonim' && !rawActor.startsWith('@') ? `${rawActor} ` : '';
+  const desc = `${actorLabel}${n.text || ''}`.trim() || n.fess_content || '';
+
   return {
     id: n.id,
     category: pres.category,
     icon: pres.icon,
     type: pres.type,
     title: pres.title,
-    desc: n.text || n.fess_content || '',
+    desc,
     time: formatRelativeTime(n.created_at ?? Date.now()),
     unread: !n.read,
   };
@@ -436,6 +466,18 @@ function openAdminNotification(notif) {
   router.replace({ query: { ...route.query, tab: 'akun' } });
 }
 
+/** Refresh senyap notifikasi halaman 1 (tanpa skeleton). */
+async function refreshAdminNotifications() {
+  try {
+    const res = await api.getNotifications({ page: 1, limit: 20 });
+    notifItems.value = (res?.data ?? []).map(mapNotification);
+    notifTotal.value = res?.total ?? notifItems.value.length;
+    notifPage = 1;
+  } catch {
+    // Diamkan — data lama tetap ditampilkan.
+  }
+}
+
 /* Compose navigation */
 function openCompose() {
   router.push('/create');
@@ -445,6 +487,19 @@ onMounted(() => {
   reloadFeed().catch(() => {});
   ensureBasesLoaded().catch(() => {});
   loadNotifications();
+});
+
+/**
+ * Sync ala native app: saat tab/app kembali aktif, segarkan data yang sedang
+ * tampil secara senyap — feed home atau daftar notifikasi admin.
+ */
+useVisibilityRefresh(() => {
+  if (activeNav.value === 'home') {
+    if (homeTab.value === 'mengikuti') refreshFollowing();
+    else refresh();
+  } else if (activeNav.value === 'notif') {
+    refreshAdminNotifications();
+  }
 });
 </script>
 

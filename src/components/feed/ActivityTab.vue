@@ -119,6 +119,7 @@ import AppStateView from '../ui/AppStateView.vue';
 import { api } from '../../api';
 import { formatRelativeTime, truncate } from '../../utils/format';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
+import { useVisibilityRefresh } from '../../composables/useVisibilityRefresh';
 
 /**
  * `loading` / `error` are kept as optional props for backwards compatibility
@@ -185,8 +186,13 @@ function mapNotification(raw) {
     title: 'Notifikasi',
   };
 
-  const actor = raw.actor && raw.actor !== 'Anonim' ? `${raw.actor} ` : '';
-  let desc = `${actor}${raw.text || ''}`.trim() || 'Notifikasi baru.';
+  // Label aktor "ala Instagram": nama user di-prefix, tapi actor berupa handle
+  // base (@concern_fess) atau 'Anonim' tidak perlu ditampilkan dua kali.
+  const rawActor = String(raw.actor || '').trim();
+  const actorLabel =
+    rawActor && rawActor !== 'Anonim' && !rawActor.startsWith('@') ? `${rawActor} ` : '';
+
+  let desc = `${actorLabel}${raw.text || ''}`.trim() || 'Notifikasi baru.';
   if (raw.fess_content) desc += ` · “${truncate(raw.fess_content, 80)}”`;
 
   return {
@@ -314,6 +320,20 @@ async function deleteNotification(notif) {
   }
 }
 
+/** Refresh senyap halaman 1 (tanpa skeleton) — dipakai saat tab kembali aktif. */
+async function refreshNotifications() {
+  const seq = ++requestSeq; // batalkan lazy-load yang masih in-flight
+  try {
+    const res = await api.getNotifications({ page: 1, limit: 20 });
+    if (seq !== requestSeq) return;
+    notifications.value = (res?.data || []).map(mapNotification);
+    notifTotal.value = res?.total ?? notifications.value.length;
+    notifPage = 1;
+  } catch {
+    // Diamkan — data lama tetap ditampilkan.
+  }
+}
+
 /** Infinite scroll untuk daftar notifikasi (lazy load). */
 useInfiniteScroll(notifSentinel, {
   onLoad: loadMoreNotifications,
@@ -326,6 +346,9 @@ useInfiniteScroll(notifSentinel, {
 });
 
 onMounted(loadNotifications);
+
+/** Sync ala native app: notifikasi baru muncul saat tab kembali aktif. */
+useVisibilityRefresh(refreshNotifications, { staleMs: 30_000 });
 
 const filteredNotifications = computed(() => {
   if (props.modelValue === 'semua') return notifications.value;

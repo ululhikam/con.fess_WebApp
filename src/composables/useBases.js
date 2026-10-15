@@ -14,6 +14,10 @@ const loading = ref(false);
 const error = ref(null);
 const loaded = ref(false);
 let inflight = null;
+let lastFetchedAt = 0;
+
+/** Data direktori dianggap segar selama 90 detik (stale-while-revalidate). */
+const BASE_CACHE_TTL = 90_000;
 
 /** Normalize an API Base payload into the UI base model. */
 export function mapBase(raw) {
@@ -52,25 +56,42 @@ export function useBases() {
    * Fetch the base directory (optionally with API filters:
    * search, category, following, page, limit).
    */
-  async function fetchBases(params = {}) {
-    loading.value = true;
+  async function fetchBases(params = {}, { silent = false } = {}) {
+    if (!silent) loading.value = true;
     error.value = null;
     try {
       const res = await api.getBases({ limit: 100, ...params });
       bases.value = (res?.data || []).map(mapBase);
       loaded.value = true;
+      lastFetchedAt = Date.now();
       return bases.value;
     } catch (e) {
       error.value = e;
       throw e;
     } finally {
-      loading.value = false;
+      if (!silent) loading.value = false;
     }
   }
 
-  /** Fetch once, then serve from the module cache. */
+  /**
+   * Serve dari cache modul dengan pola stale-while-revalidate:
+   * - cache segar (< 90 dtk)  → langsung kembalikan cache;
+   * - cache basi              → kembalikan cache SEKARANG, refresh di belakang;
+   * - belum ada cache         → tunggu fetch pertama.
+   */
   function ensureLoaded() {
-    if (loaded.value && bases.value.length) return Promise.resolve(bases.value);
+    if (loaded.value && bases.value.length) {
+      const isStale = Date.now() - lastFetchedAt > BASE_CACHE_TTL;
+      if (isStale && !inflight) {
+        // Background refresh — senyap, error diabaikan agar UI tetap pakai cache lama.
+        inflight = fetchBases({}, { silent: true })
+          .catch(() => bases.value)
+          .finally(() => {
+            inflight = null;
+          });
+      }
+      return Promise.resolve(bases.value);
+    }
     if (!inflight) {
       inflight = fetchBases().finally(() => {
         inflight = null;

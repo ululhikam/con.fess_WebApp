@@ -147,6 +147,7 @@
           :is-admin="true"
           @approve="approveFess"
           @reject="rejectFess"
+          @take-down="takeDownFess"
         />
 
         <!-- Lazy load: sentinel + status footer -->
@@ -436,6 +437,32 @@
             ></textarea>
           </div>
 
+          <!-- Mode posting fess: moderasi manual vs auto post + filter NLP -->
+          <div class="form-group mt-3">
+            <span class="form-label">Mode Posting Fess</span>
+            <div class="post-mode-grid">
+              <label
+                class="post-mode-option"
+                :class="{ active: editForm.postMode === 'moderated' }"
+              >
+                <input v-model="editForm.postMode" type="radio" value="moderated" class="sr-only" />
+                <ShieldCheck :size="16" class="post-mode-icon" />
+                <span class="post-mode-text">
+                  <strong>Moderasi</strong>
+                  <small>Semua fess masuk antrean review admin</small>
+                </span>
+              </label>
+              <label class="post-mode-option" :class="{ active: editForm.postMode === 'auto' }">
+                <input v-model="editForm.postMode" type="radio" value="auto" class="sr-only" />
+                <Zap :size="16" class="post-mode-icon" />
+                <span class="post-mode-text">
+                  <strong>Auto Post</strong>
+                  <small>Langsung terbit, difilter NLP anti konten negatif</small>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <p v-if="editError" class="edit-error-text">{{ editError }}</p>
 
           <div class="modal-footer mt-4">
@@ -488,6 +515,7 @@ import {
   LogOut,
   MessageSquare,
   Upload,
+  Zap,
 } from 'lucide-vue-next';
 
 import { useAuthStore } from '../../stores/authStore';
@@ -645,7 +673,7 @@ async function loadProfile() {
 }
 
 /* ---------- Edit profil base (PATCH /bases/:handle/settings) ---------- */
-const editForm = ref({ name: '', bio: '', avatar: '' });
+const editForm = ref({ name: '', bio: '', avatar: '', postMode: 'moderated' });
 const editError = ref('');
 const isSavingProfile = ref(false);
 
@@ -655,6 +683,7 @@ function openEditProfile() {
     name: baseName.value,
     bio: baseBio.value,
     avatar: baseAvatarUrl.value || '',
+    postMode: base.value?.post_mode || 'moderated',
   };
   showEditModal.value = true;
 }
@@ -681,6 +710,7 @@ async function saveBaseProfile() {
       name: editForm.value.name.trim(),
       bio: editForm.value.bio.trim(),
       avatar: editForm.value.avatar || null,
+      postMode: editForm.value.postMode,
     });
     showEditModal.value = false;
   } catch (err) {
@@ -715,6 +745,23 @@ async function rejectFess(id) {
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
     actionError.value = e?.message || 'Gagal menolak fess.';
+  }
+}
+
+/**
+ * Take down (admin base): hapus fess yang sudah terbit dari feed publik.
+ * Konfirmasi dulu karena permanen; backend mencatat audit + notif author.
+ */
+async function takeDownFess(id) {
+  if (!window.confirm('Take down fess ini? Fess akan dihapus dan tidak bisa dikembalikan.')) {
+    return;
+  }
+  actionError.value = '';
+  try {
+    await api.deleteFess(id);
+    await Promise.all([loadFesses(), loadStats()]);
+  } catch (e) {
+    actionError.value = e?.message || 'Gagal melakukan take down.';
   }
 }
 
@@ -1504,6 +1551,60 @@ async function handleAdminLogout() {
 .form-input:focus,
 .form-textarea:focus {
   border-color: var(--shell-sub-accent);
+}
+
+/* Mode posting fess (moderasi vs auto post + NLP) */
+.post-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.post-mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--shell-border);
+  background: var(--shell-card);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.post-mode-option.active {
+  border-color: var(--shell-sub-accent);
+  background: var(--shell-chip);
+}
+
+.post-mode-icon {
+  color: var(--shell-sub-accent);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.post-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.post-mode-text strong {
+  font-size: 12.5px;
+  color: var(--shell-text);
+}
+
+.post-mode-text small {
+  font-size: 11px;
+  color: var(--shell-text-muted);
+  line-height: 1.35;
+}
+
+@media (max-width: 480px) {
+  .post-mode-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modal-footer {

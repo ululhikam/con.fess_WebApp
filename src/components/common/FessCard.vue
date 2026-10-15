@@ -35,6 +35,16 @@
           <span>Story</span>
         </span>
 
+        <!-- Indikasi filter NLP (mode auto post) — hanya terlihat admin base -->
+        <span
+          v-if="isAdmin && post.autoFlagged"
+          class="badge-subtle badge-nlp"
+          :title="`Terindikasi filter NLP: ${post.flagReason || 'konten negatif'}`"
+        >
+          <ShieldAlert :size="12" />
+          <span>NLP</span>
+        </span>
+
         <!-- Status Badge — pemilik base (atau Super Admin), plus daftar Fess Saya -->
         <span
           v-if="showStatusBadge"
@@ -46,6 +56,18 @@
           <X v-else :size="12" />
           <span>{{ statusBadgeLabel }}</span>
         </span>
+
+        <!-- TAKE DOWN (admin base): turunkan fess terbit dari feed & hapus -->
+        <button
+          v-if="canTakeDown"
+          type="button"
+          class="btn-takedown"
+          title="Take down fess ini"
+          aria-label="Take down fess"
+          @click="$emit('takeDown', post.id)"
+        >
+          <Trash2 :size="13" />
+        </button>
 
         <!-- LAPORKAN KONTEN (FLAG BUTTON) -->
         <button
@@ -450,6 +472,8 @@ import {
   Maximize2,
   ChevronLeft,
   ChevronRight,
+  ShieldAlert,
+  Trash2,
 } from 'lucide-vue-next';
 import ReportFessModal from './ReportFessModal.vue';
 import { api } from '../../api';
@@ -481,9 +505,23 @@ const emit = defineEmits([
   'report',
   'approve',
   'reject',
+  'takeDown',
 ]);
 
 const authStore = useAuthStore();
+
+/**
+ * True bila fess berasal dari base yang dikelola user (admin base tsb atau
+ * Super Admin) — dipakai badge status, badge NLP, dan tombol take down.
+ */
+const isManagedBasePost = computed(() => {
+  if (!props.post?.handle) return false;
+  if (authStore.user?.role === 'Super Admin') return true;
+
+  const postHandle = String(props.post.handle).replace(/^@/, '').toLowerCase();
+  const managed = authStore.user?.managedBases || [];
+  return managed.some((h) => String(h).replace(/^@/, '').toLowerCase() === postHandle);
+});
 
 /**
  * Badge status "Terbit"/"Antrean"/"Ditolak" hanya terlihat oleh yang memegang
@@ -494,16 +532,13 @@ const showStatusBadge = computed(() => {
   if (!props.post?.status) return false;
   if (props.showOwnStatus) return true;
   if (!props.isAdmin) return false;
-  if (authStore.user?.role === 'Super Admin') return true;
-
-  const postHandle = String(props.post?.handle || '')
-    .replace(/^@/, '')
-    .toLowerCase();
-  if (!postHandle) return false;
-
-  const managed = authStore.user?.managedBases || [];
-  return managed.some((h) => String(h).replace(/^@/, '').toLowerCase() === postHandle);
+  return isManagedBasePost.value;
 });
+
+/** Take down hanya untuk admin base yang memegang fess ber-status terbit. */
+const canTakeDown = computed(
+  () => props.isAdmin && props.post?.status === 'approved' && isManagedBasePost.value
+);
 
 const statusBadgeLabel = computed(() => {
   if (props.post?.status === 'approved') return 'Terbit';
@@ -941,6 +976,30 @@ function formatCount(num) {
 .badge-rejected {
   background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
+}
+
+.badge-nlp {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px dashed rgba(239, 68, 68, 0.45);
+}
+
+.btn-takedown {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.btn-takedown:hover {
+  color: #fff;
+  background: #ef4444;
 }
 
 .btn-flag-report {

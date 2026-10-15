@@ -94,6 +94,9 @@ export function mapFessToPost(f) {
     template: f.template || 'default',
     scheduledAt: f.scheduled_at ?? null,
     quotedFess: f.quoted_fess ? mapQuotedFess(f.quoted_fess) : null,
+    // Hasil filter NLP saat mode auto post (dipakai badge admin).
+    autoFlagged: f.auto_flagged ?? f.autoFlagged ?? false,
+    flagReason: f.flag_reason ?? f.flagReason ?? null,
     avatarBg: colorForHandle(handle),
     avatarText: clean.slice(0, 2).toUpperCase() || 'FS',
   };

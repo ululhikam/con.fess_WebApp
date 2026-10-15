@@ -16,6 +16,9 @@ import { mapFessToPost } from '../utils/fessMapper';
 /** Rows per page — the rest stream in via the infinite-scroll sentinel. */
 const PAGE_SIZE = 20;
 
+/** Timeline dianggap segar 60 dtk; setelah itu di-refresh senyap saat dipakai. */
+const FEED_CACHE_TTL = 60_000;
+
 const posts = ref([]);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -25,6 +28,7 @@ let postsPage = 1;
 let postsTotal = 0;
 let loaded = false;
 let inflight = null;
+let lastFetchedAt = 0;
 
 /** "Mengikuti" timeline: fess dari base yang diikuti user (server-filtered). */
 const followingPosts = ref([]);
@@ -36,6 +40,7 @@ let followingPage = 1;
 let followingTotal = 0;
 let followingLoaded = false;
 let followingInflight = null;
+let followingLastFetchedAt = 0;
 
 /** Append-only merge that keeps ids unique across pages. */
 function appendUnique(list, raw, seen) {
@@ -56,34 +61,53 @@ export function useFeedPosts() {
   const followingHasMore = computed(() => followingPosts.value.length < followingTotal);
 
   /** (Re)load the timeline from the API (first page). */
-  async function reload(params = {}) {
-    loading.value = true;
+  async function reload(params = {}, { silent = false } = {}) {
+    if (!silent) loading.value = true;
     error.value = null;
-    loadMoreError.value = null;
+    if (!silent) loadMoreError.value = null;
     try {
       const res = await api.getFesses({ sort: 'newest', limit: PAGE_SIZE, page: 1, ...params });
       posts.value = (res?.data || []).map(mapFessToPost);
       postsPage = 1;
       postsTotal = res?.total ?? posts.value.length;
       loaded = true;
+      lastFetchedAt = Date.now();
       return posts.value;
     } catch (e) {
-      error.value = e;
+      if (!silent) error.value = e;
       throw e;
     } finally {
-      loading.value = false;
+      if (!silent) loading.value = false;
     }
   }
 
-  /** Fetch once, then serve from the module cache. */
+  /**
+   * Serve dari cache modul (stale-while-revalidate):
+   * cache segar → langsung; cache basi → pakai sekarang + refresh senyap.
+   */
   function ensureLoaded(params = {}) {
-    if (loaded) return Promise.resolve(posts.value);
+    if (loaded) {
+      const isStale = Date.now() - lastFetchedAt > FEED_CACHE_TTL;
+      if (isStale && !inflight) {
+        inflight = reload(params, { silent: true })
+          .catch(() => posts.value)
+          .finally(() => {
+            inflight = null;
+          });
+      }
+      return Promise.resolve(posts.value);
+    }
     if (!inflight) {
       inflight = reload(params).finally(() => {
         inflight = null;
       });
     }
     return inflight;
+  }
+
+  /** Refresh senyap (tanpa skeleton) — dipakai saat tab kembali aktif. */
+  function refresh(params = {}) {
+    return reload(params, { silent: true }).catch(() => posts.value);
   }
 
   /** Load the next page of the main timeline (lazy load). */
@@ -112,10 +136,10 @@ export function useFeedPosts() {
   }
 
   /** (Re)load the "Mengikuti" timeline — only followed bases. */
-  async function reloadFollowing(params = {}) {
-    followingLoading.value = true;
+  async function reloadFollowing(params = {}, { silent = false } = {}) {
+    if (!silent) followingLoading.value = true;
     followingError.value = null;
-    followingLoadMoreError.value = null;
+    if (!silent) followingLoadMoreError.value = null;
     try {
       const res = await api.getFesses({
         sort: 'newest',
@@ -128,24 +152,40 @@ export function useFeedPosts() {
       followingPage = 1;
       followingTotal = res?.total ?? followingPosts.value.length;
       followingLoaded = true;
+      followingLastFetchedAt = Date.now();
       return followingPosts.value;
     } catch (e) {
-      followingError.value = e;
+      if (!silent) followingError.value = e;
       throw e;
     } finally {
-      followingLoading.value = false;
+      if (!silent) followingLoading.value = false;
     }
   }
 
-  /** Fetch the following timeline once, then serve from the module cache. */
+  /** Cache modul + stale-while-revalidate untuk timeline "Mengikuti". */
   function ensureFollowingLoaded(params = {}) {
-    if (followingLoaded) return Promise.resolve(followingPosts.value);
+    if (followingLoaded) {
+      const isStale = Date.now() - followingLastFetchedAt > FEED_CACHE_TTL;
+      if (isStale && !followingInflight) {
+        followingInflight = reloadFollowing(params, { silent: true })
+          .catch(() => followingPosts.value)
+          .finally(() => {
+            followingInflight = null;
+          });
+      }
+      return Promise.resolve(followingPosts.value);
+    }
     if (!followingInflight) {
       followingInflight = reloadFollowing(params).finally(() => {
         followingInflight = null;
       });
     }
     return followingInflight;
+  }
+
+  /** Refresh senyap timeline "Mengikuti" — dipakai saat tab kembali aktif. */
+  function refreshFollowing(params = {}) {
+    return reloadFollowing(params, { silent: true }).catch(() => followingPosts.value);
   }
 
   /** Load the next page of the "Mengikuti" timeline (lazy load). */
@@ -230,6 +270,7 @@ export function useFeedPosts() {
     reload,
     ensureLoaded,
     loadMore,
+    refresh,
     followingPosts: followingFeedPosts,
     followingLoading,
     followingLoadingMore,
@@ -239,6 +280,7 @@ export function useFeedPosts() {
     reloadFollowing,
     ensureFollowingLoaded,
     loadMoreFollowing,
+    refreshFollowing,
     toggleLike,
     publish,
   };

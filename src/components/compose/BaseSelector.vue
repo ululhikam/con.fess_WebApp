@@ -15,14 +15,20 @@
           :style="{ backgroundColor: selectedBase?.color }"
           v-if="selectedBase"
         >
-          {{ selectedBase.avatar }}
+          <img
+            v-if="avatarImage(selectedBase)"
+            :src="avatarImage(selectedBase)"
+            alt=""
+            class="base-selector__avatar-img"
+          />
+          <template v-else>{{ avatarText(selectedBase) }}</template>
         </span>
         <span class="base-selector__avatar placeholder" v-else>
           <MessageSquare :size="16" />
         </span>
         <div class="base-selector__info">
           <span class="base-selector__handle">{{ selectedBase?.handle || 'Pilih base fess' }}</span>
-          <span class="base-selector__name" v-if="selectedBase">{{ selectedBase.name }}</span>
+          <span class="base-selector__name" v-if="selectedBase">{{ selectedBase.name || selectedBase.handle }}</span>
         </div>
       </div>
       <ChevronDown :size="18" class="base-selector__chevron" :class="{ rotated: open }" />
@@ -59,11 +65,17 @@
             @mousedown.prevent
           >
             <span class="base-selector__item-avatar" :style="{ backgroundColor: base.color }">
-              {{ base.avatar }}
+              <img
+                v-if="avatarImage(base)"
+                :src="avatarImage(base)"
+                alt=""
+                class="base-selector__avatar-img"
+              />
+              <template v-else>{{ avatarText(base) }}</template>
             </span>
             <div class="base-selector__item-info">
               <span class="base-selector__item-handle">{{ base.handle }}</span>
-              <span class="base-selector__item-name">{{ base.name }}</span>
+              <span class="base-selector__item-name">{{ base.name || base.handle }}</span>
             </div>
             <Check :size="16" v-if="modelValue === base.handle" class="base-selector__check" />
           </button>
@@ -91,6 +103,23 @@ const open = ref(false);
 const searchQuery = ref('');
 
 const selectedBase = computed(() => props.bases.find((b) => b.handle === props.modelValue));
+
+/**
+ * Avatar base bisa berupa URL/data-URL (foto profil) ATAU inisial teks
+ * (mis. "BA"). Dirender sebagai teks, data-URL base64 tampak seperti
+ * deretan id acak — jadi foto harus di-render sebagai <img>.
+ */
+function avatarImage(base) {
+  const v = base?.avatar;
+  if (typeof v !== 'string') return '';
+  return /^(data:image\/|https?:\/\/|\/)/i.test(v) ? v : '';
+}
+
+function avatarText(base) {
+  if (avatarImage(base)) return '';
+  const raw = base?.avatar || base?.initial || base?.name || base?.handle || 'BA';
+  return String(raw).replace(/^@/, '').slice(0, 2).toUpperCase() || 'BA';
+}
 
 const filteredBases = computed(() => {
   if (!searchQuery.value) return props.bases;
@@ -170,6 +199,14 @@ function handleOutsideClick(e) {
 .base-selector__avatar.placeholder {
   background: var(--bg-inset);
   color: var(--text-muted);
+}
+
+.base-selector__avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
 }
 
 .base-selector__info {
