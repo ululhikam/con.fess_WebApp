@@ -74,6 +74,21 @@ export const useAuthStore = defineStore('auth', {
       return this.user;
     },
 
+    /**
+     * Complete a session started outside the SPA (Google OAuth redirect):
+     * store the JWT, then load the profile from the backend.
+     */
+    async loginWithToken(token) {
+      this.token = token;
+      localStorage.setItem('fess_token', token);
+      try {
+        return await this.fetchMe();
+      } catch (err) {
+        this.clearSession();
+        throw err;
+      }
+    },
+
     async registerUser(payload) {
       const res = await api.registerUser(payload);
       this.setSession(res);

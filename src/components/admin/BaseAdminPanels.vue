@@ -29,113 +29,79 @@
            1. KONEKSI MEDSOS (Instagram, Twitter, Telegram)
            ======================================================== -->
       <template v-if="modelValue === 'medsos'">
-        <!-- Instagram Graph API Card -->
-        <div class="admin-feature-card">
-          <div class="card-top-header">
-            <div class="brand-badge ig-badge">
-              <Instagram :size="22" />
-            </div>
-            <div>
-              <div class="font-bold text-sm">Instagram Graph API</div>
-              <div class="text-xs text-muted">Akun: {{ baseIgAccount }} • Status Terhubung</div>
-            </div>
-            <span class="status-online-pill">AKTIF</span>
-          </div>
+        <ContentSkeleton v-if="connectionsLoading" type="list" :count="3" label="Memuat koneksi…" />
 
-          <div class="card-toggles-list mt-4">
-            <div class="toggle-row">
-              <div>
-                <div class="toggle-title">Auto-Post ke Instagram Story</div>
-                <div class="toggle-desc">Render fess yang disetujui ke canvas Story 1080x1920</div>
+        <AppStateView
+          v-else-if="connectionsError"
+          variant="error"
+          title="Gagal memuat koneksi"
+          description="Tidak bisa mengambil status koneksi medsos dari server."
+          action-label="Coba lagi"
+          @action="loadConnections"
+        />
+
+        <template v-else>
+          <div
+            v-for="(conn, i) in connections"
+            :key="conn.id"
+            class="admin-feature-card"
+            :class="{ 'mt-4': i > 0 }"
+          >
+            <div class="card-top-header">
+              <div class="brand-badge" :class="badgeClass(conn.id)">
+                <Instagram v-if="conn.id === 'instagram'" :size="22" />
+                <Twitter v-else-if="conn.id === 'twitter'" :size="20" />
+                <Send v-else :size="20" />
               </div>
-              <input v-model="igSettings.autoStory" type="checkbox" class="toggle-switch" />
-            </div>
-
-            <div class="toggle-row mt-3">
               <div>
-                <div class="toggle-title">Auto-Post ke Instagram Feed (Carousel)</div>
-                <div class="toggle-desc">Posting fess teks panjang sebagai album foto 1080x1080</div>
+                <div class="font-bold text-sm">{{ conn.name }}</div>
+                <div class="text-xs text-muted">
+                  {{ conn.connected && conn.account_handle ? 'Akun: ' + conn.account_handle : 'Belum terhubung' }}
+                </div>
               </div>
-              <input v-model="igSettings.autoFeed" type="checkbox" class="toggle-switch" />
-            </div>
-
-            <div class="toggle-row mt-3">
-              <div>
-                <div class="toggle-title">Sertakan Watermark Base di Pojok</div>
-                <div class="toggle-desc">Menampilkan handle {{ baseHandle }} di pojok kanan bawah gambar</div>
-              </div>
-              <input v-model="igSettings.watermark" type="checkbox" class="toggle-switch" />
-            </div>
-          </div>
-
-          <div class="canvas-style-selector mt-4">
-            <label class="text-xs font-bold text-muted block mb-2">Tema Desain Gambar Story:</label>
-            <div class="presets-grid">
-              <button
-                v-for="st in STORY_STYLES"
-                :key="st.id"
-                type="button"
-                class="preset-style-btn"
-                :class="{ active: igSettings.storyTheme === st.id }"
-                @click="igSettings.storyTheme = st.id"
+              <span
+                class="status-online-pill"
+                :class="{ 'status-idle-pill': !conn.connected }"
               >
-                {{ st.label }}
+                {{ conn.connected ? 'AKTIF' : 'NONAKTIF' }}
+              </span>
+            </div>
+
+            <div class="form-group mt-3">
+              <label class="text-xs font-bold text-muted">
+                Akun / Channel {{ platformLabel(conn.id) }}:
+              </label>
+              <input
+                v-model="connectionHandles[conn.id]"
+                type="text"
+                class="admin-input-control text-xs mt-1"
+                :placeholder="conn.id === 'telegram' ? 'https://t.me/channel_base' : '@username_ig_base'"
+              />
+            </div>
+
+            <div class="mt-3 flex justify-end">
+              <button
+                type="button"
+                class="btn-test-action"
+                :disabled="connectionBusy === conn.id"
+                @click="toggleConnection(conn)"
+              >
+                {{
+                  connectionBusy === conn.id
+                    ? 'Memproses…'
+                    : conn.connected
+                      ? 'Putuskan Koneksi'
+                      : 'Hubungkan'
+                }}
               </button>
             </div>
           </div>
 
-          <!-- Test Post Action -->
-          <div class="mt-5 pt-3 border-t border-subtle flex items-center justify-between">
-            <span class="text-xs text-muted">Token kadaluarsa: 58 hari lagi</span>
-            <button
-              type="button"
-              class="btn-test-action"
-              :disabled="isTestingIg"
-              @click="runTestPostIg"
-            >
-              <Send :size="13" />
-              <span>{{ isTestingIg ? 'Mengirim Test Story...' : 'Uji Coba Kirim Test Post' }}</span>
-            </button>
-          </div>
-
-          <div v-if="testIgSuccess" class="alert-success-box mt-3">
+          <div v-if="connectionNotice" class="alert-success-box mt-4">
             <CheckCircle2 :size="16" />
-            <span>✓ Test post berhasil terkirim ke Instagram Story {{ baseIgAccount }}!</span>
+            <span>{{ connectionNotice }}</span>
           </div>
-        </div>
-
-        <!-- Bot Twitter / X Card -->
-        <div class="admin-feature-card mt-4">
-          <div class="card-top-header">
-            <div class="brand-badge x-badge">
-              <Twitter :size="20" />
-            </div>
-            <div>
-              <div class="font-bold text-sm">Bot Twitter / X Auto-Tweet</div>
-              <div class="text-xs text-muted">@codememfess_bot • Webhook Ready</div>
-            </div>
-            <span class="status-online-pill">AKTIF</span>
-          </div>
-
-          <div class="form-group mt-3">
-            <label class="text-xs font-bold text-muted">Hashtag Wajib Auto-Tweet:</label>
-            <input v-model="twitterHashtags" type="text" class="admin-input-control text-xs mt-1" />
-          </div>
-        </div>
-
-        <!-- Telegram Webhook Card -->
-        <div class="admin-feature-card mt-4">
-          <div class="card-top-header">
-            <div class="brand-badge tg-badge">
-              <Send :size="20" />
-            </div>
-            <div>
-              <div class="font-bold text-sm">Telegram Channel Webhook</div>
-              <div class="text-xs text-muted">https://t.me/codememfess • Alert Pengelola</div>
-            </div>
-            <span class="status-online-pill">AKTIF</span>
-          </div>
-        </div>
+        </template>
       </template>
 
       <!-- ========================================================
@@ -143,155 +109,175 @@
            ======================================================== -->
       <!-- SALDO -->
       <template v-else-if="modelValue === 'keuangan_saldo'">
-        <div class="finance-hero-banner">
-          <div class="text-xs uppercase font-bold text-muted">TOTAL SALDO TREASURY BASE</div>
-          <div class="text-3xl font-black mt-1 text-white">Rp {{ treasuryBalance.toLocaleString('id-ID') }}</div>
-          <div class="text-xs text-muted mt-1">Setara dengan 24.580 $CLUB Token</div>
-        </div>
+        <ContentSkeleton v-if="treasuryLoading" type="list" :count="2" label="Memuat saldo…" />
 
-        <div class="finance-breakdown-cards mt-4">
-          <div class="breakdown-card">
-            <span class="bd-label">Saldo Tersedia Ditarik</span>
-            <span class="bd-val text-green-400">Rp {{ (treasuryBalance - 208000).toLocaleString('id-ID') }}</span>
-          </div>
-          <div class="breakdown-card">
-            <span class="bd-label">Saldo Ditahan (Escrow)</span>
-            <span class="bd-val text-amber-400">Rp 208.000</span>
-          </div>
-        </div>
+        <AppStateView
+          v-else-if="treasuryError"
+          variant="error"
+          title="Gagal memuat saldo"
+          description="Tidak bisa mengambil saldo treasury dari server."
+          action-label="Coba lagi"
+          @action="loadTreasury"
+        />
 
-        <div class="section-title-sm mt-6 mb-3">Arus Kas Treasury Terbaru</div>
-        <div class="transaction-list">
-          <div v-for="t in RECENT_TRANSACTIONS" :key="t.id" class="trx-item">
-            <div class="trx-left">
-              <div class="trx-desc font-bold">{{ t.desc }}</div>
-              <div class="trx-date text-xs text-muted">{{ t.date }} • {{ t.id }}</div>
+        <template v-else>
+          <div class="finance-hero-banner">
+            <div class="text-xs uppercase font-bold text-muted">TOTAL SALDO TREASURY BASE</div>
+            <div class="text-3xl font-black mt-1 text-white">
+              {{ (treasury?.balance ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
             </div>
-            <div class="trx-amount font-black" :class="t.type === 'in' ? 'text-green-400' : 'text-red-400'">
-              {{ t.type === 'in' ? '+' : '-' }}Rp {{ t.amount.toLocaleString('id-ID') }}
+            <div class="text-xs text-muted mt-1">
+              Saldo tersedia untuk dicairkan ke rekening bank / e-wallet.
             </div>
           </div>
-        </div>
+
+          <div class="finance-breakdown-cards mt-4">
+            <div class="breakdown-card">
+              <span class="bd-label">Saldo Tersedia Ditarik</span>
+              <span class="bd-val text-green-400">
+                {{ (treasury?.balance ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
+              </span>
+            </div>
+            <div class="breakdown-card">
+              <span class="bd-label">Total Pendapatan Terkumpul</span>
+              <span class="bd-val text-amber-400">
+                {{ (treasury?.revenue ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="section-title-sm mt-6 mb-3">Arus Kas Treasury</div>
+          <div class="transaction-list">
+            <p class="text-xs text-muted">
+              Riwayat transaksi per-item belum tersedia dari server. Angka di atas dihitung
+              langsung dari data treasury akun base-mu.
+            </p>
+          </div>
+        </template>
       </template>
 
       <!-- PENDAPATAN -->
       <template v-else-if="modelValue === 'keuangan_pendapatan'">
-        <div class="income-hero-card">
-          <div class="text-xs uppercase font-bold text-muted">PENDAPATAN BULAN INI</div>
-          <div class="text-3xl font-black mt-1 text-green-400">Rp 1.120.000</div>
-          <div class="text-xs text-muted mt-1">+28.4% dibandingkan bulan lalu</div>
-        </div>
+        <ContentSkeleton v-if="treasuryLoading" type="list" :count="1" label="Memuat pendapatan…" />
 
-        <div class="section-title-sm mt-6 mb-3">Sumber Pendapatan Komunitas</div>
-        <div class="income-sources-list">
-          <div class="income-source-card">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-sm">Fess Prioritas (Tanpa Antrean)</span>
-              <span class="font-black text-sm text-white">Rp 820.000</span>
+        <AppStateView
+          v-else-if="treasuryError"
+          variant="error"
+          title="Gagal memuat pendapatan"
+          description="Tidak bisa mengambil data pendapatan dari server."
+          action-label="Coba lagi"
+          @action="loadTreasury"
+        />
+
+        <template v-else>
+          <div class="income-hero-card">
+            <div class="text-xs uppercase font-bold text-muted">TOTAL PENDAPATAN TERKUMPUL</div>
+            <div class="text-3xl font-black mt-1 text-green-400">
+              {{ (treasury?.revenue ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
             </div>
-            <div class="progress-bar-wrap mt-2">
-              <div class="progress-bar-fill" style="width: 73%" />
+            <div class="text-xs text-muted mt-1">
+              Akumulasi dari fess prioritas dan tip untuk base-mu.
             </div>
-            <div class="text-xs text-muted mt-1">82 transaksi confess prioritas</div>
           </div>
 
-          <div class="income-source-card mt-3">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-sm">Tip Sukarela Pengirim Anonim</span>
-              <span class="font-black text-sm text-white">Rp 240.000</span>
-            </div>
-            <div class="progress-bar-wrap mt-2">
-              <div class="progress-bar-fill" style="width: 21%" />
-            </div>
-            <div class="text-xs text-muted mt-1">24 tip dari pembaca setia</div>
-          </div>
-
-          <div class="income-source-card mt-3">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-sm">Sponsorship / Iklan Terverifikasi</span>
-              <span class="font-black text-sm text-white">Rp 60.000</span>
-            </div>
-            <div class="progress-bar-wrap mt-2">
-              <div class="progress-bar-fill" style="width: 6%" />
-            </div>
-            <div class="text-xs text-muted mt-1">2 penempatan banner partner komunitas</div>
-          </div>
-        </div>
+          <p class="text-xs text-muted mt-4">
+            Rincian sumber pendapatan per kategori belum tersedia dari server — angka di atas
+            berasal dari data treasury akunmu.
+          </p>
+        </template>
       </template>
 
       <!-- PENARIKAN (PAYOUT) -->
       <template v-else-if="modelValue === 'keuangan_penarikan'">
-        <div class="payout-balance-box">
-          <span class="text-xs text-muted font-bold">Saldo Siap Dicairkan:</span>
-          <span class="text-2xl font-black text-white mt-1">Rp {{ (treasuryBalance - 208000).toLocaleString('id-ID') }}</span>
-        </div>
+        <ContentSkeleton v-if="treasuryLoading" type="list" :count="1" label="Memuat saldo…" />
 
-        <form class="payout-form mt-5" @submit.prevent="submitPayout">
-          <div class="form-group">
-            <label class="form-label">Nominal Penarikan (Rp)</label>
-            <input
-              v-model="payoutForm.amount"
-              type="number"
-              min="50000"
-              :max="treasuryBalance - 208000"
-              class="admin-input-control"
-              placeholder="Minimal Rp 50.000"
-              required
-            />
+        <AppStateView
+          v-else-if="treasuryError"
+          variant="error"
+          title="Gagal memuat saldo"
+          description="Tidak bisa mengambil saldo treasury dari server."
+          action-label="Coba lagi"
+          @action="loadTreasury"
+        />
+
+        <template v-else>
+          <div class="payout-balance-box">
+            <span class="text-xs text-muted font-bold">Saldo Siap Dicairkan:</span>
+            <span class="text-2xl font-black text-white mt-1">
+              {{ (treasury?.balance ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
+            </span>
           </div>
 
-          <div class="payout-quick-amounts mt-2">
-            <button
-              v-for="amt in [250000, 500000, 1000000]"
-              :key="amt"
-              type="button"
-              class="quick-amt-btn"
-              @click="payoutForm.amount = amt"
-            >
-              Rp {{ (amt / 1000).toLocaleString() }}K
-            </button>
-            <button
-              type="button"
-              class="quick-amt-btn all-in"
-              @click="payoutForm.amount = treasuryBalance - 208000"
-            >
-              Semua Saldo
-            </button>
-          </div>
-
-          <div class="form-group mt-4">
-            <label class="form-label">Tujuan Transfer</label>
-            <select v-model="payoutForm.channel" class="admin-input-control">
-              <option value="BCA">BCA - 8201928190 (a.n Admin Base)</option>
-              <option value="Mandiri">Mandiri - 137000918290 (a.n Admin Base)</option>
-              <option value="BRI">BRI - 019201928190 (a.n Admin Base)</option>
-              <option value="GoPay">GoPay - 081234567890</option>
-              <option value="OVO">OVO - 081234567890</option>
-              <option value="Dana">Dana - 081234567890</option>
-            </select>
-          </div>
-
-          <div class="payout-notes mt-4">
-            <div class="text-xs text-muted flex justify-between">
-              <span>Biaya Administrasi:</span>
-              <span class="font-bold text-green-400">GRATIS</span>
+          <form class="payout-form mt-5" @submit.prevent="submitPayout">
+            <div class="form-group">
+              <label class="form-label">Nominal Penarikan ({{ treasury?.currency || '$CLUB' }})</label>
+              <input
+                v-model="payoutForm.amount"
+                type="number"
+                min="1"
+                :max="treasury?.balance ?? 0"
+                class="admin-input-control"
+                placeholder="contoh: 500"
+                required
+              />
             </div>
-            <div class="text-xs text-muted flex justify-between mt-1">
-              <span>Estimasi Masuk Rekening:</span>
-              <span class="font-bold">1x24 Jam Kerja</span>
+
+            <div v-if="payoutQuickAmounts.length" class="payout-quick-amounts mt-2">
+              <button
+                v-for="amt in payoutQuickAmounts"
+                :key="amt"
+                type="button"
+                class="quick-amt-btn"
+                @click="payoutForm.amount = amt"
+              >
+                {{ amt.toLocaleString('id-ID') }}
+              </button>
+              <button
+                type="button"
+                class="quick-amt-btn all-in"
+                @click="payoutForm.amount = Math.floor(treasury?.balance ?? 0)"
+              >
+                Semua Saldo
+              </button>
             </div>
+
+            <div class="form-group mt-4">
+              <label class="form-label">Tujuan Transfer</label>
+              <input
+                v-model="payoutForm.destination"
+                type="text"
+                class="admin-input-control"
+                placeholder="contoh: BCA 8201928190 / GoPay 0812xxxx"
+                required
+              />
+            </div>
+
+            <div class="payout-notes mt-4">
+              <div class="text-xs text-muted flex justify-between">
+                <span>Biaya Administrasi:</span>
+                <span class="font-bold text-green-400">GRATIS</span>
+              </div>
+              <div class="text-xs text-muted flex justify-between mt-1">
+                <span>Estimasi Masuk Rekening:</span>
+                <span class="font-bold">1x24 Jam Kerja</span>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-submit-payout mt-5" :disabled="isSubmittingPayout">
+              <Coins :size="16" />
+              <span>{{ isSubmittingPayout ? 'Memproses Pengajuan...' : 'Ajukan Penarikan Dana' }}</span>
+            </button>
+          </form>
+
+          <div v-if="payoutError" class="alert-error-box mt-4">
+            <span>{{ payoutError }}</span>
           </div>
 
-          <button type="submit" class="btn-submit-payout mt-5" :disabled="isSubmittingPayout">
-            <Coins :size="16" />
-            <span>{{ isSubmittingPayout ? 'Memproses Pengajuan...' : 'Ajukan Penarikan Dana' }}</span>
-          </button>
-        </form>
-
-        <div v-if="payoutMessage" class="alert-success-box mt-4">
-          <CheckCircle2 :size="16" />
-          <span>{{ payoutMessage }}</span>
-        </div>
+          <div v-if="payoutMessage" class="alert-success-box mt-4">
+            <CheckCircle2 :size="16" />
+            <span>{{ payoutMessage }}</span>
+          </div>
+        </template>
       </template>
 
       <!-- ========================================================
@@ -299,151 +285,170 @@
            ======================================================== -->
       <!-- ANALITIK: RINGKASAN -->
       <template v-else-if="modelValue === 'analitik_ringkasan'">
-        <div class="analytics-kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-lbl">Total Impresi</span>
-              <TrendingUp :size="14" class="text-green-400" />
-            </div>
-            <div class="kpi-val">48,290</div>
-            <div class="kpi-trend text-green-400">+22.4% bulan ini</div>
-          </div>
+        <ContentSkeleton v-if="analyticsLoading" type="list" :count="4" label="Memuat analitik…" />
 
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-lbl">Fess Terbit</span>
-              <MessageSquare :size="14" class="text-blue-400" />
-            </div>
-            <div class="kpi-val">1,284</div>
-            <div class="kpi-trend text-green-400">+14.2% minggu ini</div>
-          </div>
+        <AppStateView
+          v-else-if="analyticsError"
+          variant="error"
+          title="Gagal memuat analitik"
+          description="Tidak bisa mengambil statistik base dari server."
+          action-label="Coba lagi"
+          @action="loadAnalytics"
+        />
 
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-lbl">Engagement Rate</span>
-              <BarChart3 :size="14" class="text-purple-400" />
-            </div>
-            <div class="kpi-val text-purple-400">8.4%</div>
-            <div class="kpi-trend text-muted">Industri rata-rata 5.1%</div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-lbl">Member Baru</span>
-              <Users :size="14" class="text-pink-400" />
-            </div>
-            <div class="kpi-val">+480</div>
-            <div class="kpi-trend text-green-400">7 hari terakhir</div>
-          </div>
-        </div>
-
-        <div class="section-title-sm mt-6 mb-3">Grafik Kunjungan &amp; Impresi Mingguan</div>
-        <div class="weekly-chart-box">
-          <div class="chart-bars-row">
-            <div v-for="d in WEEKLY_TRAFFIC" :key="d.day" class="bar-col">
-              <div class="bar-val-hint">{{ d.views }}k</div>
-              <div class="bar-track">
-                <div class="bar-fill" :style="{ height: `${d.pct}%` }" />
+        <template v-else>
+          <div class="analytics-kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-lbl">Total Fess</span>
+                <MessageSquare :size="14" class="text-blue-400" />
               </div>
-              <span class="bar-day-lbl">{{ d.day }}</span>
+              <div class="kpi-val">{{ analyticsStats?.total_fesses ?? 0 }}</div>
+              <div class="kpi-trend text-muted">Seluruh status</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-lbl">Fess Terbit</span>
+                <TrendingUp :size="14" class="text-green-400" />
+              </div>
+              <div class="kpi-val">{{ analyticsStats?.published ?? 0 }}</div>
+              <div class="kpi-trend text-muted">Approved / published</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-lbl">Antrean Moderasi</span>
+                <BarChart3 :size="14" class="text-purple-400" />
+              </div>
+              <div class="kpi-val text-purple-400">{{ analyticsStats?.pending ?? 0 }}</div>
+              <div class="kpi-trend text-muted">Menunggu review</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-lbl">Ditolak</span>
+                <Users :size="14" class="text-pink-400" />
+              </div>
+              <div class="kpi-val">{{ analyticsStats?.rejected ?? 0 }}</div>
+              <div class="kpi-trend text-muted">Total rejected</div>
             </div>
           </div>
-        </div>
+
+          <p class="text-xs text-muted mt-4">
+            Angka dihitung langsung dari database (GET /admin/stats, scoped ke base yang kamu kelola).
+          </p>
+        </template>
       </template>
 
       <!-- ANALITIK: KONTEN -->
       <template v-else-if="modelValue === 'analitik_konten'">
-        <div class="section-title-sm mb-3">Top Kata Kunci (Keyword Auto-Routing)</div>
-        <div class="top-keywords-bars">
-          <div v-for="kw in TOP_KEYWORDS" :key="kw.tag" class="kw-row">
-            <div class="flex items-center justify-between text-xs font-bold">
-              <span>{{ kw.tag }}</span>
-              <span>{{ kw.count }} fess ({{ kw.pct }}%)</span>
-            </div>
-            <div class="progress-bar-wrap mt-1">
-              <div class="progress-bar-fill" :style="{ width: `${kw.pct}%` }" />
-            </div>
-          </div>
-        </div>
+        <ContentSkeleton v-if="analyticsLoading" type="list" :count="3" label="Memuat konten…" />
 
-        <div class="section-title-sm mt-6 mb-3">Fess Paling Banyak Dibagikan</div>
-        <div class="viral-fess-list">
-          <div v-for="(v, i) in VIRAL_FESSES" :key="i" class="viral-fess-item">
-            <div class="viral-rank">#{{ i + 1 }}</div>
-            <div class="viral-content">
-              <p class="viral-text">"{{ v.text }}"</p>
-              <div class="viral-meta text-xs text-muted mt-1 flex items-center gap-3">
-                <span class="inline-flex items-center gap-1"><Heart :size="12" /> {{ v.likes }} suka</span>
-                <span class="inline-flex items-center gap-1"><MessageSquare :size="12" /> {{ v.comments }} komentar</span>
-                <span class="inline-flex items-center gap-1"><Instagram :size="12" /> {{ v.views }} views IG</span>
+        <AppStateView
+          v-else-if="analyticsError"
+          variant="error"
+          title="Gagal memuat konten"
+          description="Tidak bisa mengambil daftar fess populer dari server."
+          action-label="Coba lagi"
+          @action="loadAnalytics"
+        />
+
+        <template v-else>
+          <div class="section-title-sm mb-3">Fess Paling Populer</div>
+
+          <div v-if="analyticsPopular.length" class="viral-fess-list">
+            <div v-for="(v, i) in analyticsPopular" :key="v.id" class="viral-fess-item">
+              <div class="viral-rank">#{{ i + 1 }}</div>
+              <div class="viral-content">
+                <p class="viral-text">"{{ v.content }}"</p>
+                <div class="viral-meta text-xs text-muted mt-1 flex items-center gap-3">
+                  <span class="inline-flex items-center gap-1">
+                    <Heart :size="12" /> {{ v.upvotes ?? 0 }} suka
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <MessageSquare :size="12" /> {{ v.comments_count ?? 0 }} komentar
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          <p v-else class="text-xs text-muted">Belum ada fess populer untuk base ini.</p>
+
+          <p class="text-xs text-muted mt-4">
+            Analitik kata kunci & impresi belum tersedia dari server.
+          </p>
+        </template>
       </template>
 
       <!-- ANALITIK: MODERASI -->
       <template v-else-if="modelValue === 'analitik_moderasi'">
-        <div class="moderation-stats-banner">
-          <div class="mod-stat-pill">
-            <span class="mod-val text-green-400">82%</span>
-            <span class="mod-lbl">Lolos Otomatis AI</span>
-          </div>
-          <div class="mod-stat-pill">
-            <span class="mod-val text-amber-400">14%</span>
-            <span class="mod-lbl">Perlu Review Admin</span>
-          </div>
-          <div class="mod-stat-pill">
-            <span class="mod-val text-red-400">4%</span>
-            <span class="mod-lbl">Terblokir Otomatis</span>
-          </div>
-        </div>
+        <ContentSkeleton v-if="analyticsLoading" type="list" :count="3" label="Memuat moderasi…" />
 
-        <div class="section-title-sm mt-6 mb-3">Daftar Kata Kunci yang Diblokir (Blacklist)</div>
-        <div class="blacklist-chips-box">
-          <div class="chips-wrap">
-            <span v-for="kw in blockedKeywords" :key="kw" class="blocked-chip">
-              {{ kw }}
-              <button type="button" class="btn-remove-chip" @click="removeBlockedKeyword(kw)">×</button>
-            </span>
+        <AppStateView
+          v-else-if="analyticsError"
+          variant="error"
+          title="Gagal memuat moderasi"
+          description="Tidak bisa mengambil statistik moderasi dari server."
+          action-label="Coba lagi"
+          @action="loadAnalytics"
+        />
+
+        <template v-else>
+          <div class="moderation-stats-banner">
+            <div class="mod-stat-pill">
+              <span class="mod-val text-green-400">{{ analyticsStats?.published ?? 0 }}</span>
+              <span class="mod-lbl">Fess Terbit</span>
+            </div>
+            <div class="mod-stat-pill">
+              <span class="mod-val text-amber-400">{{ analyticsStats?.pending ?? 0 }}</span>
+              <span class="mod-lbl">Antrean Review</span>
+            </div>
+            <div class="mod-stat-pill">
+              <span class="mod-val text-red-400">{{ analyticsStats?.rejected ?? 0 }}</span>
+              <span class="mod-lbl">Ditolak</span>
+            </div>
           </div>
 
-          <div class="add-keyword-row mt-3">
-            <input
-              v-model="newKeyword"
-              type="text"
-              placeholder="Tambah kata terlarang baru..."
-              class="admin-input-control text-xs"
-              @keyup.enter="addBlockedKeyword"
-            />
-            <button type="button" class="btn-add-kw" @click="addBlockedKeyword">Tambah</button>
-          </div>
-        </div>
+          <div class="section-title-sm mt-6 mb-3">Catatan Moderasi</div>
+          <p class="text-xs text-muted">
+            Filter kata otomatis (blacklist keyword) dan skor AI moderation belum tersedia dari
+            server. Saat ini semua fess masuk antrean review manual di tab Moderasi.
+          </p>
+        </template>
       </template>
 
       <!-- ANALITIK: KOMUNITAS -->
       <template v-else-if="modelValue === 'analitik_komunitas'">
-        <div class="community-overview-card">
-          <div class="flex items-center gap-3">
-            <Users :size="28" class="text-purple-400" />
-            <div>
-              <div class="text-2xl font-black">{{ communityMembers.toLocaleString() }} Anggota</div>
-              <div class="text-xs text-muted">Pengikut aktif base {{ baseHandle }}</div>
-            </div>
-          </div>
-        </div>
+        <ContentSkeleton v-if="analyticsLoading" type="list" :count="2" label="Memuat komunitas…" />
 
-        <div class="section-title-sm mt-6 mb-3">Top Pengirim Anonim Teraktif</div>
-        <div class="top-senders-list">
-          <div v-for="s in TOP_SENDERS" :key="s.alias" class="sender-card">
-            <div class="sender-avatar">{{ s.alias.charAt(1).toUpperCase() }}</div>
-            <div class="sender-info">
-              <div class="font-bold text-sm">{{ s.alias }}</div>
-              <div class="text-xs text-muted">{{ s.fessCount }} confession terbit • {{ s.badge }}</div>
+        <AppStateView
+          v-else-if="analyticsError"
+          variant="error"
+          title="Gagal memuat komunitas"
+          description="Tidak bisa mengambil data komunitas base dari server."
+          action-label="Coba lagi"
+          @action="loadAnalytics"
+        />
+
+        <template v-else>
+          <div class="community-overview-card">
+            <div class="flex items-center gap-3">
+              <Users :size="28" class="text-purple-400" />
+              <div>
+                <div class="text-2xl font-black">
+                  {{ (analyticsBase?.followers_count ?? 0).toLocaleString('id-ID') }} Anggota
+                </div>
+                <div class="text-xs text-muted">Pengikut aktif base {{ baseHandle }}</div>
+              </div>
             </div>
-            <span class="sender-rate text-xs font-bold text-purple-400">99.8% Approval</span>
           </div>
-        </div>
+
+          <p class="text-xs text-muted mt-4">
+            Daftar pengirim teraktif bersifat anonim dan belum tersedia dari server.
+          </p>
+        </template>
       </template>
 
       <!-- ========================================================
@@ -523,6 +528,10 @@
               <input v-model="notifSettings.payments" type="checkbox" class="toggle-switch" />
             </div>
           </div>
+
+          <p class="text-xs text-muted mt-4">
+            Preferensi ini tersimpan di perangkat ini dan akan dipakai saat sistem notifikasi aktif.
+          </p>
         </div>
       </template>
 
@@ -586,38 +595,22 @@
         </div>
       </template>
 
-      <!-- KEAMANAN PROFIL GANTI PASSWORD -->
+      <!-- KEAMANAN PROFIL -->
       <template v-else-if="modelValue === 'pengaturan_keamanan'">
         <div class="admin-feature-card">
-          <div class="section-title-sm mb-3">Ubah Kata Sandi Admin</div>
-          <form class="security-form" @submit.prevent="submitChangePassword">
-            <div class="form-group">
-              <label class="form-label">Kata Sandi Saat Ini</label>
-              <input v-model="secForm.oldPass" type="password" class="admin-input-control" required />
-            </div>
-
-            <div class="form-group mt-3">
-              <label class="form-label">Kata Sandi Baru</label>
-              <input v-model="secForm.newPass" type="password" minlength="8" class="admin-input-control" required />
-            </div>
-
-            <div class="form-group mt-3">
-              <label class="form-label">Ulangi Kata Sandi Baru</label>
-              <input v-model="secForm.confirmPass" type="password" class="admin-input-control" required />
-            </div>
-
-            <button type="submit" class="btn-save-sec mt-4">Simpan Kata Sandi Baru</button>
-          </form>
-
-          <div v-if="secSuccessMessage" class="alert-success-box mt-3">
-            <CheckCircle2 :size="16" />
-            <span>{{ secSuccessMessage }}</span>
-          </div>
+          <div class="section-title-sm mb-3">Keamanan Akun Admin</div>
+          <p class="text-xs text-muted">
+            Penggantian kata sandi dari dashboard belum tersedia di versi ini. Jika akunmu dibuat
+            lewat Google OAuth, pengelolaan kata sandi dilakukan sepenuhnya di akun Google-mu.
+          </p>
         </div>
 
         <div class="session-info-card mt-4">
-          <div class="text-xs font-bold text-muted">Sesi Login Aktif Saat Ini:</div>
-          <div class="text-xs text-muted mt-1">Chrome Desktop • Windows 11 • IP: 182.253.xx.xx (Terverifikasi)</div>
+          <div class="text-xs font-bold text-muted">Detail Sesi Login Aktif:</div>
+          <div class="text-xs text-muted mt-1">
+            Masuk sebagai {{ authStore.user?.email || authStore.user?.handle || '—' }} • Role:
+            {{ authStore.user?.role || '—' }}
+          </div>
         </div>
       </template>
     </div>
@@ -626,13 +619,13 @@
 
 <script setup>
 /**
- * BaseAdminPanels — Real implementation for all Base Admin Hamburger Drawer modules:
- * 1. Koneksi Medsos (Instagram, Twitter, Telegram, Canvas styling, Test post)
- * 2. Keuangan {saldo, pendapatan, penarikan}
- * 3. Analitik {ringkasan, konten, moderasi, komunitas}
- * 4. Pengaturan {tampilan, notif, bantuan, ketentuan, privasi, keamanan ganti password}
+ * BaseAdminPanels — Base Admin hamburger drawer modules, now fully API-backed:
+ * 1. Koneksi Medsos   → GET/POST /admin/connections
+ * 2. Keuangan         → GET /admin/treasury + POST /admin/treasury/payout
+ * 3. Analitik         → GET /admin/stats + GET /fesses + GET /bases/:handle
+ * 4. Pengaturan       → theme (real), notif lokal, legal copy, info sesi aktual
  */
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import {
   ChevronLeft,
   ChevronDown,
@@ -648,6 +641,9 @@ import {
   Heart,
 } from 'lucide-vue-next';
 
+import { api } from '../../api';
+import ContentSkeleton from '../ui/ContentSkeleton.vue';
+import AppStateView from '../ui/AppStateView.vue';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
 
@@ -660,9 +656,9 @@ const emit = defineEmits(['update:modelValue', 'setTheme', 'logout']);
 const authStore = useAuthStore();
 const { mode: currentTheme } = useTheme();
 
-const baseHandle = computed(() => authStore.user?.handle || '@codememfess');
-const baseIgAccount = computed(() => authStore.user?.igAccount || '@codememfess_ig');
-const treasuryBalance = ref(2458000);
+const baseHandle = computed(
+  () => authStore.user?.managedBases?.[0] || authStore.user?.handle || '',
+);
 
 /* Panel Titles */
 const panelTitle = computed(() => {
@@ -680,123 +676,198 @@ const panelTitle = computed(() => {
     pengaturan_bantuan: 'Pusat Bantuan Pengelola',
     pengaturan_ketentuan: 'Ketentuan Layanan',
     pengaturan_privasi: 'Kebijakan Privasi',
-    pengaturan_keamanan: 'Keamanan Profil & Ganti Password',
+    pengaturan_keamanan: 'Keamanan Akun Admin',
   };
   return map[props.modelValue] || 'Detail Menu';
 });
 
-/* 1. Medsos State */
-const igSettings = reactive({
-  autoStory: true,
-  autoFeed: true,
-  watermark: true,
-  storyTheme: 'neon',
-});
+/* 1. Koneksi Medsos — real state (GET/POST /admin/connections) */
+const connections = ref([]);
+const connectionsLoading = ref(false);
+const connectionsError = ref(null);
+const connectionHandles = reactive({});
+const connectionBusy = ref(null);
+const connectionNotice = ref('');
 
-const STORY_STYLES = [
-  { id: 'neon', label: 'Dark Cyber Neon' },
-  { id: 'white', label: 'Clean Paper White' },
-  { id: 'gradient', label: 'Purple Violet Card' },
-];
-
-const twitterHashtags = ref('#codememfess #programmerID #fesshub');
-const isTestingIg = ref(false);
-const testIgSuccess = ref(false);
-
-function runTestPostIg() {
-  isTestingIg.value = true;
-  testIgSuccess.value = false;
-  setTimeout(() => {
-    isTestingIg.value = false;
-    testIgSuccess.value = true;
-    setTimeout(() => {
-      testIgSuccess.value = false;
-    }, 4500);
-  }, 1200);
+function badgeClass(id) {
+  if (id === 'instagram') return 'ig-badge';
+  if (id === 'twitter') return 'x-badge';
+  return 'tg-badge';
 }
 
-/* 2. Keuangan State */
-const RECENT_TRANSACTIONS = [
-  { id: 'TRX_84920', desc: 'Fess Prioritas (#codememfess_1284)', date: '12 Okt 2026, 17:40', amount: 10000, type: 'in' },
-  { id: 'TRX_84918', desc: 'Tip Sukarela dari Anon #4910', date: '12 Okt 2026, 15:20', amount: 25000, type: 'in' },
-  { id: 'TRX_84890', desc: 'Penarikan Saldo ke BCA 8201928190', date: '11 Okt 2026, 09:15', amount: 1500000, type: 'out' },
-  { id: 'TRX_84820', desc: 'Fess Prioritas (#codememfess_1280)', date: '10 Okt 2026, 21:05', amount: 10000, type: 'in' },
-];
+function platformLabel(id) {
+  if (id === 'instagram') return 'Instagram';
+  if (id === 'twitter') return 'Twitter/X';
+  return 'Telegram';
+}
+
+async function loadConnections() {
+  connectionsLoading.value = true;
+  connectionsError.value = null;
+  try {
+    const res = await api.getPlatformConnections();
+    connections.value = res?.data || [];
+    for (const conn of connections.value) {
+      if (connectionHandles[conn.id] === undefined) {
+        connectionHandles[conn.id] = conn.account_handle || '';
+      }
+    }
+  } catch (e) {
+    connectionsError.value = e;
+  } finally {
+    connectionsLoading.value = false;
+  }
+}
+
+async function toggleConnection(conn) {
+  connectionBusy.value = conn.id;
+  connectionNotice.value = '';
+  try {
+    await api.togglePlatformConnection(conn.id, {
+      action: conn.connected ? 'disconnect' : 'connect',
+      account_handle: (connectionHandles[conn.id] || '').trim() || undefined,
+    });
+    await loadConnections();
+    connectionNotice.value = conn.connected
+      ? `${platformLabel(conn.id)} berhasil diputuskan.`
+      : `${platformLabel(conn.id)} berhasil dihubungkan.`;
+  } catch (e) {
+    connectionNotice.value = e?.message || 'Gagal memperbarui koneksi.';
+  } finally {
+    connectionBusy.value = null;
+  }
+}
+
+/* 2. Keuangan — real state (GET /admin/treasury + POST /admin/treasury/payout) */
+const treasury = ref(null);
+const treasuryLoading = ref(false);
+const treasuryError = ref(null);
 
 const payoutForm = reactive({
-  amount: 500000,
-  channel: 'BCA',
+  amount: '',
+  destination: '',
 });
 
 const isSubmittingPayout = ref(false);
 const payoutMessage = ref('');
+const payoutError = ref('');
 
-function submitPayout() {
-  if (payoutForm.amount <= 0 || payoutForm.amount > treasuryBalance.value - 208000) return;
-  isSubmittingPayout.value = true;
-  payoutMessage.value = '';
+const payoutQuickAmounts = computed(() => {
+  const balance = Math.floor(treasury.value?.balance ?? 0);
+  return [100, 500, 1000, 5000].filter((amount) => amount <= balance);
+});
 
-  setTimeout(() => {
-    isSubmittingPayout.value = false;
-    treasuryBalance.value -= payoutForm.amount;
-    payoutMessage.value = `Pengajuan penarikan Rp ${payoutForm.amount.toLocaleString('id-ID')} ke ${payoutForm.channel} berhasil diproses!`;
-    payoutForm.amount = 0;
-  }, 1400);
-}
-
-/* 3. Analitik State */
-const WEEKLY_TRAFFIC = [
-  { day: 'Sen', views: 4.8, pct: 55 },
-  { day: 'Sel', views: 5.6, pct: 68 },
-  { day: 'Rab', views: 6.9, pct: 82 },
-  { day: 'Kam', views: 6.2, pct: 75 },
-  { day: 'Jum', views: 8.4, pct: 100 },
-  { day: 'Sab', views: 7.8, pct: 92 },
-  { day: 'Min', views: 6.5, pct: 78 },
-];
-
-const TOP_KEYWORDS = [
-  { tag: '[code]', count: 667, pct: 52 },
-  { tag: '[karir]', count: 308, pct: 24 },
-  { tag: '[curhat]', count: 205, pct: 16 },
-  { tag: '[gaji]', count: 104, pct: 8 },
-];
-
-const VIRAL_FESSES = [
-  { text: 'Curhat dikit, udah 3 minggu debug memory leak di microservice golang ternyata cuma salah defer mu.Unlock() di closure loop...', likes: 342, comments: 84, views: '12.4K' },
-  { text: 'Spill dong roadmap belajar Vue 3 Composition API & Pinia buat yang baru pindah dari React di tahun 2026 ini?', likes: 254, comments: 62, views: '8.9K' },
-  { text: 'Tempat ngopi 24 jam dengan WiFi 100 Mbps di Jaksel yang colokannya ramah programmer apa ya guys?', likes: 189, comments: 45, views: '6.2K' },
-];
-
-const blockedKeywords = ref(['slot', 'judol', 'gacor', 'pinjol', 'sara', 'doxxing', 'cheat']);
-const newKeyword = ref('');
-
-function addBlockedKeyword() {
-  const kw = newKeyword.value.trim().toLowerCase();
-  if (kw && !blockedKeywords.value.includes(kw)) {
-    blockedKeywords.value.push(kw);
-    newKeyword.value = '';
+async function loadTreasury() {
+  treasuryLoading.value = true;
+  treasuryError.value = null;
+  try {
+    treasury.value = await api.getTreasury();
+  } catch (e) {
+    treasuryError.value = e;
+  } finally {
+    treasuryLoading.value = false;
   }
 }
 
-function removeBlockedKeyword(kw) {
-  blockedKeywords.value = blockedKeywords.value.filter((item) => item !== kw);
+async function submitPayout() {
+  const amount = Number(payoutForm.amount);
+  payoutError.value = '';
+  payoutMessage.value = '';
+
+  if (!amount || amount <= 0) {
+    payoutError.value = 'Masukkan nominal penarikan yang valid.';
+    return;
+  }
+  if (amount > (treasury.value?.balance ?? 0)) {
+    payoutError.value = 'Nominal melebihi saldo yang tersedia.';
+    return;
+  }
+  if (!payoutForm.destination.trim()) {
+    payoutError.value = 'Isi tujuan transfer terlebih dahulu.';
+    return;
+  }
+
+  isSubmittingPayout.value = true;
+  try {
+    const res = await api.requestPayout({
+      amount,
+      destination: payoutForm.destination.trim(),
+    });
+    payoutMessage.value = res?.message || 'Permintaan payout berhasil diajukan.';
+    payoutForm.amount = '';
+    payoutForm.destination = '';
+    await loadTreasury();
+  } catch (e) {
+    payoutError.value = e?.message || 'Gagal mengajukan payout.';
+  } finally {
+    isSubmittingPayout.value = false;
+  }
 }
 
-const communityMembers = ref(18420);
-const TOP_SENDERS = [
-  { alias: 'Anon #8201', fessCount: 48, badge: 'Veteran Sender' },
-  { alias: 'Anon #4910', fessCount: 36, badge: 'Tech Enthusiast' },
-  { alias: 'Anon #1128', fessCount: 29, badge: 'Regular Contributor' },
-];
+/* 3. Analitik — real state (GET /admin/stats + GET /fesses + GET /bases/:handle) */
+const analyticsStats = ref(null);
+const analyticsBase = ref(null);
+const analyticsPopular = ref([]);
+const analyticsLoading = ref(false);
+const analyticsError = ref(null);
 
-/* 4. Pengaturan State */
+async function loadAnalytics() {
+  analyticsLoading.value = true;
+  analyticsError.value = null;
+  try {
+    const requests = [api.getStats()];
+    if (baseHandle.value) {
+      requests.push(api.getBase(baseHandle.value));
+      requests.push(
+        api.getFesses({ base: baseHandle.value, status: 'approved', sort: 'popular', limit: 5 }),
+      );
+    }
+    const [statsRes, baseRes, popularRes] = await Promise.all(requests);
+    analyticsStats.value = statsRes || null;
+    if (baseRes) analyticsBase.value = baseRes;
+    analyticsPopular.value = popularRes?.data || [];
+  } catch (e) {
+    analyticsError.value = e;
+  } finally {
+    analyticsLoading.value = false;
+  }
+}
+
+/* 4. Pengaturan State — preferensi notifikasi disimpan lokal di perangkat ini */
+const NOTIF_STORAGE_KEY = 'admin_notif_settings';
+
+function readNotifSettings() {
+  try {
+    const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 const notifSettings = reactive({
   newFess: true,
   reports: true,
   igStatus: true,
   payments: true,
 });
+
+const storedNotif = readNotifSettings();
+if (storedNotif && typeof storedNotif === 'object') {
+  Object.assign(notifSettings, storedNotif);
+}
+
+watch(
+  notifSettings,
+  (value) => {
+    try {
+      localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(value));
+    } catch {
+      // Storage not available (private mode) — preferences stay in-memory.
+    }
+  },
+  { deep: true },
+);
 
 const openFaqIndex = ref(0);
 const ADMIN_FAQS = [
@@ -810,27 +881,20 @@ const ADMIN_FAQS = [
   },
   {
     q: 'Bagaimana cara mengganti kata sandi atau email admin?',
-    a: 'Anda dapat masuk ke menu Pengaturan > Keamanan Profil & Ganti Password di drawer ini, lalu masukkan kata sandi lama dan kata sandi baru Anda.',
+    a: 'Penggantian kata sandi dari dashboard belum tersedia di versi ini. Untuk akun yang masuk lewat Google, kata sandi dikelola sepenuhnya di akun Google Anda.',
   },
 ];
 
-const secForm = reactive({
-  oldPass: '',
-  newPass: '',
-  confirmPass: '',
-});
-const secSuccessMessage = ref('');
-
-function submitChangePassword() {
-  if (secForm.newPass !== secForm.confirmPass) return;
-  secSuccessMessage.value = '✓ Kata sandi admin berhasil diperbarui dengan aman!';
-  secForm.oldPass = '';
-  secForm.newPass = '';
-  secForm.confirmPass = '';
-  setTimeout(() => {
-    secSuccessMessage.value = '';
-  }, 4000);
-}
+/* ---------- Lazy load per opened panel (after all state is initialised) ---------- */
+watch(
+  () => props.modelValue,
+  (panel) => {
+    if (panel === 'medsos') loadConnections();
+    if (panel && panel.startsWith('keuangan')) loadTreasury();
+    if (panel && panel.startsWith('analitik')) loadAnalytics();
+  },
+  { immediate: true },
+);
 </script>
 
 <style scoped>
@@ -938,6 +1002,12 @@ function submitChangePassword() {
   border-radius: var(--radius-pill);
 }
 
+.status-idle-pill {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+  border-color: #6b7280;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -1016,6 +1086,19 @@ function submitChangePassword() {
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid #10b981;
   color: #10b981;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.alert-error-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid #f87171;
+  color: #f87171;
   padding: 10px 14px;
   border-radius: 12px;
   font-size: 12px;

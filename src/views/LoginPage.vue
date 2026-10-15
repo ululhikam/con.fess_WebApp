@@ -105,6 +105,10 @@
       </button>
     </div>
 
+    <p v-if="googleError" class="form-alert mt-3" role="alert">
+      {{ googleError }}
+    </p>
+
     <div class="auth-footer mt-6 text-xs text-muted">
       <template v-if="selectedRole === 'User'">
         <p class="mb-2">Belum punya akun pengguna?</p>
@@ -141,7 +145,7 @@
  * • Field markup comes from <FormField>.
  * • Validation lives in useValidatedForm (not in this component).
  */
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ArrowRight, Loader2, ShieldCheck, UserRound } from 'lucide-vue-next';
 
@@ -149,6 +153,7 @@ import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
 import { useValidatedForm, rules } from '../composables/useValidatedForm';
+import { googleAuthUrl } from '../api';
 
 const ROLES = ['User', 'Base Admin'];
 
@@ -243,9 +248,48 @@ async function handleLogin() {
 }
 
 async function handleGoogleLogin() {
-  // Google One-Tap (GIS) isn't wired yet — guide the user to the form.
-  form.submitError.value = 'Login Google belum tersedia. Gunakan email & kata sandi.';
+  // Full-page redirect into the backend Passport flow. Google sends the
+  // visitor to /auth/google/callback, which returns a JWT to this page.
+  window.location.href = googleAuthUrl(selectedRole.value);
 }
+
+/* ---------- Google OAuth redirect results ---------- */
+const googleError = ref('');
+
+/** Friendlier copy for the OAuth redirect results. */
+const GOOGLE_ERROR_MESSAGES = {
+  google_failed: 'Login Google dibatalkan atau akun tidak diizinkan.',
+  google_not_configured: 'Login Google belum dikonfigurasi di server.',
+};
+
+/**
+ * Handle the JWT handed back by the backend Google callback
+ * (`/login?google=1&token=…`) and surface OAuth failures.
+ */
+onMounted(async () => {
+  const { token, error, google, ...rest } = route.query;
+
+  if (typeof error === 'string' && error) {
+    googleError.value = GOOGLE_ERROR_MESSAGES[error] || 'Login Google gagal. Coba lagi.';
+  }
+
+  // Never leave the JWT in the URL / browser history.
+  if (token || error || google) {
+    await router.replace({ path: route.path, query: rest });
+  }
+
+  if (typeof token === 'string' && token) {
+    isSubmitting.value = true;
+    try {
+      const user = await authStore.loginWithToken(token);
+      await redirectRole(user?.role || 'User');
+    } catch {
+      googleError.value = 'Sesi Google tidak valid. Silakan coba lagi.';
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+});
 
 /** Deep-link to register still has to honour the original destination. */
 const registerUserTarget = computed(() => ({ path: '/register/user', query: route.query }));

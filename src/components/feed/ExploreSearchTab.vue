@@ -46,21 +46,35 @@
 
     <!-- Base Mode Content -->
     <template v-if="mode === 'base'">
-      <h3 class="section-title-md mb-4">Base For You</h3>
+      <h3 class="section-title-md mb-4">{{ baseSectionTitle }}</h3>
 
-      <ContentSkeleton v-if="loading" type="list" :count="4" label="Mencari base…" />
+      <ContentSkeleton
+        v-if="baseIsLoading && !visibleBases.length"
+        type="list"
+        :count="4"
+        label="Mencari base…"
+      />
 
       <AppStateView
-        v-else-if="!bases.length"
+        v-else-if="baseError && !visibleBases.length"
+        variant="error"
+        title="Base gagal dimuat"
+        description="Terjadi kesalahan saat mencari base. Coba muat ulang."
+        action-label="Coba lagi"
+        @action="fetchBaseSearch"
+      />
+
+      <AppStateView
+        v-else-if="!visibleBases.length"
         variant="empty"
         title="Tidak ada base yang cocok"
-        :description="`Tidak ada hasil untuk “${query}”. Coba kata kunci lain.`"
+        :description="emptyBaseDescription"
         action-label="Bersihkan pencarian"
         @action="$emit('update:query', '')"
       />
 
       <div v-else class="explore-base-list flex flex-col gap-3">
-        <article v-for="base in bases" :key="base.handle" class="centered-base-card">
+        <article v-for="base in visibleBases" :key="base.handle" class="centered-base-card">
           <div
             class="eb-clickable-col"
             @click="goToBase(base.handle)"
@@ -134,6 +148,7 @@ import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import FessCard from '../common/FessCard.vue';
 import { api } from '../../api';
+import { mapBase } from '../../composables/useBases';
 import { mapFessToPost } from '../../utils/fessMapper';
 
 const router = useRouter();
@@ -225,7 +240,10 @@ watch(
   { immediate: true },
 );
 
-onBeforeUnmount(() => clearTimeout(debounceTimer));
+onBeforeUnmount(() => {
+  clearTimeout(debounceTimer);
+  clearTimeout(baseDebounceTimer);
+});
 
 /** Category pills narrow the result list client-side (server has no pill taxonomy). */
 const visibleMenfess = computed(() => {
@@ -244,6 +262,92 @@ const emptyMenfessDescription = computed(() =>
     ? `Tidak ada menfess untuk “${props.query}”. Coba kata kunci topik atau base lain.`
     : 'Belum ada menfess yang dapat ditampilkan saat ini.',
 );
+
+/* ---------- Base search (GET /bases, debounced, server-side) ---------- */
+const BASE_DEBOUNCE_MS = 300;
+
+const baseResults = ref([]);
+const baseLoading = ref(false);
+const baseError = ref(null);
+const baseLoaded = ref(false);
+
+let baseDebounceTimer = null;
+let baseRequestSeq = 0;
+
+/** Fetch base search results from the backend (search + category + newest). */
+async function fetchBaseSearch() {
+  clearTimeout(baseDebounceTimer);
+  baseDebounceTimer = null;
+
+  const seq = ++baseRequestSeq;
+  const q = props.query.trim();
+  const cat = props.category && props.category !== 'Semua' ? props.category : undefined;
+
+  baseLoading.value = true;
+  baseError.value = null;
+  try {
+    const res = await api.getBases({ search: q || undefined, category: cat, limit: 50 });
+    if (seq !== baseRequestSeq) return;
+    baseResults.value = (res?.data || []).map(mapBase).filter(Boolean);
+    baseLoaded.value = true;
+  } catch (e) {
+    if (seq !== baseRequestSeq) return;
+    baseError.value = e;
+    baseResults.value = [];
+    baseLoaded.value = true;
+  } finally {
+    if (seq === baseRequestSeq) baseLoading.value = false;
+  }
+}
+
+/** Debounce so we only query the API once the user pauses typing. */
+function scheduleBaseFetch() {
+  clearTimeout(baseDebounceTimer);
+  baseDebounceTimer = setTimeout(fetchBaseSearch, BASE_DEBOUNCE_MS);
+}
+
+watch(
+  () => props.query,
+  () => {
+    if (props.mode === 'base') scheduleBaseFetch();
+  },
+);
+
+watch(
+  () => props.category,
+  () => {
+    if (props.mode === 'base') scheduleBaseFetch();
+  },
+);
+
+watch(
+  () => props.mode,
+  (mode) => {
+    if (mode !== 'base') return;
+    scheduleBaseFetch();
+  },
+  { immediate: true },
+);
+
+/** Server results once loaded; fall back to the parent directory before that. */
+const visibleBases = computed(() => (baseLoaded.value ? baseResults.value : props.bases));
+const baseIsLoading = computed(() => (baseLoaded.value ? baseLoading.value : props.loading));
+
+const baseSectionTitle = computed(() =>
+  props.query.trim() || (props.category && props.category !== 'Semua')
+    ? 'Hasil Pencarian Base'
+    : 'Base For You',
+);
+
+const emptyBaseDescription = computed(() => {
+  if (props.query.trim()) {
+    return `Tidak ada base untuk “${props.query}”. Coba kata kunci lain.`;
+  }
+  if (props.category && props.category !== 'Semua') {
+    return `Belum ada base dengan kategori ${props.category}.`;
+  }
+  return 'Belum ada base yang dapat ditampilkan saat ini.';
+});
 
 </script>
 

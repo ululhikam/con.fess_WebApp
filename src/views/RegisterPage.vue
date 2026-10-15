@@ -346,6 +346,7 @@ import {
 import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
+import { googleAuthUrl } from '../api';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -467,8 +468,9 @@ function goToStep2() {
 }
 
 function handleGoogleRegister() {
-  // Google OAuth (GIS) isn't wired yet — guide the user to the form.
-  errors.submit = 'Pendaftaran via Google belum tersedia. Isi formulir di atas.';
+  // Full-page redirect into the backend Passport flow, registering as a
+  // Base Admin portal account; the callback routes by role.
+  window.location.href = googleAuthUrl('Base Admin');
 }
 
 function toggleConnectIg() {

@@ -26,6 +26,7 @@ export const api = {
   /* BASES */
   getBases: (params) => client.get('/bases', { params }),
   getBase: (handle) => client.get(`/bases/${encodeURIComponent(handle)}`),
+  createBase: (payload) => client.post('/bases', payload),
   getBaseFesses: (handle, params) =>
     client.get(`/bases/${encodeURIComponent(handle)}/fesses`, { params }),
   followBase: (handle) => client.post(`/bases/${encodeURIComponent(handle)}/follow`),
@@ -93,3 +94,15 @@ export const api = {
 
 /** Re-export error class for catch handling. */
 export { ApiError } from './client';
+
+/**
+ * Absolute URL that starts the backend Passport Google OAuth flow.
+ * `role` selects the portal (User / Base Admin) and is round-tripped through
+ * Google as the OAuth `state`.
+ */
+export function googleAuthUrl(role = '') {
+  const query = role ? `?role=${encodeURIComponent(role)}` : '';
+  const path = `${baseUrl}/auth/google${query}`;
+  // Top-level redirects need an absolute URL when the base is relative.
+  return /^https?:\/\//i.test(path) ? path : `${window.location.origin}${path}`;
+}

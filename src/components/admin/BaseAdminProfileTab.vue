@@ -26,42 +26,33 @@
         <!-- SEBELAH KIRI ATAS: FOTO PROFILE & TOMBOL EDIT PROFIL -->
         <div class="ig-left-col">
           <div class="ig-avatar-ring">
-            <img :src="baseAvatar" :alt="baseName" class="ig-avatar-img" />
+            <img v-if="baseAvatarUrl" :src="baseAvatarUrl" :alt="baseName" class="ig-avatar-img" />
+            <div v-else class="ig-avatar-img ig-avatar-initial">{{ baseInitial }}</div>
           </div>
 
           <!-- Button Edit Profile dibawah foto profil -->
-          <button type="button" class="btn-edit-profile-left mt-2" @click="showEditModal = true">
+          <button type="button" class="btn-edit-profile-left mt-2" @click="openEditProfile()">
             <Edit3 :size="13" />
             <span>Edit Profile</span>
           </button>
         </div>
 
-        <!-- DI SAMPING FOTO PROFIL: FESS, FOLLOW, FOLLOWER (dengan angka jumlah di bawahnya) -->
+        <!-- DI SAMPING FOTO PROFIL: STATISTIK BASE (angka real dari database) -->
         <div class="ig-metrics-row">
           <div class="ig-metric-col">
             <span class="ig-metric-label">Fess</span>
-            <span class="ig-metric-num">{{ fessCount.toLocaleString() }}</span>
+            <span class="ig-metric-num">{{ fessCount.toLocaleString('id-ID') }}</span>
           </div>
 
-          <button
-            type="button"
-            class="ig-metric-col ig-metric-btn"
-            title="Lihat daftar akun yang diikuti"
-            @click="openFollowModal('following')"
-          >
-            <span class="ig-metric-label">Follow</span>
-            <span class="ig-metric-num">{{ followingCount.toLocaleString() }}</span>
-          </button>
-
-          <button
-            type="button"
-            class="ig-metric-col ig-metric-btn"
-            title="Lihat daftar pengikut base"
-            @click="openFollowModal('followers')"
-          >
+          <div class="ig-metric-col">
             <span class="ig-metric-label">Follower</span>
-            <span class="ig-metric-num">{{ followersCount.toLocaleString() }}</span>
-          </button>
+            <span class="ig-metric-num">{{ followersCount.toLocaleString('id-ID') }}</span>
+          </div>
+
+          <div class="ig-metric-col">
+            <span class="ig-metric-label">Sejak</span>
+            <span class="ig-metric-num">{{ established }}</span>
+          </div>
         </div>
       </div>
 
@@ -71,33 +62,38 @@
         <div class="base-handle-sub">{{ baseHandle }}</div>
         <p class="base-bio-desc">{{ baseBio }}</p>
 
-        <!-- Medsos Integration Pill -->
-        <div class="base-medsos-badge mt-2">
+        <!-- Medsos Integration Pill (hanya tampil jika base menautkan akun IG) -->
+        <div v-if="igAccount" class="base-medsos-badge mt-2">
           <Instagram :size="13" class="ig-color-icon" />
-          <span>{{ igAccount || '@codememfess_ig' }}</span>
-          <span class="medsos-dot">•</span>
-          <span class="auto-post-status">Auto-Post Aktif</span>
+          <span>{{ igAccount }}</span>
         </div>
       </div>
     </div>
 
-    <!-- QUICK STATUS STRIP MODERASI BASE (Dipindahkan dari Home ke Profile) -->
+    <!-- STATE: loading / error data base -->
+    <div v-if="loading" class="state-banner mb-3">Memuat data base…</div>
+    <div v-else-if="error" class="state-banner state-banner-error mb-3">
+      <span>Gagal memuat data base.</span>
+      <button type="button" class="btn-banner-retry" @click="loadProfile">Coba lagi</button>
+    </div>
+
+    <!-- QUICK STATUS STRIP MODERASI BASE (angka real dari GET /admin/stats) -->
     <div class="quick-status-grid mb-3">
       <div class="quick-status-card">
         <span class="status-num">{{ pendingCount }}</span>
         <span class="status-lbl">Antrean Moderasi</span>
       </div>
       <div class="quick-status-card">
-        <span class="status-num">{{ baseFesses.filter((f) => f.status === 'approved').length }}</span>
+        <span class="status-num">{{ approvedTotal }}</span>
         <span class="status-lbl">Fess Terbit</span>
       </div>
       <div class="quick-status-card">
-        <span class="status-num">99.2%</span>
-        <span class="status-lbl">Auto-Post IG</span>
+        <span class="status-num">{{ rejectedTotal }}</span>
+        <span class="status-lbl">Ditolak</span>
       </div>
       <div class="quick-status-card">
-        <span class="status-num">1</span>
-        <span class="status-lbl">Laporan Masuk</span>
+        <span class="status-num">{{ followersCount.toLocaleString('id-ID') }}</span>
+        <span class="status-lbl">Follower</span>
       </div>
     </div>
 
@@ -112,7 +108,7 @@
         @click="fessFilter = 'semua'"
       >
         <Grid :size="16" />
-        <span>Semua Fess ({{ baseFesses.length }})</span>
+        <span>Semua Fess ({{ totalFesses }})</span>
       </button>
 
       <button
@@ -140,8 +136,9 @@
       </button>
     </div>
 
-    <!-- KONTEN YANG SUDAH DI-FESS OLEH USER BIASA -->
+    <!-- KONTEN FESS BASE (real dari GET /bases/:handle/fesses) -->
     <div class="ig-fess-content-area">
+      <div v-if="actionError" class="state-banner state-banner-error mb-3">{{ actionError }}</div>
       <div v-if="filteredFesses.length" class="fess-cards-stream">
         <AdminFessCard
           v-for="item in filteredFesses"
@@ -149,7 +146,7 @@
           :post="item"
           :is-admin="true"
           @approve="approveFess"
-          @hide="hideFess"
+          @reject="rejectFess"
         />
       </div>
 
@@ -205,7 +202,7 @@
                 <Coins :size="18" class="row-ico-gold" />
                 <div>
                   <div class="menu-row-label">Saldo Treasury Base</div>
-                  <div class="menu-row-desc">Rp 2.458.000 (24.580 $CLUB)</div>
+                  <div class="menu-row-desc">Kelola saldo &amp; penarikan dana base</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -216,7 +213,7 @@
                 <TrendingUp :size="18" class="row-ico-green" />
                 <div>
                   <div class="menu-row-label">Pendapatan Bulan Ini</div>
-                  <div class="menu-row-desc">Rp 1.120.000 dari fess prioritas</div>
+                  <div class="menu-row-desc">Rincian pendapatan komunitas base</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -276,7 +273,7 @@
                 <Users :size="18" class="row-ico-blue" />
                 <div>
                   <div class="menu-row-label">Analitik Komunitas</div>
-                  <div class="menu-row-desc">Pertumbuhan 18.4K member & pengirim aktif</div>
+                  <div class="menu-row-desc">Statistik anggota &amp; aktivitas komunitas</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -379,12 +376,18 @@
         </div>
 
         <form class="modal-body" @submit.prevent="saveBaseProfile">
-          <!-- Foto Profil Preview -->
+          <!-- Foto Profil Preview (upload real via POST /upload/avatar) -->
           <div class="edit-avatar-group">
-            <img :src="editForm.avatar" alt="Foto Base" class="edit-avatar-img" />
+            <img
+              v-if="editForm.avatar"
+              :src="editForm.avatar"
+              alt="Foto Base"
+              class="edit-avatar-img"
+            />
+            <div v-else class="edit-avatar-img edit-avatar-initial">{{ baseInitial }}</div>
             <div class="avatar-presets-grid">
               <div class="avatar-select-head">
-                <span class="text-xs text-muted">Pilih atau Upload:</span>
+                <span class="text-xs text-muted">Foto Profil Base:</span>
                 <label class="btn-upload-avatar-chip">
                   <Upload :size="12" />
                   <span>Upload Foto</span>
@@ -395,18 +398,6 @@
                     @change="handleAdminAvatarUpload"
                   />
                 </label>
-              </div>
-              <div class="presets-row">
-                <button
-                  v-for="(preset, i) in BASE_AVATARS"
-                  :key="i"
-                  type="button"
-                  class="btn-preset-pic"
-                  :class="{ selected: editForm.avatar === preset }"
-                  @click="editForm.avatar = preset"
-                >
-                  <img :src="preset" :alt="`Pilihan ${i+1}`" />
-                </button>
               </div>
             </div>
           </div>
@@ -433,120 +424,15 @@
             ></textarea>
           </div>
 
+          <p v-if="editError" class="edit-error-text">{{ editError }}</p>
+
           <div class="modal-footer mt-4">
             <button type="button" class="btn-cancel" @click="showEditModal = false">Batal</button>
-            <button type="submit" class="btn-save">Simpan Perubahan</button>
+            <button type="submit" class="btn-save" :disabled="isSavingProfile">
+              {{ isSavingProfile ? 'Menyimpan…' : 'Simpan Perubahan' }}
+            </button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <!-- MODAL DAFTAR FOLLOW & FOLLOWER -->
-    <div
-      v-if="showFollowModal"
-      class="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="followModalTab === 'followers' ? 'Daftar Pengikut' : 'Daftar Mengikuti'"
-      @click.self="showFollowModal = false"
-    >
-      <div class="modal-card follow-modal-card">
-        <div class="follow-modal-header">
-          <!-- Tab Switcher: Follower vs Following -->
-          <div class="follow-tabs-nav">
-            <button
-              type="button"
-              class="follow-tab-btn"
-              :class="{ active: followModalTab === 'followers' }"
-              @click="followModalTab = 'followers'"
-            >
-              <span>Follower</span>
-              <span class="follow-tab-count">{{ followersCount.toLocaleString() }}</span>
-            </button>
-            <button
-              type="button"
-              class="follow-tab-btn"
-              :class="{ active: followModalTab === 'following' }"
-              @click="followModalTab = 'following'"
-            >
-              <span>Follow</span>
-              <span class="follow-tab-count">{{ followingCount.toLocaleString() }}</span>
-            </button>
-          </div>
-          <button
-            type="button"
-            class="btn-close-modal"
-            aria-label="Tutup"
-            @click="showFollowModal = false"
-          >
-            <X :size="18" />
-          </button>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="follow-search-box">
-          <Search :size="15" class="follow-search-icon" />
-          <input
-            v-model="followSearchQuery"
-            type="text"
-            class="follow-search-input"
-            :placeholder="followModalTab === 'followers' ? 'Cari di daftar follower...' : 'Cari di daftar following...'"
-          />
-          <button
-            v-if="followSearchQuery"
-            type="button"
-            class="btn-clear-search"
-            @click="followSearchQuery = ''"
-          >
-            <X :size="13" />
-          </button>
-        </div>
-
-        <!-- Users List -->
-        <div class="follow-list-body custom-scrollbar">
-          <div v-if="filteredFollowList.length === 0" class="follow-empty-state">
-            <Users :size="32" class="empty-icon" />
-            <p class="empty-text">
-              {{ followSearchQuery ? 'Tidak ada akun yang cocok dengan pencarian' : 'Belum ada data akun' }}
-            </p>
-          </div>
-
-          <div
-            v-for="user in filteredFollowList"
-            :key="user.id"
-            class="follow-user-row"
-          >
-            <div class="follow-user-avatar-wrap">
-              <img :src="user.avatar" :alt="user.name" class="follow-user-avatar" />
-              <span v-if="user.isVerified" class="follow-verified-dot" title="Verified">✓</span>
-            </div>
-
-            <div class="follow-user-info">
-              <div class="follow-user-name-line">
-                <span class="follow-user-name">{{ user.name }}</span>
-                <span v-if="user.isVerified" class="verified-tag">Base</span>
-              </div>
-              <div class="follow-user-handle">{{ user.handle }}</div>
-              <p class="follow-user-bio">{{ user.bio }}</p>
-            </div>
-
-            <button
-              type="button"
-              class="btn-follow-toggle"
-              :class="{ 'btn-following': user.isFollowing }"
-              @click="toggleFollowUser(user)"
-            >
-              <template v-if="user.isFollowing">
-                <UserCheck :size="13" />
-                <span>Mengikuti</span>
-              </template>
-              <template v-else>
-                <UserPlus :size="13" />
-                <span>Ikuti</span>
-              </template>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -563,19 +449,16 @@
 /**
  * BaseAdminProfileTab — Instagram-style Profile View for Base Admin.
  */
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Menu,
   X,
   Edit3,
   Instagram,
-  Twitter,
-  Send,
   Grid,
   CheckCircle2,
   Clock,
-  UserRound,
   ChevronRight,
   Coins,
   TrendingUp,
@@ -592,14 +475,13 @@ import {
   KeyRound,
   LogOut,
   MessageSquare,
-  Search,
-  UserCheck,
-  UserPlus,
   Upload,
 } from 'lucide-vue-next';
 
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
+import { api } from '../../api';
+import { mapFessToPost } from '../../utils/fessMapper';
 import BaseAdminPanels from './BaseAdminPanels.vue';
 import AdminFessCard from './AdminFessCard.vue';
 
@@ -610,310 +492,165 @@ const { mode: currentTheme, setMode } = useTheme();
 const showDrawer = ref(false);
 const showEditModal = ref(false);
 const activeSubModal = ref(null);
-const payoutSuccess = ref(false);
 
 const fessFilter = ref('semua');
 
-/* Follow & Follower Modal State */
-const showFollowModal = ref(false);
-const followModalTab = ref('followers'); // 'followers' or 'following'
-const followSearchQuery = ref('');
 
-const followersList = ref([
-  {
-    id: 'f1',
-    name: 'Rizky Pratama',
-    handle: '@dev_rizky',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    bio: 'Frontend dev • Vue & Tailwind enthusiast',
-    isFollowing: true,
-  },
-  {
-    id: 'f2',
-    name: 'Sarah Amanda',
-    handle: '@sarah_design',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
-    bio: 'UI/UX Designer & coffee lover ☕',
-    isFollowing: false,
-  },
-  {
-    id: 'f3',
-    name: 'Budi Santoso',
-    handle: '@budi_santoso',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
-    bio: 'Backend engineer • Golang & Postgres',
-    isFollowing: true,
-  },
-  {
-    id: 'f4',
-    name: 'Dinda Kirana',
-    handle: '@dinda_tech',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80',
-    bio: 'Junior Developer @ TechStartup ID',
-    isFollowing: false,
-  },
-  {
-    id: 'f5',
-    name: 'Kampus Fess Official',
-    handle: '@kampusfess',
-    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
-    bio: 'Portal curhat dan info mahasiswa se-Indonesia 🎓',
-    isFollowing: true,
-    isVerified: true,
-  },
-  {
-    id: 'f6',
-    name: 'Arya Nugraha',
-    handle: '@arya_cloud',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-    bio: 'DevOps & Cloud architecture enthusiast',
-    isFollowing: true,
-  },
-  {
-    id: 'f7',
-    name: 'Nadia Putri',
-    handle: '@nadia_codes',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80',
-    bio: 'Mobile dev Flutter • suka baca fess tech malam hari',
-    isFollowing: false,
-  },
-  {
-    id: 'f8',
-    name: 'Kucing Dev',
-    handle: '@kucing_oren',
-    avatar: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=120&q=80',
-    bio: 'Meow meow debug bug kucing oren 🐾',
-    isFollowing: true,
-  },
-]);
+/* ---------- Profil base real (GET /bases/:handle + GET /admin/stats) ---------- */
+const loading = ref(true);
+const error = ref(null);
+const base = ref(null);
+const stats = ref(null);
+const fesses = ref([]);
+const actionError = ref('');
 
-const followingList = ref([
-  {
-    id: 'fo1',
-    name: 'Kampus Fess Official',
-    handle: '@kampusfess',
-    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
-    bio: 'Portal curhat dan info mahasiswa se-Indonesia 🎓',
-    isFollowing: true,
-    isVerified: true,
-  },
-  {
-    id: 'fo2',
-    name: 'ITB Confess',
-    handle: '@itb_fess',
-    avatar: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=120&q=80',
-    bio: 'Komunitas ganesha confess & diskusi tech',
-    isFollowing: true,
-    isVerified: true,
-  },
-  {
-    id: 'fo3',
-    name: 'Rizky Pratama',
-    handle: '@dev_rizky',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    bio: 'Frontend dev • Vue & Tailwind enthusiast',
-    isFollowing: true,
-  },
-  {
-    id: 'fo4',
-    name: 'Budi Santoso',
-    handle: '@budi_santoso',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
-    bio: 'Backend engineer • Golang & Postgres',
-    isFollowing: true,
-  },
-  {
-    id: 'fo5',
-    name: 'Arya Nugraha',
-    handle: '@arya_cloud',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-    bio: 'DevOps & Cloud architecture enthusiast',
-    isFollowing: true,
-  },
-  {
-    id: 'fo6',
-    name: 'Kucing Dev',
-    handle: '@kucing_oren',
-    avatar: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=120&q=80',
-    bio: 'Meow meow debug bug kucing oren 🐾',
-    isFollowing: true,
-  },
-]);
+const managedHandle = computed(() => authStore.user?.managedBases?.[0] || null);
 
-function openFollowModal(tab = 'followers') {
-  followModalTab.value = tab;
-  followSearchQuery.value = '';
-  showFollowModal.value = true;
-}
-
-function toggleFollowUser(user) {
-  user.isFollowing = !user.isFollowing;
-}
-
-const filteredFollowList = computed(() => {
-  const currentList = followModalTab.value === 'followers' ? followersList.value : followingList.value;
-  const q = followSearchQuery.value.trim().toLowerCase();
-  if (!q) return currentList;
-  return currentList.filter(
-    (u) =>
-      u.name.toLowerCase().includes(q) ||
-      u.handle.toLowerCase().includes(q) ||
-      (u.bio && u.bio.toLowerCase().includes(q)),
-  );
-});
-
-const BASE_AVATARS = [
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?auto=format&fit=crop&w=150&q=80',
-];
-
-/* Base Data */
-const baseName = computed(() => authStore.user?.name || authStore.user?.username || 'Code & Memes Base');
-const baseHandle = computed(() => authStore.user?.handle || '@codememfess');
-const baseBio = computed(
-  () =>
-    authStore.user?.bio ||
-    'Base resmi komunitas developer & programmer. Kirim confession anonim seputar tech, coding, dan karir dev!',
+const baseName = computed(() => base.value?.name || authStore.user?.username || 'Base');
+const baseHandle = computed(
+  () => base.value?.handle || managedHandle.value || authStore.user?.handle || '',
 );
-const baseAvatar = computed(
-  () =>
-    authStore.user?.avatar ||
-    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
+const baseBio = computed(() => base.value?.bio || '');
+const baseInitial = computed(() =>
+  String(base.value?.initial || baseName.value).slice(0, 2).toUpperCase(),
 );
-const igAccount = computed(() => authStore.user?.igAccount || '@codememfess_ig');
-
-const fessCount = computed(() => authStore.user?.fessCount || 1284);
-const followingCount = computed(() => authStore.user?.followingCount || 42);
-const followersCount = computed(() => authStore.user?.followersCount || 18420);
-
-/* Edit Profile State */
-const editForm = ref({
-  name: baseName.value,
-  bio: baseBio.value,
-  avatar: baseAvatar.value,
+const baseAvatarUrl = computed(() => {
+  const avatar = base.value?.avatar;
+  return typeof avatar === 'string' && /^(https?:|data:|blob:)/i.test(avatar) ? avatar : null;
 });
+const igAccount = computed(() => base.value?.ig_account || '');
+const followersCount = computed(() => base.value?.followers_count ?? 0);
+const fessCount = computed(() => base.value?.fess_count ?? 0);
+const established = computed(() => base.value?.established || '2024');
 
-function handleAdminAvatarUpload(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    editForm.value.avatar = event.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+const pendingCount = computed(() => stats.value?.pending ?? 0);
+const approvedTotal = computed(() => stats.value?.published ?? 0);
+const rejectedTotal = computed(() => stats.value?.rejected ?? 0);
+const totalFesses = computed(() => stats.value?.total_fesses ?? fessCount.value);
 
-function saveBaseProfile() {
-  authStore.updateProfile({
-    name: editForm.value.name.trim(),
-    username: editForm.value.name.trim(),
-    bio: editForm.value.bio.trim(),
-    avatar: editForm.value.avatar,
-  });
-  showEditModal.value = false;
-}
-
-/* User-submitted Fesses for this Base with realistic comments & replies */
-const baseFesses = ref([
-  {
-    id: 'fess_base_01',
-    senderHandle: '@anon_coder99',
-    content:
-      'Mau curhat, senior kantor suka nge-push code langsung ke main branch tanpa PR review. Giliran ada bug pas deploy production, yang disalahin junior. Cara negur yang sopan gimana ya?',
-    status: 'approved',
-    time: '25 menit lalu',
-    likes: 84,
-    comments: 26,
-    isLiked: false,
-    isSaved: false,
-    postedToIg: true,
-    commentsList: [
-      {
-        id: 'c_01_1',
-        author: '@dev_jakarta',
-        time: '18m lalu',
-        text: 'Bikin branch protection rule di GitHub atau GitLab gan, kunci main branch biar minimal ada 1 approval PR sebelum merge.',
-        likes: 14,
-        isLiked: false,
-        replies: [
-          {
-            id: 'r_01_1',
-            author: '@senior_santuy',
-            time: '12m lalu',
-            text: 'Setuju banget, ini bukan masalah junior vs senior, ini masalah standar devops tim agar production aman.',
-          },
-        ],
-      },
-      {
-        id: 'c_01_2',
-        author: '@frontend_warrior',
-        time: '15m lalu',
-        text: 'Ajak ngopi bareng pas retrospektif sprint, bahas secara tim tanpa menunjuk individu.',
-        likes: 5,
-        isLiked: false,
-        replies: [],
-      },
-    ],
-  },
-  {
-    id: 'fess_base_02',
-    senderHandle: '@anon_fe_lead',
-    content:
-      'Spill dong roadmap belajar Vue 3 Composition API & Pinia buat yang baru pindah dari React. Worth it ga dipelajari buat project 2026 ini?',
-    status: 'approved',
-    time: '1 jam lalu',
-    likes: 52,
-    comments: 14,
-    isLiked: false,
-    isSaved: false,
-    postedToIg: true,
-    commentsList: [
-      {
-        id: 'c_02_1',
-        author: '@vue_enthusiast',
-        time: '45m lalu',
-        text: 'Sangat worth it. Vue 3 dengan Script Setup dan Pinia terasa sangat bersih dan performanya cepat.',
-        likes: 8,
-        isLiked: false,
-        replies: [],
-      },
-    ],
-  },
-  {
-    id: 'fess_base_03',
-    senderHandle: '@anon_devops',
-    content:
-      'Rekomendasi VPS murah buat hosting backend Go + Postgres dockerized dengan budget mahasiswa dong temen-temen.',
-    status: 'pending',
-    time: 'Baru saja',
-    likes: 0,
-    comments: 0,
-    isLiked: false,
-    isSaved: false,
-    postedToIg: false,
-    commentsList: [],
-  },
-]);
-
-const pendingCount = computed(() => baseFesses.value.filter((f) => f.status === 'pending').length);
-
-const filteredFesses = computed(() => {
-  if (fessFilter.value === 'semua') return baseFesses.value;
-  return baseFesses.value.filter((f) => f.status === fessFilter.value);
-});
-
-function approveFess(id) {
-  const f = baseFesses.value.find((item) => item.id === id);
-  if (f) {
-    f.status = 'approved';
-    f.postedToIg = true;
+/** GET /bases/:handle/fesses — all statuses so the tabs can filter. */
+async function loadFesses() {
+  const handle = managedHandle.value;
+  if (!handle) return;
+  try {
+    const res = await api.getBaseFesses(handle, { limit: 50 });
+    fesses.value = (res?.data || [])
+      .map((f) => {
+        const post = mapFessToPost(f);
+        return post ? { ...post, baseHandle: post.handle, timestamp: post.time } : null;
+      })
+      .filter(Boolean);
+  } catch (e) {
+    actionError.value = e?.message || 'Gagal memuat daftar fess base.';
+    fesses.value = [];
   }
 }
 
-function hideFess(id) {
-  baseFesses.value = baseFesses.value.filter((item) => item.id !== id);
+/** GET /admin/stats — role-scoped moderation counters. */
+async function loadStats() {
+  try {
+    stats.value = await api.getStats();
+  } catch {
+    stats.value = null;
+  }
+}
+
+async function loadProfile() {
+  const handle = managedHandle.value;
+  error.value = null;
+  if (!handle) {
+    error.value = new Error('Akun ini belum mengelola base.');
+    loading.value = false;
+    return;
+  }
+  loading.value = true;
+  try {
+    base.value = await api.getBase(handle);
+    await Promise.all([loadFesses(), loadStats()]);
+  } catch (e) {
+    error.value = e;
+  } finally {
+    loading.value = false;
+  }
+}
+
+/* ---------- Edit profil base (PATCH /bases/:handle/settings) ---------- */
+const editForm = ref({ name: '', bio: '', avatar: '' });
+const editError = ref('');
+const isSavingProfile = ref(false);
+
+function openEditProfile() {
+  editError.value = '';
+  editForm.value = {
+    name: baseName.value,
+    bio: baseBio.value,
+    avatar: baseAvatarUrl.value || '',
+  };
+  showEditModal.value = true;
+}
+
+async function handleAdminAvatarUpload(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  editError.value = '';
+  try {
+    const res = await api.uploadAvatar(file);
+    if (res?.url) editForm.value.avatar = res.url;
+  } catch (err) {
+    editError.value = err?.message || 'Upload foto gagal. Coba lagi.';
+  }
+}
+
+async function saveBaseProfile() {
+  const handle = managedHandle.value;
+  if (!handle) return;
+  isSavingProfile.value = true;
+  editError.value = '';
+  try {
+    base.value = await api.updateBaseSettings(handle, {
+      name: editForm.value.name.trim(),
+      bio: editForm.value.bio.trim(),
+      avatar: editForm.value.avatar || null,
+    });
+    showEditModal.value = false;
+  } catch (err) {
+    editError.value = err?.message || 'Gagal menyimpan profil base.';
+  } finally {
+    isSavingProfile.value = false;
+  }
+}
+
+onMounted(() => {
+  loadProfile();
+});
+
+/* ---------- Fess tabs + moderation actions (real API) ---------- */
+const filteredFesses = computed(() => {
+  if (fessFilter.value === 'semua') return fesses.value;
+  if (fessFilter.value === 'approved') return fesses.value.filter((f) => f.status === 'approved');
+  return fesses.value.filter((f) => f.status === fessFilter.value);
+});
+
+/** POST /fesses/:id/approve — then refresh the list + counters. */
+async function approveFess(id) {
+  actionError.value = '';
+  try {
+    await api.approveFess(id);
+    await Promise.all([loadFesses(), loadStats()]);
+  } catch (e) {
+    actionError.value = e?.message || 'Gagal menyetujui fess.';
+  }
+}
+
+/** POST /fesses/:id/reject — then refresh the list + counters. */
+async function rejectFess(id) {
+  actionError.value = '';
+  try {
+    await api.rejectFess(id);
+    await Promise.all([loadFesses(), loadStats()]);
+  } catch (e) {
+    actionError.value = e?.message || 'Gagal menolak fess.';
+  }
 }
 
 /* Drawer & Sub-modal Handlers */
@@ -938,7 +675,6 @@ const subModalTitle = computed(() => {
 
 function openModal(modalKey) {
   showDrawer.value = false;
-  payoutSuccess.value = false;
   activeSubModal.value = modalKey;
 }
 
@@ -946,17 +682,9 @@ function changeTheme(theme) {
   setMode(theme);
 }
 
-function simulatePayout() {
-  payoutSuccess.value = true;
-  setTimeout(() => {
-    payoutSuccess.value = false;
-    activeSubModal.value = null;
-  }, 2200);
-}
-
-function handleAdminLogout() {
+async function handleAdminLogout() {
   showDrawer.value = false;
-  authStore.logout();
+  await authStore.logout();
   router.push('/login');
 }
 </script>
@@ -2004,5 +1732,51 @@ function handleAdminLogout() {
 .empty-text {
   font-size: 12.5px;
   margin: 0;
+}
+.ig-avatar-initial,
+.edit-avatar-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.state-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--shell-chip, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--shell-text-muted);
+}
+
+.state-banner-error {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.btn-banner-retry {
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 99px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.edit-error-text {
+  margin-top: 12px;
+  color: #f87171;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 </style>

@@ -49,6 +49,16 @@ const routes = [
     redirect: '/register/base',
   },
   {
+    /**
+     * Activation gate: a Base Admin account without a managed base must
+     * finish this wizard before entering the admin portal (see router guard).
+     */
+    path: '/onboarding/base',
+    name: 'BaseOnboarding',
+    component: () => import('../views/BaseOnboardingPage.vue'),
+    meta: { requiresAuth: true, roles: ['Base Admin'], title: 'Lengkapi Profil Base' },
+  },
+  {
     path: '/feed',
     name: 'Feed',
     component: () => import('../views/FeedPage.vue'),
@@ -110,10 +120,12 @@ const router = createRouter({
   },
 });
 
-/** Global guard: auth -> strict role separation -> document title. */
+/** Global guard: auth -> base-admin onboarding gate -> role separation -> title. */
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const userRole = authStore.user?.role;
+  const hasManagedBase = (authStore.user?.managedBases?.length ?? 0) > 0;
+  const needsBaseOnboarding = userRole === 'Base Admin' && !hasManagedBase;
 
   // 1. Protected route: requires authentication
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
@@ -123,11 +135,23 @@ router.beforeEach((to, from, next) => {
   // 2. Guest-only routes (Login / Register): redirect already logged-in users to their respective home
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     if (userRole === 'Super Admin') return next({ name: 'SuperAdmin' });
+    if (userRole === 'Base Admin') {
+      return next(needsBaseOnboarding ? { name: 'BaseOnboarding' } : { name: 'BaseAdmin' });
+    }
+    return next({ name: 'Feed' });
+  }
+
+  // 3. Base Admin without a base: force the onboarding wizard (create base profile)
+  if (needsBaseOnboarding && to.name !== 'BaseOnboarding') {
+    return next({ name: 'BaseOnboarding' });
+  }
+  if (to.name === 'BaseOnboarding' && !needsBaseOnboarding) {
+    if (userRole === 'Super Admin') return next({ name: 'SuperAdmin' });
     if (userRole === 'Base Admin') return next({ name: 'BaseAdmin' });
     return next({ name: 'Feed' });
   }
 
-  // 3. Strict Role Access Control:
+  // 4. Strict Role Access Control:
   // If route specifies allowed roles, check if current user matches
   if (to.meta.roles && !to.meta.roles.includes(userRole)) {
     // Send to appropriate home based on current role
@@ -135,7 +159,7 @@ router.beforeEach((to, from, next) => {
       return next({ name: 'SuperAdmin' });
     }
     if (userRole === 'Base Admin') {
-      return next({ name: 'BaseAdmin' });
+      return next(needsBaseOnboarding ? { name: 'BaseOnboarding' } : { name: 'BaseAdmin' });
     }
     return next({ name: 'Feed' });
   }
