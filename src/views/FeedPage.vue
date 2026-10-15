@@ -4,9 +4,13 @@
       <div class="centered-content-wrapper">
         <!-- Tab memakai KeepAlive: state (daftar, notifikasi, hasil pencarian)
              tidak dibuang saat pindah tab — tidak ada skeleton berkedip dan
-             refresh tetap berjalan senyap lewat useVisibilityRefresh. -->
+             refresh tetap berjalan senyap lewat useVisibilityRefresh.
+             CATATAN: jangan menaruh komentar HTML di dalam <KeepAlive> —
+             kompilasi dev menghitung setiap komentar sebagai child sehingga
+             gagal "expects exactly one child component" (di build komentar
+             dibuang, makanya error ini hanya muncul saat `vite dev`).
+             Urutan tab: home → search → notif/aktivitas → profile/akun. -->
         <KeepAlive>
-          <!-- 1. HOME -->
           <FeedHomeTab
             v-if="activeNav === 'home'"
             v-model="homeTab"
@@ -23,7 +27,6 @@
             @loadMore="loadMoreHome"
           />
 
-          <!-- 2. SEARCH -->
           <ExploreSearchTab
             v-else-if="activeNav === 'search'"
             v-model:query="searchQuery"
@@ -36,7 +39,6 @@
             @toggle-follow="toggleFollowBase"
           />
 
-          <!-- 3. NOTIF -->
           <ActivityTab
             v-else-if="activeNav === 'notif' || activeNav === 'aktivitas'"
             v-model="aktivitasTab"
@@ -46,7 +48,6 @@
             @retry="reload"
           />
 
-          <!-- 4. USER PROFILE (Instagram Style) -->
           <UserProfileTab
             v-else-if="activeNav === 'profile' || activeNav === 'akun'"
             :theme-mode="themeMode"
