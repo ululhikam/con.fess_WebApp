@@ -19,8 +19,16 @@ const error = ref(null);
 let loaded = false;
 let inflight = null;
 
+/** "Mengikuti" timeline: fess dari base yang diikuti user (server-filtered). */
+const followingPosts = ref([]);
+const followingLoading = ref(false);
+const followingError = ref(null);
+let followingLoaded = false;
+let followingInflight = null;
+
 export function useFeedPosts() {
   const feedPosts = computed(() => posts.value);
+  const followingFeedPosts = computed(() => followingPosts.value);
 
   /** (Re)load the timeline from the API. */
   async function reload(params = {}) {
@@ -50,12 +58,43 @@ export function useFeedPosts() {
     return inflight;
   }
 
+  /** (Re)load the "Mengikuti" timeline — only followed bases. */
+  async function reloadFollowing(params = {}) {
+    followingLoading.value = true;
+    followingError.value = null;
+    try {
+      const res = await api.getFesses({ sort: 'newest', limit: 30, following: true, ...params });
+      followingPosts.value = (res?.data || []).map(mapFessToPost);
+      followingLoaded = true;
+      return followingPosts.value;
+    } catch (e) {
+      followingError.value = e;
+      throw e;
+    } finally {
+      followingLoading.value = false;
+    }
+  }
+
+  /** Fetch the following timeline once, then serve from the module cache. */
+  function ensureFollowingLoaded(params = {}) {
+    if (followingLoaded) return Promise.resolve(followingPosts.value);
+    if (!followingInflight) {
+      followingInflight = reloadFollowing(params).finally(() => {
+        followingInflight = null;
+      });
+    }
+    return followingInflight;
+  }
+
   /**
    * Toggle like on a post (optimistic, reconciled with the vote response).
+   * Works for rows in either timeline (For You / Mengikuti).
    * @param {string|number} id
    */
   async function toggleLike(id) {
-    const post = posts.value.find((p) => String(p.id) === String(id));
+    const post =
+      posts.value.find((p) => String(p.id) === String(id)) ||
+      followingPosts.value.find((p) => String(p.id) === String(id));
     if (!post) return;
 
     const wasLiked = post.isLiked;
@@ -92,5 +131,18 @@ export function useFeedPosts() {
     return mapped;
   }
 
-  return { feedPosts, loading, error, reload, ensureLoaded, toggleLike, publish };
+  return {
+    feedPosts,
+    loading,
+    error,
+    reload,
+    ensureLoaded,
+    followingPosts: followingFeedPosts,
+    followingLoading,
+    followingError,
+    reloadFollowing,
+    ensureFollowingLoaded,
+    toggleLike,
+    publish,
+  };
 }

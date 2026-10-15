@@ -6,12 +6,13 @@
         <FeedHomeTab
           v-if="activeNav === 'home'"
           v-model="homeTab"
-          :posts="publicFeedPosts"
-          :loading="feedLoading"
-          :error="feedError"
+          :posts="homeFeedPosts"
+          :loading="homeFeedLoading"
+          :error="homeFeedError"
+          :is-admin="true"
           @like="toggleLikePost"
           @findMore="activeNav = 'search'"
-          @retry="reloadFeed"
+          @retry="reloadHomeFeed"
         />
 
         <!-- 2. SEARCH: Jelajah Postingan & Base (Sama persis seperti User Biasa) -->
@@ -55,6 +56,10 @@
               :key="notif.id"
               class="notif-card-item"
               :class="{ unread: notif.unread }"
+              role="button"
+              tabindex="0"
+              @click="openAdminNotification(notif)"
+              @keydown.enter.prevent="openAdminNotification(notif)"
             >
               <div class="notif-icon-col" :class="notif.type">
                 <component :is="notif.icon" :size="18" />
@@ -179,8 +184,34 @@ const {
   loading: feedLoading,
   error: feedError,
   reload: reloadFeed,
+  followingPosts,
+  followingLoading,
+  followingError,
+  reloadFollowing,
   toggleLike,
 } = useFeedPosts();
+
+/** Home sub-tabs: "For You" (all published) / "Mengikuti" (followed bases). */
+const homeFeedPosts = computed(() =>
+  homeTab.value === 'mengikuti' ? followingPosts.value : publicFeedPosts.value,
+);
+const homeFeedLoading = computed(() =>
+  homeTab.value === 'mengikuti' ? followingLoading.value : feedLoading.value,
+);
+const homeFeedError = computed(() =>
+  homeTab.value === 'mengikuti' ? followingError.value : feedError.value,
+);
+
+watch(homeTab, (tab) => {
+  if (tab === 'mengikuti') reloadFollowing().catch(() => {});
+});
+
+/** Retry handler for the Home tab — reload whichever timeline is visible. */
+function reloadHomeFeed() {
+  return homeTab.value === 'mengikuti'
+    ? reloadFollowing().catch(() => {})
+    : reloadFeed().catch(() => {});
+}
 
 function toggleLikePost(payload) {
   const targetId = typeof payload === 'object' && payload !== null ? payload.id : payload;
@@ -243,6 +274,20 @@ const filteredAdminNotifs = computed(() => {
   if (notifFilter.value === 'semua') return notifItems.value;
   return notifItems.value.filter((n) => n.category === notifFilter.value);
 });
+
+/**
+ * Klik notifikasi: tandai sudah dibaca lalu arahkan ke lokasi tindakannya —
+ * tab profil base berisi antrean moderasi (setujui/tolak) fess.
+ */
+function openAdminNotification(notif) {
+  if (notif.unread) {
+    notif.unread = false; // optimistic — rollback kalau request gagal
+    api.markNotificationsRead([notif.id]).catch(() => {
+      notif.unread = true;
+    });
+  }
+  router.replace({ query: { ...route.query, tab: 'akun' } });
+}
 
 /* Compose navigation */
 function openCompose() {
@@ -579,6 +624,7 @@ onMounted(() => {
   border-radius: 16px;
   padding: 14px 16px;
   transition: border-color 0.15s ease;
+  cursor: pointer;
 }
 
 .notif-card-item.unread {

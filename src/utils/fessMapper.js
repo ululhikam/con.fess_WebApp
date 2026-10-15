@@ -73,7 +73,8 @@ export function mapFessToPost(f) {
     handle,
     senderHandle: handle,
     time: formatRelativeTime(f.created_at ?? f.createdAt ?? Date.now()),
-    tag: f.tag || 'Cerita',
+    // Tag hanya diisi jika backend memang punya tag asli (bukan default palsu).
+    tag: f.tag || null,
     content: f.content,
     likes: f.upvotes ?? 0,
     downvotes: f.downvotes ?? 0,
@@ -88,6 +89,8 @@ export function mapFessToPost(f) {
     media: Array.isArray(f.media) ? f.media : [],
     song: f.song || null,
     topic: f.topic || null,
+    // Label topik asli dari backend (mis. "cerita" → "Cerita").
+    topicLabel: f.topic_label || null,
     template: f.template || 'default',
     scheduledAt: f.scheduled_at ?? null,
     quotedFess: f.quoted_fess ? mapQuotedFess(f.quoted_fess) : null,

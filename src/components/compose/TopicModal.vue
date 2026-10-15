@@ -36,24 +36,26 @@
               <Check :size="16" v-if="!topic" class="topic-item__check" />
             </button>
 
-            <div v-for="t in filteredTopics" :key="t.id" class="topic-divider">
-              <span class="topic-category">{{ t.category }}</span>
-            </div>
+            <template v-for="group in groupedTopics" :key="group.category">
+              <div class="topic-divider">
+                <span class="topic-category">{{ group.category }}</span>
+              </div>
 
-            <button
-              v-for="t in filteredTopics"
-              :key="t.id"
-              type="button"
-              class="topic-item"
-              :class="{ selected: topic === t.id }"
-              @click="selectTopic(t.id)"
-            >
-              <span class="topic-item__icon" :style="{ backgroundColor: t.color }">
-                <component :is="t.icon" :size="16" />
-              </span>
-              <span class="topic-item__label">{{ t.label }}</span>
-              <Check :size="16" v-if="topic === t.id" class="topic-item__check" />
-            </button>
+              <button
+                v-for="t in group.topics"
+                :key="t.id"
+                type="button"
+                class="topic-item"
+                :class="{ selected: topic === t.id }"
+                @click="selectTopic(t.id)"
+              >
+                <span class="topic-item__icon" :style="{ backgroundColor: t.color }">
+                  <component :is="t.icon" :size="16" />
+                </span>
+                <span class="topic-item__label">{{ t.label }}</span>
+                <Check :size="16" v-if="topic === t.id" class="topic-item__check" />
+              </button>
+            </template>
 
             <div v-if="filteredTopics.length === 0" class="topic-empty">Topik tidak ditemukan</div>
           </div>
@@ -88,6 +90,20 @@ const filteredTopics = computed(() => {
   return props.topics.filter(
     (t) => t.label.toLowerCase().includes(q) || t.category.toLowerCase().includes(q),
   );
+});
+
+/** Topik dikelompokkan per kategori — header kategori tampil sekali saja. */
+const groupedTopics = computed(() => {
+  const groups = [];
+  const indexByCategory = new Map();
+  for (const t of filteredTopics.value) {
+    if (!indexByCategory.has(t.category)) {
+      indexByCategory.set(t.category, groups.length);
+      groups.push({ category: t.category, topics: [] });
+    }
+    groups[indexByCategory.get(t.category)].topics.push(t);
+  }
+  return groups;
 });
 
 function selectTopic(id) {

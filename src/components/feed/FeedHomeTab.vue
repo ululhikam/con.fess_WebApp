@@ -40,7 +40,13 @@
     />
 
     <div v-else class="flex flex-col gap-3 sm:gap-4">
-      <FeedCard v-for="post in posts" :key="post.id" :post="post" @like="$emit('like', $event)" />
+      <FeedCard
+        v-for="post in posts"
+        :key="post.id"
+        :post="post"
+        :is-admin="isAdmin"
+        @like="$emit('like', $event)"
+      />
     </div>
   </section>
 </template>
@@ -65,6 +71,8 @@ defineProps({
   loading: { type: Boolean, default: false },
   error: { type: [Error, Object, String], default: null },
   modelValue: { type: String, default: 'forYou' },
+  /** Admin context (base dashboard): pemegang base boleh melihat status fess. */
+  isAdmin: { type: Boolean, default: false },
 });
 
 defineEmits(['update:modelValue', 'like', 'findMore', 'retry']);

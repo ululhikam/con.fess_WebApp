@@ -73,7 +73,7 @@
             :active="!!form.topic"
             @click="showTopicModal = true"
           >
-            <span v-if="form.topic" class="toolbar-badge">{{ form.topic }}</span>
+            <span v-if="form.topic" class="toolbar-badge">{{ selectedTopicLabel }}</span>
           </ToolbarButton>
 
           <ToolbarButton
@@ -344,7 +344,14 @@ async function loadAvailableBases() {
   availableBases.value = bases.value;
 }
 
-const { topics, ensureLoaded: ensureTopicsLoaded } = useTopics();
+const { topics, ensureLoaded: ensureTopicsLoaded, getTopicById } = useTopics();
+
+/** Badge toolbar "Topik" menampilkan label topik asli, bukan id mentah. */
+const selectedTopicLabel = computed(() => {
+  const id = form.value.topic;
+  if (!id) return '';
+  return getTopicById(id)?.label || id;
+});
 
 const hasContent = computed(
   () =>

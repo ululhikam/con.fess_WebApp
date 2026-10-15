@@ -697,7 +697,12 @@ async function loadBaseFesses(requestId = baseRequestId) {
   fessesError.value = null;
 
   try {
-    const res = await api.getBaseFesses(handle, { page: 1, limit: FESS_PAGE_LIMIT });
+    // Halaman publik hanya menampilkan fess yang sudah terbit.
+    const res = await api.getBaseFesses(handle, {
+      page: 1,
+      limit: FESS_PAGE_LIMIT,
+      status: 'published',
+    });
     if (requestId !== baseRequestId) return;
     baseFesses.value = (res?.data || []).map(mapFessToPost).filter(Boolean);
   } catch (e) {

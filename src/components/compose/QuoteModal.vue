@@ -69,7 +69,7 @@
                   <span class="quote-handle">{{ post.handle || post.senderHandle }}</span>
                   <span class="quote-time">• {{ post.time }}</span>
                 </div>
-                <span v-if="post.tag" class="quote-tag-chip">{{ post.tag }}</span>
+                <span v-if="post.topicLabel || post.tag" class="quote-tag-chip">{{ post.topicLabel || post.tag }}</span>
                 <Check v-if="selectedQuote?.id === post.id" :size="16" class="quote-check-icon" />
               </div>
               <p class="quote-snippet">{{ post.content }}</p>

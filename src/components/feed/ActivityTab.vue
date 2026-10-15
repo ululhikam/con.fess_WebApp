@@ -36,6 +36,10 @@
         :key="notif.id"
         class="notif-card-item"
         :class="{ unread: notif.unread }"
+        role="button"
+        tabindex="0"
+        @click="openNotification(notif)"
+        @keydown.enter.prevent="openNotification(notif)"
       >
         <div class="notif-icon-col" :class="notif.type">
           <component :is="notif.icon" :size="18" />
@@ -65,6 +69,7 @@
  * Clean harmonized card layout, zero emojis.
  */
 import { computed, markRaw, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   Inbox,
   CheckCircle2,
@@ -155,7 +160,29 @@ function mapNotification(raw) {
     desc,
     time: formatRelativeTime(raw.created_at ?? Date.now()),
     unread: !(raw.read ?? raw.is_read ?? false),
+    rawType: raw.type,
+    fessId: raw.fess_id ?? null,
   };
+}
+
+const router = useRouter();
+
+/**
+ * Klik notifikasi: tandai sudah dibaca lalu arahkan ke lokasi yang perlu
+ * ditindak — daftar "Fess Kamu" di profil (status & interaksi fess tsb).
+ */
+function openNotification(notif) {
+  if (notif.unread) {
+    notif.unread = false; // optimistic — rollback kalau request gagal
+    api.markNotificationsRead([notif.id]).catch(() => {
+      notif.unread = true;
+    });
+  }
+
+  const FESS_TYPES = ['vote', 'comment', 'mention', 'moderation'];
+  if (notif.fessId || FESS_TYPES.includes(notif.rawType)) {
+    router.push({ path: '/feed', query: { tab: 'profile' } });
+  }
 }
 
 const notifications = ref([]);
@@ -247,6 +274,7 @@ const filteredNotifications = computed(() => {
   border-radius: 16px;
   padding: 16px;
   transition: border-color 0.15s ease;
+  cursor: pointer;
 }
 
 .notif-card-item.unread {

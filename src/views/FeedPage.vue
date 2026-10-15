@@ -6,13 +6,13 @@
         <FeedHomeTab
           v-if="activeNav === 'home'"
           v-model="homeTab"
-          :posts="feedPosts"
+          :posts="activeFeedPosts"
           :followed-handles="followedHandles"
-          :loading="loading"
-          :error="error"
+          :loading="activeFeedLoading"
+          :error="activeFeedError"
           @like="handleLike"
           @findMore="onNavChange('search')"
-          @retry="reload"
+          @retry="reloadHome"
         />
 
         <!-- 2. SEARCH -->
@@ -111,6 +111,10 @@ const {
   loading,
   error,
   reload: reloadFeed,
+  followingPosts,
+  followingLoading,
+  followingError,
+  reloadFollowing,
   toggleLike,
 } = useFeedPosts();
 const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
@@ -135,6 +139,22 @@ const activePanel = ref(null);
 const homeTab = ref('forYou');
 const searchTab = ref('base');
 const aktivitasTab = ref('semua');
+
+/* ---------- Home sub-tabs: "For You" / "Mengikuti" ---------- */
+const activeFeedPosts = computed(() =>
+  homeTab.value === 'mengikuti' ? followingPosts.value : feedPosts.value,
+);
+const activeFeedLoading = computed(() =>
+  homeTab.value === 'mengikuti' ? followingLoading.value : loading.value,
+);
+const activeFeedError = computed(() =>
+  homeTab.value === 'mengikuti' ? followingError.value : error.value,
+);
+
+watch(homeTab, (tab) => {
+  // Always refetch the following timeline so follow/unfollow stays in sync.
+  if (tab === 'mengikuti') reloadFollowing().catch(() => {});
+});
 
 function onNavChange(key) {
   activeNav.value = key;
@@ -172,6 +192,11 @@ const filteredBases = computed(() => {
 /* ---------- initial load (drives the skeleton) ---------- */
 function reload() {
   return reloadFeed().catch(() => {});
+}
+
+/** Retry handler for the Home tab — reload whichever timeline is visible. */
+function reloadHome() {
+  return homeTab.value === 'mengikuti' ? reloadFollowing().catch(() => {}) : reload();
 }
 
 onMounted(() => {

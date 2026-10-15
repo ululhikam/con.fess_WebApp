@@ -38,7 +38,7 @@
 
             <div v-if="form.topic" class="summary-row">
               <span class="summary-label">Topik</span>
-              <span class="summary-value">{{ form.topic }}</span>
+              <span class="summary-value">{{ topicLabel }}</span>
             </div>
 
             <div v-if="form.song" class="summary-row">
@@ -98,6 +98,7 @@
 import { computed } from 'vue';
 import { X, Calendar, Loader2, AlertCircle } from 'lucide-vue-next';
 import PostPreview from './PostPreview.vue';
+import { useTopics } from '../../composables/useTopics';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -106,6 +107,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:show', 'confirm', 'cancel']);
+
+const { getTopicById } = useTopics();
+
+/** Ringkasan menampilkan label topik asli (bukan id mentah). */
+const topicLabel = computed(() => {
+  const id = props.form.topic;
+  if (!id) return '';
+  return getTopicById(id)?.label || id;
+});
 
 const author = computed(() => ({
   username: 'Kamu',

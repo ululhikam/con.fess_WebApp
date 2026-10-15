@@ -20,10 +20,13 @@
       </div>
 
       <div class="header-right-group">
-        <!-- Tag / Category (User Feed) -->
-        <span v-if="post.tag" :class="['tag-badge', post.tag === 'Tanya' ? 'tag-tanya' : 'tag-cerita']">
+        <!-- Tag / Topic asli dari database (bukan label default palsu) -->
+        <span
+          v-if="post.topicLabel || post.tag"
+          :class="['tag-badge', post.topic === 'tanya' || post.tag === 'Tanya' ? 'tag-tanya' : 'tag-cerita']"
+        >
           <Pin :size="11" />
-          <span>{{ post.tag }}</span>
+          <span>{{ post.topicLabel || post.tag }}</span>
         </span>
 
         <!-- Instagram Story Sync Badge (Admin / Feed) -->
@@ -32,9 +35,9 @@
           <span>Story</span>
         </span>
 
-        <!-- Status Badge (if provided or admin mode) -->
+        <!-- Status Badge — hanya untuk pemilik base (atau Super Admin) -->
         <span
-          v-if="post.status"
+          v-if="showStatusBadge"
           class="badge-subtle"
           :class="post.status === 'approved' ? 'badge-approved' : 'badge-pending'"
         >
@@ -450,6 +453,7 @@ import {
 import ReportFessModal from './ReportFessModal.vue';
 import { api } from '../../api';
 import { mapFessComment } from '../../utils/fessMapper';
+import { useAuthStore } from '../../stores/authStore';
 
 const props = defineProps({
   post: {
@@ -472,6 +476,25 @@ const emit = defineEmits([
   'approve',
   'reject',
 ]);
+
+const authStore = useAuthStore();
+
+/**
+ * Badge status "Terbit"/"Antrean" hanya terlihat oleh yang memegang base
+ * dari fess tersebut (Base Admin pemiliknya) atau Super Admin.
+ */
+const showStatusBadge = computed(() => {
+  if (!props.isAdmin || !props.post?.status) return false;
+  if (authStore.user?.role === 'Super Admin') return true;
+
+  const postHandle = String(props.post?.handle || '')
+    .replace(/^@/, '')
+    .toLowerCase();
+  if (!postHandle) return false;
+
+  const managed = authStore.user?.managedBases || [];
+  return managed.some((h) => String(h).replace(/^@/, '').toLowerCase() === postHandle);
+});
 
 /* 1. LIKE STATE */
 const isLiked = ref(props.post.isLiked || false);
