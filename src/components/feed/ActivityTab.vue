@@ -18,14 +18,15 @@
       </div>
     </div>
 
-    <ContentSkeleton v-if="loading" type="list" :count="3" label="Memuat aktivitas…" />
+    <ContentSkeleton v-if="notifLoading" type="list" :count="3" label="Memuat aktivitas…" />
 
     <AppStateView
-      v-else-if="error"
+      v-else-if="notifError"
       variant="error"
       title="Aktivitas gagal dimuat"
+      description="Terjadi kesalahan saat mengambil notifikasi. Coba muat ulang."
       action-label="Coba lagi"
-      @action="$emit('retry')"
+      @action="loadNotifications"
     />
 
     <!-- Active User Notifications List -->
@@ -63,7 +64,7 @@
  * ActivityTab — notifications & activity feed for regular users.
  * Clean harmonized card layout, zero emojis.
  */
-import { ref, computed } from 'vue';
+import { computed, markRaw, onMounted, ref } from 'vue';
 import {
   Inbox,
   CheckCircle2,
@@ -73,7 +74,13 @@ import {
 } from 'lucide-vue-next';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
+import { api } from '../../api';
+import { formatRelativeTime, truncate } from '../../utils/format';
 
+/**
+ * `loading` / `error` are kept as optional props for backwards compatibility
+ * with the parent shell — notifications now carry their own request state.
+ */
 const props = defineProps({
   filters: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
@@ -89,48 +96,91 @@ const DEFAULT_FILTERS = [
   { key: 'laporan', label: 'Laporan' },
 ];
 
-const notifications = ref([
-  {
-    id: 'notif_u1',
-    category: 'fess',
-    icon: CheckCircle2,
-    type: 'type-approved',
-    title: 'Confession Disetujui & Terbit',
-    desc: 'Confession anonim kamu di @codememfess telah disetujui admin dan terbit ke timeline.',
-    time: '15m lalu',
-    unread: true,
+/* ---------- Notification mapping (GET /notifications) ---------- */
+/**
+ * API notification type → card presentation + client-side filter bucket.
+ * Buckets: 'balasan' (Balasan tab), 'fess' (Fess Kamu tab), 'laporan' (Laporan tab).
+ */
+const NOTIF_PRESENTATION = {
+  comment: {
+    category: 'balasan',
+    icon: markRaw(MessageCircle),
+    cssClass: 'type-comment',
+    title: 'Balasan Baru',
   },
-  {
-    id: 'notif_u2',
-    category: 'fess',
-    icon: Heart,
-    type: 'type-like',
-    title: 'Mendapat 50+ Suka Baru',
-    desc: 'Confession kamu seputar tips junior programmer disukai oleh lebih dari 50 pengguna.',
-    time: '1j lalu',
-    unread: true,
+  mention: {
+    category: 'balasan',
+    icon: markRaw(MessageCircle),
+    cssClass: 'type-comment',
+    title: 'Disebut di Fess',
   },
-  {
-    id: 'notif_u3',
+  vote: {
     category: 'fess',
-    icon: MessageCircle,
-    type: 'type-comment',
-    title: 'Balasan Baru di Fess Kamu',
-    desc: '@anon_pembaca membalas fess kamu: "Setuju banget gan, saya juga pernah ngalamin hal yang sama..."',
-    time: '3j lalu',
-    unread: false,
+    icon: markRaw(Heart),
+    cssClass: 'type-like',
+    title: 'Fess Mendapat Vote',
   },
-  {
-    id: 'notif_u4',
+  moderation: {
+    category: 'fess',
+    icon: markRaw(CheckCircle2),
+    cssClass: 'type-approved',
+    title: 'Status Moderasi Fess',
+  },
+  system: {
     category: 'laporan',
-    icon: Flag,
-    type: 'type-report',
-    title: 'Status Laporan Konten',
-    desc: 'Laporan kamu terkait pelanggaran konten fess telah ditinjau dan ditindaklanjuti oleh tim moderasi.',
-    time: 'Kemarin',
-    unread: false,
+    icon: markRaw(Flag),
+    cssClass: 'type-report',
+    title: 'Notifikasi Sistem',
   },
-]);
+};
+
+function mapNotification(raw) {
+  const meta = NOTIF_PRESENTATION[raw.type] || {
+    category: 'lainnya',
+    icon: markRaw(Inbox),
+    cssClass: 'type-comment',
+    title: 'Notifikasi',
+  };
+
+  const actor = raw.actor && raw.actor !== 'Anonim' ? `${raw.actor} ` : '';
+  let desc = `${actor}${raw.text || ''}`.trim() || 'Notifikasi baru.';
+  if (raw.fess_content) desc += ` · “${truncate(raw.fess_content, 80)}”`;
+
+  return {
+    id: raw.id,
+    category: meta.category,
+    icon: meta.icon,
+    type: meta.cssClass,
+    title: meta.title,
+    desc,
+    time: formatRelativeTime(raw.created_at ?? Date.now()),
+    unread: !(raw.read ?? raw.is_read ?? false),
+  };
+}
+
+const notifications = ref([]);
+const notifLoading = ref(false);
+const notifError = ref(null);
+let requestSeq = 0;
+
+async function loadNotifications() {
+  const seq = ++requestSeq;
+  notifLoading.value = true;
+  notifError.value = null;
+  try {
+    const res = await api.getNotifications({ page: 1, limit: 50 });
+    if (seq !== requestSeq) return;
+    notifications.value = (res?.data || []).map(mapNotification);
+  } catch (e) {
+    if (seq !== requestSeq) return;
+    notifError.value = e;
+    notifications.value = [];
+  } finally {
+    if (seq === requestSeq) notifLoading.value = false;
+  }
+}
+
+onMounted(loadNotifications);
 
 const filteredNotifications = computed(() => {
   if (props.modelValue === 'semua') return notifications.value;

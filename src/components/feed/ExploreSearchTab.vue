@@ -90,20 +90,29 @@
     <template v-else-if="mode === 'menfess'">
       <h3 class="section-title-md mb-4">Menfess Terkait &amp; Populer</h3>
 
-      <ContentSkeleton v-if="loading" type="list" :count="3" label="Mencari menfess…" />
+      <ContentSkeleton v-if="fessLoading" type="list" :count="3" label="Mencari menfess…" />
 
       <AppStateView
-        v-else-if="!filteredMenfess.length"
+        v-else-if="fessError"
+        variant="error"
+        title="Menfess gagal dimuat"
+        description="Terjadi kesalahan saat mencari menfess. Coba muat ulang."
+        action-label="Coba lagi"
+        @action="fetchMenfess"
+      />
+
+      <AppStateView
+        v-else-if="!visibleMenfess.length"
         variant="empty"
         title="Tidak ada menfess yang cocok"
-        :description="`Tidak ada menfess untuk “${query}”. Coba kata kunci topik atau base lain.`"
+        :description="emptyMenfessDescription"
         action-label="Bersihkan pencarian"
         @action="$emit('update:query', '')"
       />
 
       <div v-else class="explore-menfess-stream flex flex-col gap-4">
         <FessCard
-          v-for="post in filteredMenfess"
+          v-for="post in visibleMenfess"
           :key="post.id"
           :post="post"
           :is-admin="false"
@@ -118,13 +127,14 @@
  * ExploreSearchTab — discovery screen (search + category filter + follow).
  * Supports both 'base' and 'menfess' exploration modes.
  */
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search } from 'lucide-vue-next';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import FessCard from '../common/FessCard.vue';
-import { DUMMY_MENFESS_POSTS } from '../../data/mockPosts';
+import { api } from '../../api';
+import { mapFessToPost } from '../../utils/fessMapper';
 
 const router = useRouter();
 
@@ -141,7 +151,6 @@ const TABS = [
 
 const props = defineProps({
   bases: { type: Array, default: () => [] },
-  menfess: { type: Array, default: null },
   categories: { type: Array, default: () => [] },
   query: { type: String, default: '' },
   category: { type: String, default: 'Semua' },
@@ -152,33 +161,90 @@ const props = defineProps({
 
 defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
 
-const menfessPool = computed(() => props.menfess || DUMMY_MENFESS_POSTS);
+/* ---------- Menfess search (GET /fesses, debounced) ---------- */
+const MENFESS_DEBOUNCE_MS = 300;
 
-const filteredMenfess = computed(() => {
-  let list = menfessPool.value;
-  const q = props.query.trim().toLowerCase();
+const fessPosts = ref([]);
+const fessLoading = ref(false);
+const fessError = ref(null);
+
+let debounceTimer = null;
+let requestSeq = 0;
+let lastFetchedQuery = null;
+
+/** Fetch fess search results from the backend (query + newest first). */
+async function fetchMenfess() {
+  clearTimeout(debounceTimer);
+  debounceTimer = null;
+
+  const seq = ++requestSeq;
+  const q = props.query.trim();
+  lastFetchedQuery = q;
+
+  fessLoading.value = true;
+  fessError.value = null;
+  try {
+    const res = await api.getFesses({
+      query: q || undefined,
+      limit: 20,
+      sort: 'newest',
+    });
+    if (seq !== requestSeq) return;
+    fessPosts.value = (res?.data || []).map(mapFessToPost);
+  } catch (e) {
+    if (seq !== requestSeq) return;
+    fessError.value = e;
+    fessPosts.value = [];
+  } finally {
+    if (seq === requestSeq) fessLoading.value = false;
+  }
+}
+
+/** Debounce so we only query the API once the user pauses typing. */
+function scheduleMenfessFetch() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(fetchMenfess, MENFESS_DEBOUNCE_MS);
+}
+
+watch(
+  () => props.query,
+  () => {
+    if (props.mode === 'menfess') scheduleMenfessFetch();
+  },
+);
+
+watch(
+  () => props.mode,
+  (mode) => {
+    if (mode !== 'menfess') return;
+    const q = props.query.trim();
+    if (lastFetchedQuery !== q || (!fessPosts.value.length && !fessError.value)) {
+      scheduleMenfessFetch();
+    }
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => clearTimeout(debounceTimer));
+
+/** Category pills narrow the result list client-side (server has no pill taxonomy). */
+const visibleMenfess = computed(() => {
   const cat = props.category;
-
-  if (cat && cat !== 'Semua') {
-    list = list.filter(
-      (m) =>
-        m.category === cat ||
-        (m.tag && m.tag.toLowerCase() === cat.toLowerCase()) ||
-        (m.content && m.content.toLowerCase().includes(cat.toLowerCase()))
-    );
-  }
-
-  if (q) {
-    list = list.filter(
-      (m) =>
-        m.content.toLowerCase().includes(q) ||
-        (m.handle && m.handle.toLowerCase().includes(q)) ||
-        (m.tag && m.tag.toLowerCase().includes(q))
-    );
-  }
-
-  return list;
+  if (!cat || cat === 'Semua') return fessPosts.value;
+  const needle = cat.toLowerCase();
+  return fessPosts.value.filter(
+    (m) =>
+      (m.tag && m.tag.toLowerCase() === needle) ||
+      (m.content && m.content.toLowerCase().includes(needle)),
+  );
 });
+
+const emptyMenfessDescription = computed(() =>
+  props.query.trim()
+    ? `Tidak ada menfess untuk “${props.query}”. Coba kata kunci topik atau base lain.`
+    : 'Belum ada menfess yang dapat ditampilkan saat ini.',
+);
+
 </script>
 
 <style scoped>

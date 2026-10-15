@@ -1,83 +1,95 @@
 /**
  * src/api/index.js
- * Main API entry point. Switches between mock and real implementation
- * based on VITE_USE_MOCK env var (default: true in dev).
+ * Single API entry point. Every data operation in the app goes through this
+ * module and hits the real backend (see api-contract.yml at repo root).
  */
 
 import { createApiClient, ApiError } from './client';
-import { mockApi } from './mock';
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
+const baseUrl = import.meta.env.VITE_API_BASE || '/api';
 
-/** Real API client (lazy-initialized). */
-let realClient = null;
-function getRealClient() {
-  if (!realClient) {
-    const baseUrl = import.meta.env.VITE_API_BASE || '/api';
-    const getToken = () => {
-      // Token bisa dari authStore, localStorage, atau cookie
-      return localStorage.getItem('fess_token');
-    };
-    realClient = createApiClient(baseUrl, getToken);
-  }
-  return realClient;
-}
+const getToken = () => localStorage.getItem('fess_token');
 
-/** Thin wrapper to make real client match mockApi interface. */
-function createRealApi() {
-  const client = getRealClient();
-  return {
-    /* AUTH */
-    login: (role) => client.post('/auth/login', { role }),
-    registerUser: (payload) => client.post('/auth/register/user', payload),
-    registerBase: (payload) => client.post('/auth/register/base', payload),
-    logout: () => client.post('/auth/logout'),
-    me: () => client.get('/auth/me'),
-    refreshToken: () => client.post('/auth/refresh'),
+const client = createApiClient(baseUrl, getToken);
 
-    /* BASES */
-    getBases: (params) => client.get('/bases', { params }),
-    getBase: (handle) => client.get(`/bases/${handle}`),
-    followBase: (handle) => client.post(`/bases/${handle}/follow`),
+/** Unified API surface — components/composables import this. */
+export const api = {
+  /* AUTH */
+  login: (payload) => client.post('/auth/login', payload),
+  loginGoogle: (payload) => client.post('/auth/login/google', payload),
+  registerUser: (payload) => client.post('/auth/register/user', payload),
+  registerBase: (payload) => client.post('/auth/register/base', payload),
+  logout: () => client.post('/auth/logout'),
+  me: () => client.get('/auth/me'),
+  refreshToken: () => client.post('/auth/refresh'),
 
-    /* FESSES */
-    getFesses: (params) => client.get('/fesses', { params }),
-    getFess: (id) => client.get(`/fesses/${id}`),
-    createFess: (payload) => client.post('/fesses', payload),
-    voteFess: (id, type) => client.post(`/fesses/${id}/vote`, { type }),
-    approveFess: (id) => client.post(`/fesses/${id}/approve`),
-    rejectFess: (id) => client.post(`/fesses/${id}/reject`),
+  /* BASES */
+  getBases: (params) => client.get('/bases', { params }),
+  getBase: (handle) => client.get(`/bases/${encodeURIComponent(handle)}`),
+  getBaseFesses: (handle, params) =>
+    client.get(`/bases/${encodeURIComponent(handle)}/fesses`, { params }),
+  followBase: (handle) => client.post(`/bases/${encodeURIComponent(handle)}/follow`),
+  updateBaseSettings: (handle, payload) =>
+    client.patch(`/bases/${encodeURIComponent(handle)}/settings`, payload),
 
-    /* COMMENTS */
-    getComments: (fessId) => client.get(`/fesses/${fessId}/comments`),
-    addComment: (fessId, text) => client.post(`/fesses/${fessId}/comments`, { text }),
+  /* FESSES */
+  getFesses: (params) => client.get('/fesses', { params }),
+  getFess: (id) => client.get(`/fesses/${id}`),
+  createFess: (payload) => client.post('/fesses', payload),
+  voteFess: (id, type) => client.post(`/fesses/${id}/vote`, { type }),
+  approveFess: (id) => client.post(`/fesses/${id}/approve`),
+  rejectFess: (id) => client.post(`/fesses/${id}/reject`),
+  reportFess: (id, payload) => client.post(`/fesses/${id}/report`, payload),
+  deleteFess: (id) => client.delete(`/fesses/${id}/delete`),
 
-    /* NOTIFICATIONS */
-    getNotifications: (params) => client.get('/notifications', { params }),
-    markNotificationsRead: (ids) => client.post('/notifications/read', { ids }),
+  /* COMMENTS */
+  getComments: (fessId, params) => client.get(`/fesses/${fessId}/comments`, { params }),
+  addComment: (fessId, text) => client.post(`/fesses/${fessId}/comments`, { text }),
 
-    /* PROFILE */
-    getProfile: (userId) => client.get(`/users/${userId}`),
-    updateProfile: (data) => client.patch('/users/me', data),
+  /* NOTIFICATIONS */
+  getNotifications: (params) => client.get('/notifications', { params }),
+  markNotificationsRead: (ids) => client.post('/notifications/read', { ids }),
 
-    /* ADMIN */
-    getStats: () => client.get('/admin/stats'),
-    getModerationQueue: (params) => client.get('/admin/moderation', { params }),
-  };
-}
+  /* USERS */
+  getProfile: (userId) => client.get(`/users/${userId}`),
+  updateProfile: (data) => client.patch('/users/me', data),
+  getMyFesses: (params) => client.get('/users/me/fesses', { params }),
+  getMyFollowing: () => client.get('/users/me/following'),
 
-/** Unified API — components import this, not mock/real directly. */
-export const api = USE_MOCK ? mockApi : createRealApi();
+  /* UPLOAD */
+  uploadMedia: (file, type) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (type) fd.append('type', type);
+    return client.upload('/upload', fd);
+  },
+  uploadAvatar: (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return client.upload('/upload/avatar', fd);
+  },
+
+  /* SONGS & TOPICS */
+  getSongs: (params) => client.get('/songs', { params }),
+  getTopics: () => client.get('/topics'),
+
+  /* ADMIN — base dashboard */
+  getStats: () => client.get('/admin/stats'),
+  getModerationQueue: (params) => client.get('/admin/moderation', { params }),
+  exportCanvas: (payload) => client.post('/admin/canvas/export', payload),
+
+  /* ADMIN — platform connections & treasury */
+  getPlatformConnections: () => client.get('/admin/connections'),
+  togglePlatformConnection: (platform, payload) => client.post(`/admin/connections/${platform}`, payload),
+  getTreasury: () => client.get('/admin/treasury'),
+  requestPayout: (payload) => client.post('/admin/treasury/payout', payload),
+
+  /* ADMIN — system */
+  getSystemHealth: () => client.get('/admin/system/health'),
+  updateSecurityControls: (payload) => client.patch('/admin/system/security', payload),
+  getEngineLogs: (params) => client.get('/admin/system/logs', { params }),
+  banUser: (payload) => client.post('/admin/users/ban', payload),
+};
 
 /** Re-export error class for catch handling. */
 export { ApiError } from './client';
-
-/** Helper to check if we're in mock mode. */
-export const isMockMode = () => USE_MOCK;
-
-/** Switch at runtime (e.g., for testing in dev). */
-export function setMockMode(enabled) {
-  // Note: only affects subsequent imports; modules already imported keep old refs.
-  // Use this in tests or dev console: `import { setMockMode } from '@/api'; setMockMode(false)`
-  Object.assign(api, enabled ? mockApi : createRealApi());
-}

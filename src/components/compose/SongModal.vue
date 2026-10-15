@@ -71,7 +71,15 @@
 
             <div v-if="filteredSongs.length === 0" class="song-empty">
               <Music :size="32" />
-              <p>Lagu tidak ditemukan</p>
+              <p>
+                {{
+                  songsLoading
+                    ? 'Memuat katalog lagu…'
+                    : songsError
+                      ? 'Gagal memuat katalog lagu'
+                      : 'Lagu tidak ditemukan'
+                }}
+              </p>
             </div>
           </div>
         </div>
@@ -86,26 +94,36 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { X, Music, Check, Search, Play, Pause } from 'lucide-vue-next';
+import { useSongs } from '../../composables/useSongs';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
   song: { type: Object, default: null },
-  songs: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['update:show', 'update:song']);
 
+const { songs, loading: songsLoading, error: songsError, searchSongs } = useSongs();
 const searchQuery = ref('');
 const playingId = ref(null);
+let searchTimer = null;
 
-const filteredSongs = computed(() => {
-  if (!searchQuery.value) return props.songs;
-  const q = searchQuery.value.toLowerCase();
-  return props.songs.filter(
-    (s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q),
-  );
+// Results come pre-filtered from the API (GET /songs).
+const filteredSongs = computed(() => songs.value);
+
+watch(
+  () => props.show,
+  (isOpen) => {
+    if (isOpen) searchSongs(searchQuery.value);
+  },
+  { immediate: true },
+);
+
+watch(searchQuery, (q) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => searchSongs(q.trim()), 250);
 });
 
 function selectSong(s) {

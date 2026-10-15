@@ -38,58 +38,6 @@
       </div>
     </div>
 
-    <!-- MOCKUP MEDIA PRESET PICKER SECTION -->
-    <div class="mockup-preset-section">
-      <div class="mockup-header-row">
-        <div class="mockup-header-title">
-          <Sparkles :size="15" class="sparkle-icon" />
-          <span>Gunakan Mockup Media (Sampel)</span>
-        </div>
-        <button
-          type="button"
-          class="btn-open-catalog"
-          @click="showCatalogModal = true"
-        >
-          <span>Katalog Lengkap</span>
-          <ChevronRight :size="14" />
-        </button>
-      </div>
-
-      <!-- Quick Preset Carousel Scroll -->
-      <div class="mockup-carousel-track">
-        <button
-          v-for="preset in ALL_MOCKUP_MEDIA"
-          :key="preset.id"
-          type="button"
-          class="mockup-chip-btn"
-          :class="{ added: isPresetAdded(preset) }"
-          :disabled="mediaFiles.length >= maxFiles && !isPresetAdded(preset)"
-          :title="isPresetAdded(preset) ? 'Sudah ditambahkan' : `Tambahkan ${preset.name}`"
-          @click="toggleMockupMedia(preset)"
-        >
-          <div class="mockup-chip-thumb-box">
-            <img :src="preset.thumbnail || preset.url" :alt="preset.name" loading="lazy" />
-            <div v-if="preset.type === 'video'" class="mockup-video-overlay-icon">
-              <Film :size="13" />
-            </div>
-            <span class="mockup-type-badge-mini" :class="preset.type">
-              {{ preset.type === 'image' ? 'Foto' : 'Video' }}
-            </span>
-          </div>
-
-          <div class="mockup-chip-text-col">
-            <span class="mockup-chip-title">{{ preset.name }}</span>
-            <span class="mockup-chip-size">{{ preset.sizeText }}</span>
-          </div>
-
-          <span v-if="isPresetAdded(preset)" class="mockup-check-badge">
-            <Check :size="12" />
-          </span>
-          <Plus v-else :size="14" class="mockup-plus-icon" />
-        </button>
-      </div>
-    </div>
-
     <!-- Media Preview Grid (When media files are selected) -->
     <div v-if="mediaFiles.length > 0" class="media-uploader__preview-grid">
       <div
@@ -162,136 +110,14 @@
       <span>{{ error }}</span>
     </p>
 
-    <!-- FULL MOCKUP CATALOG MODAL -->
-    <Teleport to="body">
-      <Transition name="fade-modal">
-        <div
-          v-if="showCatalogModal"
-          class="mockup-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          @click="showCatalogModal = false"
-        >
-          <div class="mockup-modal-window" @click.stop>
-            <div class="mockup-modal-header">
-              <div class="modal-head-title">
-                <Sparkles :size="18" class="sparkle-icon" />
-                <h3>Katalog Mockup Foto &amp; Video</h3>
-              </div>
-              <button
-                type="button"
-                class="btn-close-modal"
-                aria-label="Tutup"
-                @click="showCatalogModal = false"
-              >
-                <X :size="18" />
-              </button>
-            </div>
-
-            <!-- Tab Filter (Semua, Foto, Video) -->
-            <div class="mockup-modal-tabs" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                :class="['modal-tab-btn', { active: catalogFilter === 'all' }]"
-                @click="catalogFilter = 'all'"
-              >
-                Semua ({{ ALL_MOCKUP_MEDIA.length }})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :class="['modal-tab-btn', { active: catalogFilter === 'image' }]"
-                @click="catalogFilter = 'image'"
-              >
-                <Image :size="13" />
-                <span>Foto ({{ MOCKUP_IMAGES.length }})</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :class="['modal-tab-btn', { active: catalogFilter === 'video' }]"
-                @click="catalogFilter = 'video'"
-              >
-                <Film :size="13" />
-                <span>Video ({{ MOCKUP_VIDEOS.length }})</span>
-              </button>
-            </div>
-
-            <!-- Cards Grid in Modal -->
-            <div class="mockup-modal-grid">
-              <div
-                v-for="item in filteredCatalog"
-                :key="item.id"
-                class="mockup-grid-card"
-                :class="{ selected: isPresetAdded(item) }"
-              >
-                <div class="modal-card-thumb">
-                  <img :src="item.thumbnail || item.url" :alt="item.name" loading="lazy" />
-                  <span class="card-type-tag" :class="item.type">
-                    {{ item.type === 'image' ? 'Foto' : 'Video' }}
-                    <span v-if="item.duration">• {{ item.duration }}</span>
-                  </span>
-                </div>
-                <div class="modal-card-body">
-                  <h4 class="card-title">{{ item.name }}</h4>
-                  <p class="card-desc">{{ item.caption }}</p>
-                  <div class="card-footer-row">
-                    <span class="card-size-pill">{{ item.sizeText }}</span>
-                    <button
-                      type="button"
-                      :class="['btn-toggle-attach', { attached: isPresetAdded(item) }]"
-                      :disabled="mediaFiles.length >= maxFiles && !isPresetAdded(item)"
-                      @click="toggleMockupMedia(item)"
-                    >
-                      <Check v-if="isPresetAdded(item)" :size="13" />
-                      <Plus v-else :size="13" />
-                      <span>{{ isPresetAdded(item) ? 'Terpasang' : 'Pilih' }}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="mockup-modal-footer">
-              <span class="footer-count-text">
-                {{ mediaFiles.length }} dari {{ maxFiles }} media dipilih
-              </span>
-              <button
-                type="button"
-                class="btn-done-modal"
-                @click="showCatalogModal = false"
-              >
-                Selesai
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import {
-  Image,
-  Upload,
-  X,
-  Plus,
-  AlertCircle,
-  Film,
-  Sparkles,
-  ChevronRight,
-  Check,
-} from 'lucide-vue-next';
+import { Image, Upload, X, Plus, AlertCircle, Film } from 'lucide-vue-next';
 
-import {
-  MOCKUP_IMAGES,
-  MOCKUP_VIDEOS,
-  ALL_MOCKUP_MEDIA,
-} from '../../data/mockupMedia';
+import { api } from '../../api';
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -304,16 +130,6 @@ const emit = defineEmits(['update:modelValue', 'change']);
 const fileInputRef = ref(null);
 const dragActive = ref(false);
 const error = ref('');
-
-// Catalog Modal State
-const showCatalogModal = ref(false);
-const catalogFilter = ref('all');
-
-const filteredCatalog = computed(() => {
-  if (catalogFilter.value === 'image') return MOCKUP_IMAGES;
-  if (catalogFilter.value === 'video') return MOCKUP_VIDEOS;
-  return ALL_MOCKUP_MEDIA;
-});
 
 const mediaFiles = computed({
   get() {
@@ -399,62 +215,28 @@ function processFile(file) {
   mediaFiles.value = [...mediaFiles.value, mediaItem];
   emit('change', mediaFiles.value);
 
-  simulateUpload(mediaItem);
+  uploadItem(mediaItem);
 }
 
-function simulateUpload(item) {
-  let progress = 0;
-  const interval = setInterval(() => {
-    progress += 20;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(interval);
-      item.uploading = false;
+/** Upload the file to the backend and swap the blob preview for the final URL. */
+async function uploadItem(item) {
+  item.uploading = true;
+  item.progress = 0;
+  try {
+    const res = await api.uploadMedia(item.file, item.type);
+    if (res?.url) {
+      item.url = res.url;
+      item.thumbnail = res.thumbnail || undefined;
+      item.size = res.size ?? item.size;
     }
-    item.progress = Math.min(progress, 100);
-  }, 90);
-}
-
-function isPresetAdded(preset) {
-  return mediaFiles.value.some((m) => m.url === preset.url || m.id === preset.id);
-}
-
-function toggleMockupMedia(preset) {
-  error.value = '';
-  const existingIdx = mediaFiles.value.findIndex(
-    (m) => m.url === preset.url || m.id === preset.id
-  );
-
-  if (existingIdx !== -1) {
-    // Remove if already added
-    removeFile(existingIdx);
-    return;
+    item.progress = 100;
+  } catch (e) {
+    error.value = `Gagal mengunggah ${item.name}. Coba lagi.`;
+    const idx = mediaFiles.value.indexOf(item);
+    if (idx !== -1) removeFile(idx);
+  } finally {
+    item.uploading = false;
   }
-
-  if (mediaFiles.value.length >= props.maxFiles) {
-    error.value = `Maksimal ${props.maxFiles} media tercapai`;
-    return;
-  }
-
-  const mediaItem = {
-    id: preset.id || `mock_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    name: `${preset.name}.${preset.type === 'video' ? 'mp4' : 'jpg'}`,
-    size: preset.size,
-    sizeText: preset.sizeText,
-    type: preset.type,
-    preview: preset.url,
-    url: preset.url,
-    thumbnail: preset.thumbnail || preset.url,
-    duration: preset.duration || null,
-    caption: preset.caption || preset.name,
-    uploading: true,
-    progress: 0,
-  };
-
-  mediaFiles.value = [...mediaFiles.value, mediaItem];
-  emit('change', mediaFiles.value);
-
-  simulateUpload(mediaItem);
 }
 
 function removeFile(index) {

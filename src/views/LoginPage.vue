@@ -173,11 +173,11 @@ function safeRedirect() {
 /* ---------- validation ---------- */
 const form = useValidatedForm({
   identifier: {
-    initial: 'user@base.eth',
+    initial: '',
     rules: [rules.required(), rules.minLength(3, 'Minimal 3 karakter')],
   },
   password: {
-    initial: 'password123',
+    initial: '',
     rules: [rules.required(), rules.minLength(8, 'Minimal 8 karakter')],
   },
 });
@@ -227,7 +227,13 @@ async function handleLogin() {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
   try {
-    const ok = await form.submit(() => authStore.login(selectedRole.value));
+    const ok = await form.submit((values) =>
+      authStore.login({
+        identifier: values.identifier,
+        password: values.password,
+        role: selectedRole.value,
+      }),
+    );
     if (ok) await redirectRole(selectedRole.value);
   } catch {
     // Errors surfaced via form.submitError
@@ -237,14 +243,8 @@ async function handleLogin() {
 }
 
 async function handleGoogleLogin() {
-  if (isSubmitting.value) return;
-  isSubmitting.value = true;
-  try {
-    authStore.login(selectedRole.value);
-    await redirectRole(selectedRole.value);
-  } finally {
-    isSubmitting.value = false;
-  }
+  // Google One-Tap (GIS) isn't wired yet — guide the user to the form.
+  form.submitError.value = 'Login Google belum tersedia. Gunakan email & kata sandi.';
 }
 
 /** Deep-link to register still has to honour the original destination. */

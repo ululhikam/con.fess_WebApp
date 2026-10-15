@@ -10,7 +10,7 @@
           :followed-handles="followedHandles"
           :loading="loading"
           :error="error"
-          @like="toggleLike"
+          @like="handleLike"
           @findMore="onNavChange('search')"
           @retry="reload"
         />
@@ -77,7 +77,7 @@
  *
  * Persistent Bottom Navigation stays visible across all 5 tabs.
  */
-import { ref, computed, watch } from 'vue';
+import { onMounted, ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 
 import BottomNavBar from '../components/layout/BottomNavBar.vue';
@@ -89,11 +89,16 @@ import AccountPanels from '../components/feed/AccountPanels.vue';
 
 import { useAuthStore } from '../stores/authStore';
 import { useFeedPosts } from '../composables/useFeedPosts';
+import { useBases } from '../composables/useBases';
 import { useFollowBase } from '../composables/useFollowBase';
 import { useTheme } from '../composables/useTheme';
-import { useAsyncData } from '../composables/useAsyncData';
-import { ALL_BASES, FEED_CATEGORIES } from '../data/bases';
-import { ACTIVITY_FILTERS } from '../data/mockPosts';
+
+/** UI filter enums (presentation config, not server data). */
+const FEED_CATEGORIES = ['Semua', 'Kampus', 'Kota', 'Hobi'];
+const ACTIVITY_FILTERS = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'balasan', label: 'Balasan' },
+];
 
 const router = useRouter();
 const route = useRoute();
@@ -101,8 +106,21 @@ const authStore = useAuthStore();
 const { mode: themeMode, setMode } = useTheme();
 
 /* ---------- domain state ---------- */
-const { feedPosts, toggleLike, publish } = useFeedPosts();
-const { followedHandles, isFollowing, toggleFollowBase } = useFollowBase(['@ustfess']);
+const {
+  feedPosts,
+  loading,
+  error,
+  reload: reloadFeed,
+  toggleLike,
+} = useFeedPosts();
+const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
+const { followedHandles, isFollowing, toggleFollowBase, syncFollowing } = useFollowBase();
+
+/** Adapter: FessCard emits a payload object, toggleLike takes an id. */
+function handleLike(payload) {
+  const id = payload && typeof payload === 'object' ? payload.id : payload;
+  Promise.resolve(toggleLike(id)).catch(() => {});
+}
 
 /* ---------- navigation ---------- */
 const VALID_TABS = ['home', 'search', 'notif', 'profile'];
@@ -140,11 +158,9 @@ watch(
 const searchQuery = ref('');
 const selectedCategory = ref('Semua');
 
-const exploreBases = ALL_BASES;
-
 const filteredBases = computed(() => {
   const q = searchQuery.value.trim().toLowerCase();
-  return ALL_BASES.filter((base) => {
+  return bases.value.filter((base) => {
     const matchesQuery =
       !q || base.name.toLowerCase().includes(q) || base.handle.toLowerCase().includes(q);
     const matchesCategory =
@@ -154,13 +170,15 @@ const filteredBases = computed(() => {
 });
 
 /* ---------- initial load (drives the skeleton) ---------- */
-const { loading, error, reload } = useAsyncData(
-  async () => {
-    await Promise.resolve();
-    return true;
-  },
-  { delay: 650 },
-);
+function reload() {
+  return reloadFeed().catch(() => {});
+}
+
+onMounted(() => {
+  reloadFeed().catch(() => {});
+  ensureBasesLoaded().catch(() => {});
+  syncFollowing();
+});
 
 /* ---------- actions ---------- */
 function openComposePage() {
@@ -184,8 +202,8 @@ function handleAccountAction(action) {
   }
 }
 
-function handleLogout() {
-  authStore.logout();
+async function handleLogout() {
+  await authStore.logout();
   router.push('/login');
 }
 </script>

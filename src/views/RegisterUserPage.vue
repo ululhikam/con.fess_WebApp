@@ -459,17 +459,8 @@ function goToStep2() {
 }
 
 function handleGoogleRegister() {
-  // Simulate Google OAuth response
-  form.email = 'user.google@gmail.com';
-  form.name = 'Google User';
-  form.handle = '@google_user';
-  form.password = 'GoogleAuthSecure_Pass123';
-  form.confirmPassword = 'GoogleAuthSecure_Pass123';
-  agreeTerms.value = true;
-  termsError.value = '';
-
-  // Langsung ke step 2 (Input profil)
-  currentStep.value = 2;
+  // Google OAuth (GIS) isn't wired yet — guide the user to the form.
+  errors.submit = 'Pendaftaran via Google belum tersedia. Isi formulir di atas.';
 }
 
 async function handleCompleteRegister() {
@@ -482,12 +473,12 @@ async function handleCompleteRegister() {
 
   try {
     const cleanHandle = form.handle.startsWith('@') ? form.handle : `@${form.handle}`;
-    authStore.registerUser({
+    await authStore.registerUser({
       username: form.name.trim(),
       handle: cleanHandle.trim(),
       email: form.email.trim(),
       password: form.password,
-      avatar: form.avatar,
+      avatar: /^https?:\/\//.test(form.avatar || '') ? form.avatar : null,
       bio: form.bio.trim(),
     });
 

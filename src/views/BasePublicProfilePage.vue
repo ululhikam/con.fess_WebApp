@@ -16,10 +16,10 @@
 
         <div class="top-title-col">
           <div class="top-handle-title">
-            <span>{{ baseData.handle }}</span>
-            <ShieldCheck :size="16" class="verified-icon" />
+            <span>{{ baseData?.handle || (cleanHandle ? `@${cleanHandle}` : 'Profil Base') }}</span>
+            <ShieldCheck v-if="baseData?.verified" :size="16" class="verified-icon" />
           </div>
-          <span class="top-sub-tag">{{ baseData.category }} Base</span>
+          <span class="top-sub-tag">{{ baseData?.category ? `${baseData.category} Base` : 'Base' }}</span>
         </div>
 
         <button
@@ -37,6 +37,26 @@
     <!-- Main Container -->
     <main class="public-main-stage">
       <div class="public-stage-container">
+        <!-- Loading skeleton while the base detail is fetched -->
+        <ContentSkeleton
+          v-if="baseLoading"
+          type="profile"
+          label="Memuat profil base…"
+        />
+
+        <!-- API error / 404 state -->
+        <AppStateView
+          v-else-if="baseError"
+          variant="error"
+          :title="baseNotFound ? 'Base tidak ditemukan' : 'Profil base gagal dimuat'"
+          :description="baseNotFound
+            ? `Base @${cleanHandle} tidak ditemukan. Periksa kembali tautan atau cari base lain dari feed.`
+            : 'Terjadi kesalahan saat mengambil profil base. Periksa koneksi internetmu, lalu coba lagi.'"
+          action-label="Coba lagi"
+          @action="loadBase"
+        />
+
+        <template v-else-if="baseData">
         <!-- COVER & HERO BANNER -->
         <section class="base-hero-card">
           <!-- Cover Banner with dynamic depth, glows, and category badges -->
@@ -55,7 +75,7 @@
             <div class="cover-glass-flare"></div>
             
             <div class="cover-top-row">
-              <div class="cover-status-badge">
+              <div v-if="baseData.verified" class="cover-status-badge">
                 <Sparkles :size="12" class="sparkle-anim-icon" />
                 <span>Base Resmi Aktif</span>
               </div>
@@ -88,7 +108,7 @@
                   <span>{{ baseData.initial }}</span>
                 </div>
                 
-                <span class="avatar-verified-shield" title="Base Resmi Terverifikasi">
+                <span v-if="baseData.verified" class="avatar-verified-shield" title="Base Resmi Terverifikasi">
                   <ShieldCheck :size="15" :stroke-width="2.6" />
                 </span>
               </div>
@@ -111,7 +131,7 @@
             <div class="base-identity-block">
               <div class="name-badge-row">
                 <h1 class="base-display-name">{{ baseData.name }}</h1>
-                <div class="badge-official-base" title="Base Resmi Terverifikasi Platform">
+                <div v-if="baseData.verified" class="badge-official-base" title="Base Resmi Terverifikasi Platform">
                   <ShieldCheck :size="13" class="badge-icon" />
                   <span>OFFICIAL BASE</span>
                 </div>
@@ -134,6 +154,7 @@
               <!-- Medsos & Feature Badges -->
               <div class="base-medsos-strip">
                 <a
+                  v-if="baseData.igAccount"
                   :href="'https://instagram.com/' + baseData.igAccount.replace(/^@/, '')"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -155,7 +176,7 @@
 
                 <div class="medsos-item-chip est-chip" title="Tahun berdiri base">
                   <Award :size="13" class="award-icon" />
-                  <span>Est. {{ baseData.established || '2023' }}</span>
+                  <span>Est. {{ baseData.established }}</span>
                 </div>
               </div>
             </div>
@@ -164,7 +185,7 @@
             <div class="base-stats-bento-grid">
               <div class="bento-stat-card">
                 <div class="bento-stat-top">
-                  <span class="bento-stat-num">{{ baseFesses.length || baseData.fessCount }}</span>
+                  <span class="bento-stat-num">{{ baseData.fessCount }}</span>
                   <MessageSquare :size="14" class="bento-stat-icon-muted" />
                 </div>
                 <div class="bento-stat-bottom">
@@ -280,7 +301,7 @@
           >
             <ShieldAlert :size="16" />
             <span>Aturan Base</span>
-            <span class="tab-pill-count">{{ baseData.rules?.length || 5 }}</span>
+            <span class="tab-pill-count">{{ baseData.rules.length }}</span>
           </button>
 
           <button
@@ -297,13 +318,24 @@
 
         <!-- TAB CONTENT 1: FESS TERBIT -->
         <section v-if="activeTab === 'posts'" class="tab-pane-container mt-4">
-          <div v-if="baseFesses.length" class="fess-feed-stream flex flex-col gap-4">
+          <ContentSkeleton v-if="fessesLoading" type="feed-card" :count="3" label="Memuat fess…" />
+
+          <AppStateView
+            v-else-if="fessesError"
+            variant="error"
+            title="Fess gagal dimuat"
+            description="Terjadi kesalahan saat mengambil fess base ini. Coba muat ulang."
+            action-label="Coba lagi"
+            @action="loadBaseFesses()"
+          />
+
+          <div v-else-if="baseFesses.length" class="fess-feed-stream flex flex-col gap-4">
             <FessCard
               v-for="post in baseFesses"
               :key="post.id"
               :post="post"
               :is-admin="false"
-              @like="handleLikePost(post)"
+              @like="handleLikePost"
             />
           </div>
 
@@ -368,11 +400,13 @@
               </div>
               <div class="meta-item">
                 <span class="meta-lbl">Status Verifikasi</span>
-                <span class="meta-val status-verified">Resmi Terverifikasi</span>
+                <span :class="['meta-val', { 'status-verified': baseData.verified }]">
+                  {{ baseData.verified ? 'Resmi Terverifikasi' : 'Belum Terverifikasi' }}
+                </span>
               </div>
               <div class="meta-item">
                 <span class="meta-lbl">Didirikan</span>
-                <span class="meta-val">{{ baseData.established || '2023' }}</span>
+                <span class="meta-val">{{ baseData.established }}</span>
               </div>
             </div>
 
@@ -393,6 +427,7 @@
             </div>
           </div>
         </section>
+        </template>
       </div>
     </main>
 
@@ -440,7 +475,7 @@
               @click="followModalTab = 'following'"
             >
               <span>Follow</span>
-              <span class="follow-tab-count">{{ baseData.followingCount }}</span>
+              <span class="follow-tab-count">{{ baseData?.followingCount ?? 0 }}</span>
             </button>
           </div>
           <button
@@ -551,15 +586,18 @@ import {
 
 import FessCard from '../components/common/FessCard.vue';
 import AppBottomNav from '../components/common/AppBottomNav.vue';
-import { getBaseByHandle, getSampleFessesForBase, ALL_BASES } from '../data/bases';
-import { FEED_POSTS } from '../data/mockPosts';
+import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
+import AppStateView from '../components/ui/AppStateView.vue';
+import { api } from '../api';
+import { mapBase } from '../composables/useBases';
+import { mapFessToPost } from '../utils/fessMapper';
 import { useAuthStore } from '../stores/authStore';
 import { useFollowBase } from '../composables/useFollowBase';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const { isFollowing, toggleFollowBase } = useFollowBase();
+const { isFollowing, toggleFollowBase, syncFollowing } = useFollowBase();
 
 const activeTab = ref('posts');
 const toastMessage = ref('');
@@ -570,86 +608,10 @@ const showFollowModal = ref(false);
 const followModalTab = ref('followers'); // 'followers' or 'following'
 const followSearchQuery = ref('');
 
-const followersList = ref([
-  {
-    id: 'f1',
-    name: 'Rizky Pratama',
-    handle: '@dev_rizky',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    bio: 'Frontend dev • Vue & Tailwind enthusiast',
-    isFollowing: true,
-  },
-  {
-    id: 'f2',
-    name: 'Sarah Amanda',
-    handle: '@sarah_design',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
-    bio: 'UI/UX Designer & coffee lover ☕',
-    isFollowing: false,
-  },
-  {
-    id: 'f3',
-    name: 'Budi Santoso',
-    handle: '@budi_santoso',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80',
-    bio: 'Backend engineer • Golang & Postgres',
-    isFollowing: true,
-  },
-  {
-    id: 'f4',
-    name: 'Kampus Fess Official',
-    handle: '@kampusfess',
-    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
-    bio: 'Portal curhat dan info mahasiswa se-Indonesia 🎓',
-    isFollowing: true,
-    isVerified: true,
-  },
-  {
-    id: 'f5',
-    name: 'Arya Nugraha',
-    handle: '@arya_cloud',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-    bio: 'DevOps & Cloud architecture enthusiast',
-    isFollowing: true,
-  },
-  {
-    id: 'f6',
-    name: 'Kucing Dev',
-    handle: '@kucing_oren',
-    avatar: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=120&q=80',
-    bio: 'Meow meow debug bug kucing oren 🐾',
-    isFollowing: true,
-  },
-]);
-
-const followingList = ref([
-  {
-    id: 'fo1',
-    name: 'Kampus Fess Official',
-    handle: '@kampusfess',
-    avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=120&q=80',
-    bio: 'Portal curhat dan info mahasiswa se-Indonesia 🎓',
-    isFollowing: true,
-    isVerified: true,
-  },
-  {
-    id: 'fo2',
-    name: 'ITB Confess',
-    handle: '@itb_fess',
-    avatar: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=120&q=80',
-    bio: 'Komunitas ganesha confess & diskusi tech',
-    isFollowing: true,
-    isVerified: true,
-  },
-  {
-    id: 'fo3',
-    name: 'Rizky Pratama',
-    handle: '@dev_rizky',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    bio: 'Frontend dev • Vue & Tailwind enthusiast',
-    isFollowing: true,
-  },
-]);
+// The API surface has no endpoint for a base's follower/following directory yet,
+// so the modal lists start empty and show their designed empty state — no fake accounts.
+const followersList = ref([]);
+const followingList = ref([]);
 
 function openFollowModal(tab = 'followers') {
   followModalTab.value = tab;
@@ -674,83 +636,119 @@ const filteredFollowList = computed(() => {
 });
 
 // Get clean handle from route params
-const rawHandle = computed(() => route.params.handle || 'codememfess');
-const cleanHandle = computed(() => String(rawHandle.value).replace(/^@/, ''));
+const cleanHandle = computed(() => String(route.params.handle || '').replace(/^@/, ''));
 
-// Base Details
-const baseData = computed(() => {
-  return getBaseByHandle(cleanHandle.value);
-});
+// Base Detail — GET /bases/:handle, normalized with mapBase()
+const baseData = ref(null);
+const baseLoading = ref(false);
+const baseError = ref(null);
+const baseNotFound = computed(() => baseError.value?.status === 404);
 
-const baseAvatar = computed(() => {
-  if (baseData.value?.avatar) return baseData.value.avatar;
-  if (authStore.user?.handle === baseData.value?.handle && authStore.user?.avatar) {
-    return authStore.user.avatar;
-  }
-  const clean = cleanHandle.value.toLowerCase();
-  if (clean === 'codememfess') {
-    return 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=200&q=80';
-  }
-  if (clean === 'unermenfess') {
-    return 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=200&q=80';
-  }
-  if (clean === 'fess10nopember') {
-    return 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=200&q=80';
-  }
-  if (clean === 'fessugm') {
-    return 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=200&q=80';
-  }
-  return null;
-});
-
-// Published confessions for this base
+// Published confessions for this base — GET /bases/:handle/fesses
 const baseFesses = ref([]);
+const fessesLoading = ref(false);
+const fessesError = ref(null);
+const FESS_PAGE_LIMIT = 30;
 
-function loadBaseFesses() {
-  const target = baseData.value.handle.toLowerCase();
-  // Check if any posts in FEED_POSTS match this base
-  const existingMatches = FEED_POSTS.filter(
-    (p) => (p.handle && p.handle.toLowerCase() === target) ||
-           (p.senderHandle && p.senderHandle.toLowerCase() === target)
-  );
+// Guards against out-of-order responses when the route handle changes quickly.
+let baseRequestId = 0;
 
-  if (existingMatches.length > 0) {
-    baseFesses.value = [...existingMatches];
-  } else {
-    // Generate realistic contextual confessions for this base
-    baseFesses.value = getSampleFessesForBase(baseData.value);
+/** The API expects the handle without the "@" prefix. */
+function apiHandle(handle) {
+  return String(handle || '').replace(/^@/, '');
+}
+
+async function loadBase() {
+  const handle = apiHandle(cleanHandle.value);
+  const requestId = ++baseRequestId;
+
+  baseLoading.value = true;
+  baseError.value = null;
+  baseData.value = null;
+  baseFesses.value = [];
+  fessesError.value = null;
+
+  if (!handle) {
+    baseError.value = new Error('Handle base tidak tersedia');
+    baseLoading.value = false;
+    return;
+  }
+
+  try {
+    const res = await api.getBase(handle);
+    if (requestId !== baseRequestId) return;
+    baseData.value = mapBase(res);
+    document.title = `${baseData.value.name} (${baseData.value.handle}) · Fess n Curious`;
+    loadBaseFesses(requestId);
+  } catch (e) {
+    if (requestId !== baseRequestId) return;
+    baseError.value = e;
+    document.title = `${cleanHandle.value} · Fess n Curious`;
+  } finally {
+    if (requestId === baseRequestId) baseLoading.value = false;
+  }
+}
+
+async function loadBaseFesses(requestId = baseRequestId) {
+  const handle = apiHandle(baseData.value?.handle);
+  if (!handle) return;
+
+  fessesLoading.value = true;
+  fessesError.value = null;
+
+  try {
+    const res = await api.getBaseFesses(handle, { page: 1, limit: FESS_PAGE_LIMIT });
+    if (requestId !== baseRequestId) return;
+    baseFesses.value = (res?.data || []).map(mapFessToPost).filter(Boolean);
+  } catch (e) {
+    if (requestId !== baseRequestId) return;
+    fessesError.value = e;
+    baseFesses.value = [];
+  } finally {
+    if (requestId === baseRequestId) fessesLoading.value = false;
   }
 }
 
 onMounted(() => {
-  loadBaseFesses();
-  document.title = `${baseData.value.name} (${baseData.value.handle}) · Fess n Curious`;
+  syncFollowing();
+  loadBase();
 });
 
 watch(
   () => route.params.handle,
   () => {
-    loadBaseFesses();
-    document.title = `${baseData.value.name} (${baseData.value.handle}) · Fess n Curious`;
+    loadBase();
   }
 );
 
-// Following State
-const isBaseFollowed = computed(() => {
-  return isFollowing(baseData.value.handle);
+// Base avatar — the API may return an image URL or just initials; only URLs
+// go into an <img>, initials fall back to the designed initial-letter core.
+const baseAvatar = computed(() => {
+  const avatar = baseData.value?.avatar;
+  return typeof avatar === 'string' && /^(https?:|data:|blob:)/i.test(avatar) ? avatar : null;
 });
 
-function handleToggleFollow() {
-  const result = toggleFollowBase(baseData.value.handle);
-  showToast(result ? `Berhasil mengikuti ${baseData.value.handle}` : `Berhenti mengikuti ${baseData.value.handle}`);
+// Following State
+const isBaseFollowed = computed(() =>
+  baseData.value ? isFollowing(baseData.value.handle) : false,
+);
+
+async function handleToggleFollow() {
+  const handle = baseData.value?.handle;
+  if (!handle) return;
+  try {
+    const nowFollowing = await toggleFollowBase(handle);
+    showToast(
+      nowFollowing ? `Berhasil mengikuti ${handle}` : `Berhenti mengikuti ${handle}`,
+    );
+  } catch (e) {
+    showToast('Gagal memperbarui status ikuti. Coba lagi.');
+  }
 }
 
-// Followers count display (dynamically adjusts if user follows)
+// Followers count display — the real value from the loaded base payload.
 const currentFollowersDisplay = computed(() => {
-  let count = baseData.value.followersCount || 12400;
-  if (isBaseFollowed.value) {
-    count += 1;
-  }
+  const count = baseData.value?.followersCount ?? 0;
   if (count >= 1000) {
     return (count / 1000).toFixed(1) + 'k';
   }
@@ -761,8 +759,13 @@ const currentFollowersDisplay = computed(() => {
 const isOwnBase = computed(() => {
   if (!authStore.isBaseAdmin) return false;
   const managed = authStore.user?.managedBases || [];
-  const target = baseData.value.handle.toLowerCase();
-  return managed.some((h) => h.toLowerCase() === target || h.toLowerCase() === `@${cleanHandle.value.toLowerCase()}`);
+  const target = baseData.value?.handle?.toLowerCase();
+  if (!target) return false;
+  const targetClean = target.replace(/^@/, '');
+  return managed.some((h) => {
+    const value = String(h).toLowerCase();
+    return value === target || value === `@${targetClean}`;
+  });
 });
 
 // Back navigation
@@ -778,6 +781,7 @@ function handleBack() {
 
 // Send confession to this base
 function handleSendFess() {
+  if (!baseData.value) return;
   router.push({
     path: '/create',
     query: { base: baseData.value.handle },
@@ -786,6 +790,7 @@ function handleSendFess() {
 
 // Share profile
 async function handleShare() {
+  if (!baseData.value) return;
   const url = window.location.href;
   if (navigator.share) {
     try {
@@ -809,6 +814,7 @@ async function handleShare() {
 }
 
 async function copyHandle() {
+  if (!baseData.value) return;
   try {
     await navigator.clipboard.writeText(baseData.value.handle);
     showToast(`Handle ${baseData.value.handle} berhasil disalin!`);
@@ -825,10 +831,31 @@ function showToast(msg) {
   }, 2800);
 }
 
-// Like post
-function handleLikePost(post) {
-  post.isLiked = !post.isLiked;
-  post.likes = (post.likes || 0) + (post.isLiked ? 1 : -1);
+// Like post — optimistic, reconciled with POST /fesses/:id/vote
+async function handleLikePost({ id, isLiked }) {
+  const item = baseFesses.value.find((p) => String(p.id) === String(id));
+  const previous = item ? { isLiked: item.isLiked, likes: item.likes ?? 0 } : null;
+
+  if (item) {
+    item.isLiked = isLiked;
+    item.likes = Math.max(0, (item.likes ?? 0) + (isLiked ? 1 : -1));
+  }
+
+  try {
+    const res = await api.voteFess(id, isLiked ? 'up' : 'down');
+    if (item && res && typeof res.upvotes === 'number') {
+      item.likes = res.upvotes;
+      item.downvotes = res.downvotes ?? item.downvotes;
+      item.isLiked = res.user_vote === 'up';
+      item.userVote = res.user_vote ?? null;
+    }
+  } catch (e) {
+    // Roll back the local item when the vote request fails.
+    if (item && previous) {
+      item.isLiked = previous.isLiked;
+      item.likes = previous.likes;
+    }
+  }
 }
 
 // Bottom navigation tab switching

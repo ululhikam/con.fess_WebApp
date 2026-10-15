@@ -7,9 +7,11 @@
           v-if="activeNav === 'home'"
           v-model="homeTab"
           :posts="publicFeedPosts"
-          :loading="false"
+          :loading="feedLoading"
+          :error="feedError"
           @like="toggleLikePost"
           @findMore="activeNav = 'search'"
+          @retry="reloadFeed"
         />
 
         <!-- 2. SEARCH: Jelajah Postingan & Base (Sama persis seperti User Biasa) -->
@@ -20,7 +22,7 @@
           v-model:mode="searchTab"
           :bases="filteredBases"
           :categories="FEED_CATEGORIES"
-          :loading="false"
+          :loading="basesLoading"
           :is-following="isFollowing"
           @toggle-follow="toggleFollowBase"
         />
@@ -45,7 +47,9 @@
             </div>
           </div>
 
-          <div v-if="filteredAdminNotifs.length" class="notif-stream-list">
+          <p v-if="notifLoading" class="pane-sub mb-4">Memuat notifikasi…</p>
+
+          <div v-else-if="filteredAdminNotifs.length" class="notif-stream-list">
             <div
               v-for="notif in filteredAdminNotifs"
               :key="notif.id"
@@ -102,14 +106,12 @@
  *   4. Notif  — Notifikasi segmented pengelola base (ActivityTab style)
  *   5. Akun   — Profil Base Admin (Instagram-style) & Moderasi
  */
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   Bell,
   CheckCircle2,
-  AlertTriangle,
-  Instagram,
-  Flag,
+  MessageCircle,
   Inbox,
 } from 'lucide-vue-next';
 
@@ -117,10 +119,15 @@ import BaseAdminBottomNav from '../components/admin/BaseAdminBottomNav.vue';
 import BaseAdminProfileTab from '../components/admin/BaseAdminProfileTab.vue';
 import FeedHomeTab from '../components/feed/FeedHomeTab.vue';
 import ExploreSearchTab from '../components/feed/ExploreSearchTab.vue';
-import { FEED_POSTS } from '../data/mockPosts';
-import { ALL_BASES, FEED_CATEGORIES } from '../data/bases';
 import { useAuthStore } from '../stores/authStore';
 import { useFollowBase } from '../composables/useFollowBase';
+import { useFeedPosts } from '../composables/useFeedPosts';
+import { useBases } from '../composables/useBases';
+import { api } from '../api';
+import { formatRelativeTime } from '../utils/format';
+
+/** UI filter enum (presentation config, not server data). */
+const FEED_CATEGORIES = ['Semua', 'Kampus', 'Kota', 'Hobi'];
 
 const router = useRouter();
 const route = useRoute();
@@ -147,8 +154,10 @@ const searchQuery = ref('');
 const selectedCategory = ref('Semua');
 const searchTab = ref('base');
 
+const { bases, loading: basesLoading, ensureLoaded: ensureBasesLoaded } = useBases();
+
 const filteredBases = computed(() => {
-  let list = ALL_BASES;
+  let list = bases.value;
   const q = searchQuery.value.trim().toLowerCase();
   if (selectedCategory.value && selectedCategory.value !== 'Semua') {
     list = list.filter((b) => b.category === selectedCategory.value);
@@ -158,25 +167,27 @@ const filteredBases = computed(() => {
       (b) =>
         b.name.toLowerCase().includes(q) ||
         b.handle.toLowerCase().includes(q) ||
-        b.keyword.toLowerCase().includes(q)
+        (b.keyword && b.keyword.toLowerCase().includes(q))
     );
   }
   return list;
 });
 
-/* Public Feed Posts */
-const publicFeedPosts = ref([...FEED_POSTS]);
+/* Public Feed Posts — live from the API */
+const {
+  feedPosts: publicFeedPosts,
+  loading: feedLoading,
+  error: feedError,
+  reload: reloadFeed,
+  toggleLike,
+} = useFeedPosts();
 
 function toggleLikePost(payload) {
   const targetId = typeof payload === 'object' && payload !== null ? payload.id : payload;
-  const item = publicFeedPosts.value.find((p) => p.id === targetId);
-  if (item) {
-    item.isLiked = !item.isLiked;
-    item.likes += item.isLiked ? 1 : -1;
-  }
+  Promise.resolve(toggleLike(targetId)).catch(() => {});
 }
 
-/* Notifications State (Harmonized with user's ActivityTab) */
+/* Notifications State — loaded from GET /notifications */
 const ADMIN_NOTIF_FILTERS = [
   { key: 'semua', label: 'Semua' },
   { key: 'moderasi', label: 'Moderasi' },
@@ -185,69 +196,64 @@ const ADMIN_NOTIF_FILTERS = [
 ];
 
 const notifFilter = ref('semua');
+const notifItems = ref([]);
+const notifLoading = ref(false);
+const notifError = ref(null);
 
-const NOTIF_ITEMS = ref([
-  {
-    id: 'notif_1',
-    category: 'moderasi',
+/** Presentation mapping for API notification types (icons are UI assets). */
+const NOTIF_PRESENTATION = {
+  moderation: { category: 'moderasi', icon: Bell, type: 'type-pending', title: 'Fess Menunggu Moderasi' },
+  vote: { category: 'sistem', icon: CheckCircle2, type: 'type-success', title: 'Fess Menerima Vote' },
+  comment: { category: 'sistem', icon: MessageCircle, type: 'type-alert', title: 'Komentar Baru' },
+};
+
+function mapNotification(n) {
+  const pres = NOTIF_PRESENTATION[n.type] || {
+    category: 'sistem',
     icon: Bell,
     type: 'type-pending',
-    title: 'Confession Baru Membutuhkan Moderasi',
-    desc: 'Pengirim anonim mengirim confession dengan tag [career]. Tinjau sekarang.',
-    time: '5m lalu',
-    unread: true,
-  },
-  {
-    id: 'notif_2',
-    category: 'sistem',
-    icon: Instagram,
-    type: 'type-ig',
-    title: 'Otomatis Terbit ke Instagram Story',
-    desc: 'Fess #codememfess_1283 berhasil di-render ke canvas Story Instagram via Graph API.',
-    time: '25m lalu',
-    unread: true,
-  },
-  {
-    id: 'notif_report',
-    category: 'laporan',
-    icon: Flag,
-    type: 'type-alert',
-    title: 'Laporan Konten Baru Diterima',
-    desc: 'Pengguna melaporkan 1 fess anonim (#fess_base_03) dengan alasan spam/promosi. Silakan tinjau.',
-    time: '2j lalu',
-    unread: true,
-  },
-  {
-    id: 'notif_3',
-    category: 'sistem',
-    icon: CheckCircle2,
-    type: 'type-success',
-    title: 'Pencairan Dana (Payout) Berhasil Diproses',
-    desc: 'Pencairan saldo treasury Rp 1.500.000 ke rekening BCA telah ditransfer.',
-    time: 'Kemarin',
-    unread: false,
-  },
-  {
-    id: 'notif_4',
-    category: 'moderasi',
-    icon: AlertTriangle,
-    type: 'type-alert',
-    title: 'Keyword SARA Terdeteksi & Terfilter',
-    desc: 'AI Auto-moderation memblokir 1 pesan spam otomatis sebelum masuk antrean.',
-    time: '2 hari lalu',
-    unread: false,
-  },
-]);
+    title: 'Notifikasi',
+  };
+  return {
+    id: n.id,
+    category: pres.category,
+    icon: pres.icon,
+    type: pres.type,
+    title: pres.title,
+    desc: n.text || n.fess_content || '',
+    time: formatRelativeTime(n.created_at ?? Date.now()),
+    unread: !n.read,
+  };
+}
+
+async function loadNotifications() {
+  notifLoading.value = true;
+  notifError.value = null;
+  try {
+    const res = await api.getNotifications({ page: 1, limit: 50 });
+    notifItems.value = (res?.data ?? []).map(mapNotification);
+  } catch (e) {
+    notifError.value = e;
+  } finally {
+    notifLoading.value = false;
+  }
+}
 
 const filteredAdminNotifs = computed(() => {
-  if (notifFilter.value === 'semua') return NOTIF_ITEMS.value;
-  return NOTIF_ITEMS.value.filter((n) => n.category === notifFilter.value);
+  if (notifFilter.value === 'semua') return notifItems.value;
+  return notifItems.value.filter((n) => n.category === notifFilter.value);
 });
 
 /* Compose navigation */
 function openCompose() {
   router.push('/create');
 }
+
+onMounted(() => {
+  reloadFeed().catch(() => {});
+  ensureBasesLoaded().catch(() => {});
+  loadNotifications();
+});
 </script>
 
 <style scoped>

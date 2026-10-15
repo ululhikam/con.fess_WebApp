@@ -6,7 +6,7 @@
 import { createPinia } from 'pinia';
 import router from '../router';
 import { initTheme } from '../composables/useTheme';
-import { api, isMockMode } from '../api';
+import { api } from '../api';
 
 /** State/plugin instances installed on the app instance. */
 export function createAppPlugins() {
@@ -16,8 +16,6 @@ export function createAppPlugins() {
 /** Side effects that must run once, before anything renders. */
 export function bootstrap() {
   initTheme();
-  // Log API mode at startup
-  console.log(`[FessHub] API mode: ${isMockMode() ? 'MOCK' : 'REAL'}`);
 }
 
 /**
@@ -41,5 +39,4 @@ export function configureApp(app) {
 
   // Global properties for easy access in components (optional)
   app.config.globalProperties.$api = api;
-  app.config.globalProperties.$isMock = isMockMode();
 }

@@ -52,7 +52,7 @@
       <div class="ig-user-info">
         <h2 class="ig-display-name">{{ displayName }}</h2>
         <div class="ig-username-sub">{{ userHandle }}</div>
-        <p class="ig-bio-text">{{ userBio }}</p>
+        <p v-if="userBio" class="ig-bio-text">{{ userBio }}</p>
       </div>
 
       <!-- Action Button: Edit Profil -->
@@ -80,7 +80,7 @@
         <div class="ig-stat-divider" />
 
         <button type="button" class="ig-stat-col" @click="activeSubTab = 'saldo'">
-          <span class="ig-stat-num ig-stat-num--accent">{{ balance }}</span>
+          <span class="ig-stat-num ig-stat-num--accent">{{ balanceDisplay }}</span>
           <span class="ig-stat-lbl">Saldo MFC</span>
         </button>
       </div>
@@ -136,12 +136,23 @@
           </button>
         </div>
 
-        <div v-if="myFesses.length" class="my-fess-list">
+        <ContentSkeleton v-if="myFessLoading" type="list" :count="3" label="Memuat fess kamu…" />
+
+        <AppStateView
+          v-else-if="myFessError"
+          variant="error"
+          title="Fess kamu gagal dimuat"
+          description="Terjadi kesalahan saat mengambil riwayat kirimanmu. Coba muat ulang."
+          action-label="Coba lagi"
+          @action="loadMyFesses"
+        />
+
+        <div v-else-if="myFesses.length" class="my-fess-list">
           <article v-for="item in myFesses" :key="item.id" class="my-fess-card">
             <div class="my-fess-top">
-              <span class="my-fess-base">{{ item.base }}</span>
+              <span class="my-fess-base">{{ item.handle }}</span>
               <span class="my-fess-status" :class="`status--${item.status}`">
-                {{ item.status === 'approved' ? 'Terbit' : 'Menunggu Moderasi' }}
+                {{ fessStatusLabel(item.status) }}
               </span>
             </div>
 
@@ -151,7 +162,7 @@
               <span class="my-fess-time">{{ item.time }}</span>
               <div class="my-fess-metrics">
                 <span class="inline-flex items-center gap-1"><Heart :size="13" /> {{ item.likes }}</span>
-                <span class="inline-flex items-center gap-1"><MessageCircle :size="13" /> {{ item.comments }}</span>
+                <span class="inline-flex items-center gap-1"><MessageCircle :size="13" /> {{ item.commentsCount }}</span>
               </div>
             </div>
           </article>
@@ -170,69 +181,82 @@
       <!-- TAB 2: BASE YANG DIIKUTI -->
       <div v-else-if="activeSubTab === 'following'" class="tab-pane-fade">
         <div class="tab-pane-header">
-          <span class="tab-pane-title">Komunitas Base Diikuti ({{ myFollowedBases.length }})</span>
+          <span class="tab-pane-title">Komunitas Base Diikuti ({{ followedBasesCount }})</span>
         </div>
 
-        <div class="following-search-box mb-4">
-          <Search :size="16" class="search-icon" />
-          <input
-            v-model="baseSearchQuery"
-            type="text"
-            placeholder="Cari base yang diikuti…"
-            class="following-search-input"
-          />
-        </div>
+        <ContentSkeleton v-if="followingLoading" type="list" :count="3" label="Memuat base diikuti…" />
 
-        <div v-if="filteredFollowedBases.length" class="following-list">
-          <div
-            v-for="base in filteredFollowedBases"
-            :key="base.handle"
-            class="following-card"
-          >
-            <div
-              class="following-info-col"
-              @click="goToBase(base.handle)"
-              title="Lihat profil base"
-            >
-              <div class="following-avatar" :style="{ background: base.color || '#2d68ff' }">
-                {{ base.name.charAt(0) }}
-              </div>
-              <div class="following-details">
-                <div class="following-name">{{ base.name }}</div>
-                <div class="following-handle">{{ base.handle }} • {{ base.members }}</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              class="btn-unfollow"
-              @click="handleUnfollow(base.handle)"
-            >
-              Mengikuti
-            </button>
+        <AppStateView
+          v-else-if="followingError"
+          variant="error"
+          title="Daftar base gagal dimuat"
+          description="Terjadi kesalahan saat mengambil base yang kamu ikuti. Coba muat ulang."
+          action-label="Coba lagi"
+          @action="loadFollowing"
+        />
+
+        <template v-else>
+          <div class="following-search-box mb-4">
+            <Search :size="16" class="search-icon" />
+            <input
+              v-model="baseSearchQuery"
+              type="text"
+              placeholder="Cari base yang diikuti…"
+              class="following-search-input"
+            />
           </div>
-        </div>
 
-        <div v-else class="empty-tab-state">
-          <Star :size="40" class="empty-tab-icon" />
-          <p class="empty-tab-title">Tidak ada base ditemukan</p>
-          <p class="empty-tab-sub">Jelajahi dan ikuti base confession favoritmu di tab Search.</p>
-        </div>
+          <div v-if="filteredFollowedBases.length" class="following-list">
+            <div
+              v-for="base in filteredFollowedBases"
+              :key="base.handle"
+              class="following-card"
+            >
+              <div
+                class="following-info-col"
+                @click="goToBase(base.handle)"
+                title="Lihat profil base"
+              >
+                <div class="following-avatar" :style="{ background: base.color || '#2d68ff' }">
+                  {{ base.name.charAt(0) }}
+                </div>
+                <div class="following-details">
+                  <div class="following-name">{{ base.name }}</div>
+                  <div class="following-handle">{{ base.handle }} • {{ base.members }}</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-unfollow"
+                @click="handleUnfollow(base.handle)"
+              >
+                Mengikuti
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="empty-tab-state">
+            <Star :size="40" class="empty-tab-icon" />
+            <p class="empty-tab-title">Tidak ada base ditemukan</p>
+            <p class="empty-tab-sub">Jelajahi dan ikuti base confession favoritmu di tab Search.</p>
+          </div>
+        </template>
       </div>
 
       <!-- TAB 3: SALDO & TOP UP -->
       <div v-else-if="activeSubTab === 'saldo'" class="tab-pane-fade">
-        <!-- Saldo Hero Card -->
+        <!-- Saldo Hero Card (read-only: balance comes from the session user) -->
         <div class="balance-mfc-card">
           <div class="balance-mfc-header">
             <div>
               <div class="balance-mfc-label">SALDO AKUN KAMU</div>
               <div class="balance-mfc-val">
                 <Coins :size="32" class="balance-mfc-icon" />
-                <span>{{ balance }}</span>
+                <span>{{ balanceDisplay }}</span>
                 <span class="balance-mfc-unit">MFC</span>
               </div>
             </div>
-            <div class="balance-mfc-status">
+            <div v-if="hasBalance" class="balance-mfc-status">
               <span class="mfc-status-pill">Status: Aktif</span>
             </div>
           </div>
@@ -241,65 +265,16 @@
           </p>
         </div>
 
-        <!-- Top Up Packages -->
-        <div class="section-heading-row mt-6 mb-3">
-          <span class="section-heading-title">Pilih Paket Top Up MFC</span>
-          <span class="section-heading-hint">Instan & Otomatis</span>
-        </div>
-
-        <div class="mfc-packages-grid">
-          <div
-            v-for="pkg in TOPUP_PACKAGES"
-            :key="pkg.mfc"
-            class="mfc-pkg-card"
-            :class="{ active: selectedPkg?.mfc === pkg.mfc, popular: pkg.popular }"
-            @click="selectedPkg = pkg"
-          >
-            <span v-if="pkg.popular" class="pkg-popular-tag">TERPOPULER</span>
-            <div class="pkg-mfc-amount">{{ pkg.mfc }} MFC</div>
-            <div class="pkg-price">Rp {{ pkg.idr.toLocaleString('id-ID') }}</div>
-            <div v-if="pkg.bonus" class="pkg-bonus">{{ pkg.bonus }}</div>
-          </div>
-        </div>
-
-        <!-- Payment Methods & Checkout button -->
-        <div v-if="selectedPkg" class="checkout-box mt-5">
-          <div class="checkout-summary-row">
-            <span>Paket Dipilih:</span>
-            <strong>{{ selectedPkg.mfc }} MFC (Rp {{ selectedPkg.idr.toLocaleString('id-ID') }})</strong>
-          </div>
-
-          <div class="payment-method-selector mt-3">
-            <div class="payment-label mb-2">Metode Pembayaran:</div>
-            <div class="payment-pills">
-              <button
-                v-for="method in PAYMENT_METHODS"
-                :key="method.key"
-                type="button"
-                class="pm-btn"
-                :class="{ active: selectedPayment === method.key }"
-                @click="selectedPayment = method.key"
-              >
-                {{ method.name }}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="btn-bayar-mfc mt-4"
-            :disabled="isProcessingTopUp"
-            @click="handleProcessTopUp"
-          >
-            <Coins :size="16" />
-            <span v-if="isProcessingTopUp">Memproses Pembayaran…</span>
-            <span v-else>Bayar Rp {{ selectedPkg.idr.toLocaleString('id-ID') }}</span>
-          </button>
-        </div>
-
-        <div v-if="topupSuccessMessage" class="alert-success mt-4">
-          <CheckCircle2 :size="18" />
-          <span>{{ topupSuccessMessage }}</span>
+        <div class="empty-tab-state mt-6">
+          <CreditCard :size="40" class="empty-tab-icon" />
+          <p class="empty-tab-title">Top Up Belum Tersedia</p>
+          <p class="empty-tab-sub">
+            {{
+              hasBalance
+                ? 'Saldo di atas diambil langsung dari akunmu. Fitur pembelian MFC belum tersedia saat ini.'
+                : 'Saldo dan top up MFC belum tersedia pada akunmu saat ini.'
+            }}
+          </p>
         </div>
       </div>
     </div>
@@ -491,13 +466,14 @@
             <div class="edit-avatar-controls">
               <div class="avatar-controls-top">
                 <span class="edit-avatar-label">Foto Profil:</span>
-                <label class="btn-upload-avatar-chip">
+                <label class="btn-upload-avatar-chip" :class="{ 'is-uploading': isUploadingAvatar }">
                   <Upload :size="12" />
-                  <span>Upload Foto</span>
+                  <span>{{ isUploadingAvatar ? 'Mengunggah…' : 'Upload Foto' }}</span>
                   <input
                     type="file"
                     accept="image/*"
                     class="sr-only"
+                    :disabled="isUploadingAvatar"
                     @change="handleAvatarFileSelect"
                   />
                 </label>
@@ -530,7 +506,7 @@
             />
           </div>
 
-          <!-- Handle -->
+          <!-- Handle (read-only: PATCH /users/me does not accept handle changes) -->
           <div class="form-group mt-3">
             <label for="edit-handle" class="form-label">Username / Handle</label>
             <input
@@ -539,8 +515,9 @@
               type="text"
               class="form-input"
               placeholder="@username"
-              required
+              disabled
             />
+            <span class="form-hint">Handle tidak dapat diubah saat ini.</span>
           </div>
 
           <!-- Bio -->
@@ -555,6 +532,8 @@
             ></textarea>
           </div>
 
+          <p v-if="profileSaveError" class="form-error">{{ profileSaveError }}</p>
+
           <div class="edit-modal-footer mt-5">
             <button
               type="button"
@@ -563,8 +542,8 @@
             >
               Batal
             </button>
-            <button type="submit" class="btn-save">
-              Simpan Perubahan
+            <button type="submit" class="btn-save" :disabled="isSavingProfile">
+              {{ isSavingProfile ? 'Menyimpan…' : 'Simpan Perubahan' }}
             </button>
           </div>
         </form>
@@ -585,7 +564,7 @@
  * 4. 3 interactive sub-tabs: Fess Saya, Base yang Diikuti, Saldo & Top Up.
  * 5. Pinned bottom navbar stays active and visible.
  */
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import {
   Menu,
   X,
@@ -605,7 +584,6 @@ import {
   CreditCard,
   Plus,
   Search,
-  CheckCircle2,
   ChevronRight,
   Heart,
   MessageCircle,
@@ -613,7 +591,13 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'vue-router';
-import { ALL_BASES } from '../../data/bases';
+import ContentSkeleton from '../ui/ContentSkeleton.vue';
+import AppStateView from '../ui/AppStateView.vue';
+import { api } from '../../api';
+import { mapFessToPost } from '../../utils/fessMapper';
+import { formatNumber } from '../../utils/format';
+import { useBases } from '../../composables/useBases';
+import { useFollowBase } from '../../composables/useFollowBase';
 
 const props = defineProps({
   themeMode: { type: String, default: 'system' },
@@ -628,6 +612,8 @@ const emit = defineEmits([
 
 const authStore = useAuthStore();
 const router = useRouter();
+const { followedHandles, toggleFollowBase, syncFollowing } = useFollowBase();
+const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
 
 function goToBase(handle) {
   if (!handle) return;
@@ -635,17 +621,11 @@ function goToBase(handle) {
   router.push(`/base/${clean}`);
 }
 
-/* ---------- Profile State ---------- */
+/* ---------- Profile State (live from auth store) ---------- */
 const displayName = computed(() => authStore.user?.username || 'Pengguna Anonim');
 const userHandle = computed(() => authStore.user?.handle || '@anon_user');
-const userBio = computed(
-  () => authStore.user?.bio || 'Secret sender & casual reader di FessHub.',
-);
-const userAvatar = computed(
-  () =>
-    authStore.user?.avatar ||
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-);
+const userBio = computed(() => authStore.user?.bio || '');
+const userAvatar = computed(() => authStore.user?.avatar || '');
 
 /* ---------- Sub Tabs State ---------- */
 const activeSubTab = ref('fess'); // 'fess' | 'following' | 'saldo'
@@ -653,6 +633,8 @@ const activeSubTab = ref('fess'); // 'fess' | 'following' | 'saldo'
 /* ---------- Drawers & Modals ---------- */
 const showSettingsDrawer = ref(false);
 const showEditModal = ref(false);
+const profileSaveError = ref('');
+const isSavingProfile = ref(false);
 
 /* ---------- Edit Profile Form ---------- */
 const AVATAR_PRESETS = [
@@ -679,78 +661,92 @@ function openEditModal() {
   showEditModal.value = true;
 }
 
-function handleAvatarFileSelect(e) {
+async function handleAvatarFileSelect(e) {
   const file = e.target.files?.[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    editForm.value.avatar = event.target.result;
-  };
-  reader.readAsDataURL(file);
+  try {
+    const res = await api.uploadAvatar(file);
+    if (res?.url) editForm.value.avatar = res.url;
+  } catch {
+    // upload failed — keep the current avatar
+  }
 }
 
-function saveProfile() {
+async function saveProfile() {
   const cleanHandle = editForm.value.handle.startsWith('@')
     ? editForm.value.handle
     : `@${editForm.value.handle}`;
 
-  authStore.updateProfile({
-    username: editForm.value.username.trim(),
-    handle: cleanHandle.trim(),
-    bio: editForm.value.bio.trim(),
-    avatar: editForm.value.avatar,
-  });
-
-  showEditModal.value = false;
+  profileSaveError.value = '';
+  isSavingProfile.value = true;
+  try {
+    await authStore.updateProfile({
+      username: editForm.value.username.trim(),
+      handle: cleanHandle.trim(),
+      bio: editForm.value.bio.trim(),
+      avatar: editForm.value.avatar || null,
+    });
+    showEditModal.value = false;
+  } catch (err) {
+    profileSaveError.value = err?.message || 'Gagal menyimpan profil. Coba lagi.';
+  } finally {
+    isSavingProfile.value = false;
+  }
 }
 
 function onAvatarError(e) {
   e.target.style.display = 'none';
 }
 
-/* ---------- Tab 1: Fess Saya Data ---------- */
-const myFesses = ref([
-  {
-    id: 'fess_01',
-    base: '#codememfess',
-    content:
-      'Curhat dikit, udah 3 minggu debug memory leak di microservice golang ternyata cuma salah defer mu.Unlock() di closure loop. Ada yang pernah ngalamin juga ga?',
-    status: 'approved',
-    time: '2 jam yang lalu',
-    likes: 42,
-    comments: 8,
-  },
-  {
-    id: 'fess_02',
-    base: '#ustfess',
-    content:
-      'Spill dong spot ngopi yang enak buat nugas skripsi sampai larut malam di sekitaran kampus, yang colokannya banyak dan wifinya kenceng.',
-    status: 'approved',
-    time: 'Kemarin',
-    likes: 19,
-    comments: 14,
-  },
-  {
-    id: 'fess_03',
-    base: '#karirfess',
-    content:
-      'Mau tanya buat yang switch career ke UI/UX Designer, portfolio mendingan 2 case study yang dalem banget atau 5 case study tapi singkat ya?',
-    status: 'pending',
-    time: '15 menit yang lalu',
-    likes: 0,
-    comments: 0,
-  },
-]);
+/* ---------- Tab 1: Fess Saya —— GET /users/me/fesses ---------- */
+const myFesses = ref([]);
+const myFessLoading = ref(false);
+const myFessError = ref(null);
+
+async function loadMyFesses() {
+  myFessLoading.value = true;
+  myFessError.value = null;
+  try {
+    const res = await api.getMyFesses({ page: 1, limit: 30 });
+    myFesses.value = (res?.data ?? []).map(mapFessToPost);
+  } catch (e) {
+    myFessError.value = e;
+  } finally {
+    myFessLoading.value = false;
+  }
+}
 
 const myFessCount = computed(() => myFesses.value.length);
 
-/* ---------- Tab 2: Following Bases Data ---------- */
-const baseSearchQuery = ref('');
-const followedHandles = ref(['@ustfess', '@codememfess', '@karirfess', '@techfess']);
+/** Status badge label for the user's own fess history. */
+function fessStatusLabel(status) {
+  if (status === 'approved') return 'Terbit';
+  if (status === 'pending') return 'Antrean';
+  if (status === 'rejected') return 'Ditolak';
+  return status || '';
+}
 
-const myFollowedBases = computed(() => {
-  return ALL_BASES.filter((b) => followedHandles.value.includes(b.handle));
-});
+/* ---------- Tab 2: Base yang Diikuti —— GET /users/me/following ---------- */
+const baseSearchQuery = ref('');
+const followingLoading = ref(false);
+const followingError = ref(null);
+
+async function loadFollowing() {
+  followingLoading.value = true;
+  followingError.value = null;
+  try {
+    await syncFollowing();
+    await ensureBasesLoaded();
+  } catch (e) {
+    followingError.value = e;
+  } finally {
+    followingLoading.value = false;
+  }
+}
+
+const myFollowedBases = computed(() =>
+  bases.value.filter((b) => followedHandles.value.includes(b.handle)),
+);
 
 const followedBasesCount = computed(() => myFollowedBases.value.length);
 
@@ -762,47 +758,24 @@ const filteredFollowedBases = computed(() => {
   );
 });
 
-function handleUnfollow(handle) {
-  followedHandles.value = followedHandles.value.filter((h) => h !== handle);
+async function handleUnfollow(handle) {
+  try {
+    await toggleFollowBase(handle);
+  } catch {
+    // the composable already rolled back the optimistic update
+  }
 }
 
-/* ---------- Tab 3: Saldo & Top Up Data ---------- */
-const balance = ref(15);
-const selectedPkg = ref(null);
-const selectedPayment = ref('qris');
-const isProcessingTopUp = ref(false);
-const topupSuccessMessage = ref('');
+/* ---------- Tab 3: Saldo (read-only, from the session user) ---------- */
+const balance = computed(() => authStore.user?.balance ?? 0);
+const balanceDisplay = computed(() => formatNumber(balance.value));
+const hasBalance = computed(() => balance.value > 0);
 
-const TOPUP_PACKAGES = [
-  { mfc: 5, idr: 5000, popular: false, bonus: null },
-  { mfc: 10, idr: 10000, popular: true, bonus: '+2 MFC Bonus' },
-  { mfc: 25, idr: 22500, popular: false, bonus: '+5 MFC Bonus' },
-  { mfc: 50, idr: 40000, popular: false, bonus: 'Hemat 20%' },
-];
-
-const PAYMENT_METHODS = [
-  { key: 'qris', name: 'QRIS (Gopay/OVO/Dana)' },
-  { key: 'shopeepay', name: 'ShopeePay' },
-  { key: 'va_bca', name: 'Virtual Account BCA' },
-  { key: 'va_mandiri', name: 'VA Mandiri' },
-];
-
-function handleProcessTopUp() {
-  if (!selectedPkg.value) return;
-  isProcessingTopUp.value = true;
-  topupSuccessMessage.value = '';
-
-  setTimeout(() => {
-    isProcessingTopUp.value = false;
-    balance.value += selectedPkg.value.mfc;
-    topupSuccessMessage.value = `Berhasil top up ${selectedPkg.value.mfc} MFC! Saldo sekarang: ${balance.value} MFC.`;
-    selectedPkg.value = null;
-
-    setTimeout(() => {
-      topupSuccessMessage.value = '';
-    }, 4500);
-  }, 1200);
-}
+/* ---------- initial load ---------- */
+onMounted(() => {
+  loadMyFesses();
+  loadFollowing();
+});
 
 /* ---------- Settings Panel Navigation ---------- */
 function openSettingsSubPanel(panelKey) {

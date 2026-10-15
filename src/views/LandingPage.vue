@@ -24,7 +24,7 @@
  *
  * Slicing:
  *  • sections live in  src/components/landing/*
- *  • static content in src/data/landingData.js
+ *  • section copy is inlined in each section component
  *  • scroll + FAQ accordion behaviour in src/composables/useLanding.js
  *  • initial load (skeleton / error) via useAsyncData
  */

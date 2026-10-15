@@ -1,15 +1,17 @@
 /**
- * src/data/templates.js
+ * src/config/templates.js
  *
- * Single source of truth for post card templates.
+ * Canvas template configuration for the post composer.
  *
  * Every template is a *canvas*: a background (gradient + optional SVG texture)
  * with a portrait/square aspect ratio so the finished card can be exported as a
  * still image and posted straight to Instagram. Aspect ratios are the three
  * Instagram accepts: 1:1, 4:5 and 9:16.
  *
- * `ink` decides text colour — never rely on the app theme here, because the
- * exported PNG has no `data-theme` attribute.
+ * These are feature definitions shared between the live preview and the
+ * backend canvas renderer (POST /admin/canvas/export accepts the same keys) —
+ * not API data. `ink` decides text colour — never rely on the app theme here,
+ * because the exported PNG has no `data-theme` attribute.
  */
 
 /** Encode a raw SVG string as a CSS `url()` we can layer over a gradient. */

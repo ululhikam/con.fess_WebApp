@@ -467,11 +467,8 @@ function goToStep2() {
 }
 
 function handleGoogleRegister() {
-  form.email = 'admin.google@namabase.id';
-  form.password = 'GoogleAuthSecure_Pass123';
-  form.confirmPassword = 'GoogleAuthSecure_Pass123';
-  // Lanjut langsung ke step 2 (Tautkan Instagram)
-  currentStep.value = 2;
+  // Google OAuth (GIS) isn't wired yet — guide the user to the form.
+  errors.submit = 'Pendaftaran via Google belum tersedia. Isi formulir di atas.';
 }
 
 function toggleConnectIg() {
@@ -490,18 +487,20 @@ async function handleCompleteRegister() {
   isSubmitting.value = true;
   try {
     const cleanHandle = form.handle.startsWith('@') ? form.handle : `@${form.handle}`;
-    authStore.registerBase({
+    await authStore.registerBase({
       email: form.email,
       password: form.password,
       name: form.name.trim(),
       handle: cleanHandle.trim(),
-      avatar: form.avatar,
+      avatar: /^https?:\/\//.test(form.avatar || '') ? form.avatar : null,
       bio: form.bio.trim(),
       igAccount: form.igAccount.trim(),
     });
 
     // Langsung diarahkan ke Home Admin Base!
     await router.push('/base-admin');
+  } catch (err) {
+    errors.submit = err.message || 'Terjadi kesalahan saat pendaftaran';
   } finally {
     isSubmitting.value = false;
   }

@@ -179,7 +179,7 @@
     <!-- Modals -->
     <TopicModal v-model:show="showTopicModal" v-model:topic="form.topic" :topics="topics" />
     <ScheduleModal v-model:show="showScheduleModal" v-model:date="form.scheduledAt" />
-    <SongModal v-model:show="showSongModal" v-model:song="form.song" :songs="songs" />
+    <SongModal v-model:show="showSongModal" v-model:song="form.song" />
     <TemplateModal v-model:show="showTemplateModal" v-model:template="form.template" />
     <QuoteModal v-model:show="showQuoteModal" v-model="form.quotedFess" />
 
@@ -225,21 +225,20 @@ import PublishModal from '../components/compose/PublishModal.vue';
 import QuoteModal from '../components/compose/QuoteModal.vue';
 
 // Composables & Stores
-import { usePosts } from '../composables/usePosts';
 import { useAuthStore } from '../stores/authStore';
-import { validateFessContent, generateClientId } from '../utils/format';
 import { useFeedPosts } from '../composables/useFeedPosts';
+import { useBases, mapBase } from '../composables/useBases';
+import { useTopics } from '../composables/useTopics';
+import { api } from '../api';
+import { validateFessContent, generateClientId } from '../utils/format';
+import { mapFessToPost, mapQuotedFess } from '../utils/fessMapper';
 
-// Data
-import { TOPICS } from '../data/topics';
-import { TEMPLATES, ASPECTS, getTemplateByKey } from '../data/templates';
-import { SONGS } from '../data/songs';
-import { FEED_POSTS, DUMMY_MENFESS_POSTS } from '../data/mockPosts';
+// Config
+import { ASPECTS, getTemplateByKey, TEMPLATES } from '../config/templates';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const { createPost } = usePosts();
 const { publish } = useFeedPosts();
 
 // Form state
@@ -320,55 +319,32 @@ async function exportCard() {
 }
 const currentUser = computed(() => authStore.user);
 
-const availableBases = computed(() => {
-  // In real app, this would come from followed bases API
-  return [
-    {
-      handle: '@codememfess',
-      name: 'Code Memes & Rants',
-      keyword: '[code]',
-      color: '#0038FF',
-      avatar: 'CM',
-      verified: true,
-    },
-    {
-      handle: '@gamerfess',
-      name: 'Gaming Confessions',
-      keyword: '[game]',
-      color: '#FF0055',
-      avatar: 'GC',
-      verified: true,
-    },
-    {
-      handle: '@indiefess',
-      name: 'Indie Hacker Secrets',
-      keyword: '[indie]',
-      color: '#FF6D00',
-      avatar: 'IH',
-      verified: false,
-    },
-    {
-      handle: '@designfess',
-      name: 'Design Rants & Feedback',
-      keyword: '[design]',
-      color: '#00B2FF',
-      avatar: 'DR',
-      verified: true,
-    },
-    {
-      handle: '@anonfess',
-      name: 'Anon Confessions',
-      keyword: '[anon]',
-      color: '#7000FF',
-      avatar: 'AN',
-      verified: false,
-    },
-  ];
-});
+const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
+const availableBases = ref([]);
 
-const topics = ref(TOPICS);
-const templates = ref(TEMPLATES);
-const songs = ref(SONGS);
+/** Load the bases available to post into: followed bases, else the directory. */
+async function loadAvailableBases() {
+  try {
+    if (authStore.isAuthenticated) {
+      const res = await api.getMyFollowing();
+      const list = (res?.data ?? []).map(mapBase);
+      if (list.length) {
+        availableBases.value = list;
+        return;
+      }
+    }
+  } catch {
+    // fall through to the public directory
+  }
+  try {
+    await ensureBasesLoaded();
+  } catch {
+    // directory unavailable — the selector shows its own empty state
+  }
+  availableBases.value = bases.value;
+}
+
+const { topics, ensureLoaded: ensureTopicsLoaded } = useTopics();
 
 const hasContent = computed(
   () =>
@@ -377,11 +353,14 @@ const hasContent = computed(
     !!form.value.quotedFess,
 );
 
+const hasUploadingMedia = computed(() => form.value.media.some((m) => m.uploading));
+
 const canPublish = computed(() => {
   const validation = validateFessContent(form.value.content);
   return (
     (validation.valid || form.value.media.length > 0 || !!form.value.quotedFess) &&
-    form.value.baseHandle
+    form.value.baseHandle &&
+    !hasUploadingMedia.value
   );
 });
 
@@ -407,8 +386,7 @@ const getPlaceholder = computed(() => {
 });
 
 const getTemplateLabel = (key) => {
-  const t = templates.value.find((t) => t.key === key);
-  return t?.label || key;
+  return TEMPLATES.find((t) => t.key === key)?.label || key;
 };
 
 const formatScheduleDate = (dateStr) => {
@@ -460,12 +438,13 @@ async function publishFess() {
       content: form.value.content.trim(),
       media: form.value.media.map((m) => ({
         type: m.type,
-        url: m.url,
+        url: m.url || m.preview,
         thumbnail: m.thumbnail,
         duration: m.duration,
+        caption: m.caption,
       })),
-      topic: form.value.topic,
-      scheduled_at: form.value.scheduledAt,
+      topic: form.value.topic || null,
+      scheduled_at: form.value.scheduledAt || null,
       song: form.value.song
         ? {
             id: form.value.song.id,
@@ -476,29 +455,11 @@ async function publishFess() {
           }
         : null,
       template: form.value.template,
-      quoted_fess: form.value.quotedFess,
+      quoted_fess: form.value.quotedFess ? mapQuotedFess(form.value.quotedFess) : null,
     };
 
-    await createPost(payload);
-
-    // Also sync to active feedPosts so it shows in feed immediately
-    publish({
-      handle: form.value.baseHandle || '@codememfess',
-      content: form.value.content.trim(),
-      media: form.value.media.map((m) => ({
-        type: m.type,
-        url: m.url || m.preview,
-        thumbnail: m.thumbnail || m.preview,
-        duration: m.duration,
-        caption: m.caption || m.name,
-      })),
-      quotedFess: form.value.quotedFess,
-      tag: form.value.topic === 'Tanya' ? 'Tanya' : 'Cerita',
-      avatarBg: '#0055FF',
-      avatarText: form.value.baseHandle
-        ? form.value.baseHandle.replace(/^@/, '').slice(0, 2).toUpperCase()
-        : 'FS',
-    });
+    // Publish through the API — the shared feed store picks up the response.
+    await publish(payload);
 
     // Clear draft
     localStorage.removeItem('fess_draft');
@@ -511,15 +472,25 @@ async function publishFess() {
     }
   } catch (error) {
     console.error('Publish failed:', error);
-    // Error handled by useMutation in usePosts
   } finally {
     publishing.value = false;
     showPublishModal.value = false;
   }
 }
 
+/** Resolve a quote target from the API (mount + query changes). */
+async function loadQuoteFess(id) {
+  try {
+    const res = await api.getFess(String(id));
+    const fess = res?.fess ?? res?.data ?? res;
+    if (fess) form.value.quotedFess = mapFessToPost(fess);
+  } catch {
+    // quote target not found — silently ignore
+  }
+}
+
 // Load draft and initialize on mount
-onMounted(() => {
+onMounted(async () => {
   const savedDraft = localStorage.getItem('fess_draft');
   if (savedDraft) {
     try {
@@ -531,7 +502,7 @@ onMounted(() => {
           Object.assign(form.value, {
             baseHandle: draft.baseHandle || '',
             content: draft.content || '',
-            media: draft.media || [],
+            media: (draft.media || []).filter((m) => !m.uploading),
             topic: draft.topic || '',
             scheduledAt: draft.scheduledAt || null,
             song: draft.song || null,
@@ -558,17 +529,18 @@ onMounted(() => {
       console.error('Failed to parse session quote', e);
     }
   } else if (route.query.quoteId) {
-    const qId = Number(route.query.quoteId) || route.query.quoteId;
-    const candidates = [...DUMMY_MENFESS_POSTS, ...FEED_POSTS];
-    const match = candidates.find((p) => p.id === qId || String(p.id) === String(qId));
-    if (match) {
-      form.value.quotedFess = match;
-    }
+    await loadQuoteFess(route.query.quoteId);
   }
 
-  // Pre-fill base handle from query param if provided (e.g. from public base profile)
+  // Load pickers from the API
+  ensureTopicsLoaded().catch(() => {});
+  await loadAvailableBases();
+
+  // Pre-fill base handle: query param > admin's managed base > first available
   if (route.query.base) {
-    const qBase = String(route.query.base).startsWith('@') ? String(route.query.base) : `@${route.query.base}`;
+    const qBase = String(route.query.base).startsWith('@')
+      ? String(route.query.base)
+      : `@${route.query.base}`;
     form.value.baseHandle = qBase;
   } else if (!form.value.baseHandle) {
     if (authStore.isBaseAdmin && authStore.user?.managedBases?.length) {
@@ -612,12 +584,7 @@ watch(
           }
         } catch (e) {}
       }
-      const qId = Number(newId) || newId;
-      const candidates = [...DUMMY_MENFESS_POSTS, ...FEED_POSTS];
-      const match = candidates.find((p) => p.id === qId || String(p.id) === String(qId));
-      if (match) {
-        form.value.quotedFess = match;
-      }
+      loadQuoteFess(newId);
     }
   }
 );

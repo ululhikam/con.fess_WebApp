@@ -88,8 +88,9 @@
 import { ref, computed, toRef } from 'vue';
 import { Heart, MessageCircle, Music } from 'lucide-vue-next';
 import { formatCompact } from '../../utils/format';
-import { getTemplateByKey, getTemplateAspectRatio } from '../../data/templates';
-import { getTopicById } from '../../data/topics';
+import { getTemplateByKey, getTemplateAspectRatio } from '../../config/templates';
+import { useTopics } from '../../composables/useTopics';
+import { useBases } from '../../composables/useBases';
 
 const props = defineProps({
   content: { type: String, default: '' },
@@ -111,15 +112,20 @@ defineExpose({ cardEl });
 
 const templateDef = computed(() => getTemplateByKey(props.template));
 
-const BASES = {
-  '@codememfess': { name: 'Code Memes & Rants', color: '#0038ff', initials: 'CM' },
-  '@gamerfess': { name: 'Gaming Confessions', color: '#ff0055', initials: 'GC' },
-  '@indiefess': { name: 'Indie Hacker Secrets', color: '#ff6d00', initials: 'IH' },
-  '@designfess': { name: 'Design Rants & Feedback', color: '#00b2ff', initials: 'DR' },
-  '@anonfess': { name: 'Anon Confessions', color: '#7000ff', initials: 'AN' },
-};
+const { getTopicById } = useTopics();
+const { bases } = useBases();
 
-const baseInfo = computed(() => BASES[props.baseHandle] || { name: 'Base', initials: 'F' });
+/** Resolve the target base from the live directory (falls back to handle). */
+const baseInfo = computed(() => {
+  const clean = String(props.baseHandle || '').replace(/^@/, '');
+  const found = bases.value.find((b) => b.handle.replace(/^@/, '') === clean);
+  if (found) return { name: found.name, color: found.color, initials: found.initial };
+  return {
+    name: clean || 'Base',
+    color: '#0053ff',
+    initials: clean.slice(0, 2).toUpperCase() || 'FB',
+  };
+});
 const baseAvatar = computed(() => baseInfo.value.initials);
 
 const topicLabel = computed(() => {

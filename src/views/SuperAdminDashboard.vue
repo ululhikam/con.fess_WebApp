@@ -7,7 +7,7 @@
         <SuperAdminHeader
           :title="SUPER_ADMIN_HEADER.title"
           :subtitle="SUPER_ADMIN_HEADER.subtitle"
-          :health="SUPER_ADMIN_HEADER.health"
+          :health="healthLabel"
         >
           <template #actions> </template>
         </SuperAdminHeader>
@@ -24,11 +24,11 @@
         />
 
         <template v-else>
-          <SystemStatGrid />
+          <SystemStatGrid :stats="systemStats" />
 
           <div class="super-controls-grid">
             <SecurityControlsCard />
-            <EngineLogStreamCard :logs="ENGINE_LOGS" />
+            <EngineLogStreamCard :logs="engineLogs" />
           </div>
         </template>
       </div>
@@ -41,6 +41,7 @@
  * SuperAdminDashboard — thin shell.
  * Composes the header, system gauges and the two control cards; loading and
  * error states are handled with the shared skeleton / state components.
+ * Gauges, logs and the security controls all read the real admin API.
  */
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
@@ -51,11 +52,16 @@ import SystemStatGrid from '../components/admin/SystemStatGrid.vue';
 import SecurityControlsCard from '../components/admin/SecurityControlsCard.vue';
 import EngineLogStreamCard from '../components/admin/EngineLogStreamCard.vue';
 
-import { useAsyncData } from '../composables/useAsyncData';
-import { ENGINE_LOGS, SUPER_ADMIN_HEADER } from '../data/adminData';
+import { useSuperAdminDashboard } from '../composables/useSuperAdminDashboard';
 
-/* ---------- initial load (drives the skeleton) ---------- */
-const { loading, error, reload } = useAsyncData(async () => true, { delay: 600 });
+/** Page copy (static UI text). */
+const SUPER_ADMIN_HEADER = {
+  title: 'Super Admin Global System Control',
+  subtitle:
+    'Monitor global system SLA, rate limiters, auto-moderation, bad actors & Redis cache',
+};
+
+const { systemStats, engineLogs, healthLabel, loading, error, reload } = useSuperAdminDashboard();
 </script>
 
 <style scoped>

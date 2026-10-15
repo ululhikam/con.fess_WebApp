@@ -15,7 +15,7 @@
 <script setup>
 /**
  * EngineLogStreamCard — scrollable console with the latest engine events.
- * Log lines come from src/data/adminData.js; tone picks the accent colour.
+ * Log lines come from GET /admin/system/logs; tone picks the accent colour.
  */
 import { Radio } from 'lucide-vue-next';
 import AdminCard from './AdminCard.vue';

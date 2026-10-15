@@ -258,14 +258,24 @@
       <span>{{ toastMessage }}</span>
     </div>
 
-    <!-- COMMENTS & REPLIES THREAD -->
+    <!-- COMMENTS THREAD -->
     <div v-if="showComments" class="comments-section-container">
       <div class="comments-header">
-        <span class="comments-header-title">Komentar &amp; Balasan ({{ commentsList.length }})</span>
+        <span class="comments-header-title">Komentar ({{ commentsCount }})</span>
       </div>
 
+      <!-- Loading / Error / Empty states -->
+      <p v-if="commentsLoading" class="comment-state-text">Memuat komentar…</p>
+      <p v-else-if="commentsError" class="comment-state-text">
+        Komentar gagal dimuat.
+        <button type="button" class="btn-reply-link" @click="loadComments">Coba lagi</button>
+      </p>
+      <p v-else-if="!commentsList.length" class="comment-state-text">
+        Belum ada komentar. Jadilah yang pertama!
+      </p>
+
       <!-- Comments List -->
-      <div class="comments-list">
+      <div v-else class="comments-list">
         <div v-for="comment in commentsList" :key="comment.id" class="comment-item">
           <div class="comment-avatar">
             <UserRound :size="12" />
@@ -277,7 +287,7 @@
             </div>
             <p class="comment-text">{{ comment.text }}</p>
 
-            <!-- Reply Button -->
+            <!-- Reply Button (mention-style, flat thread) -->
             <div class="comment-action-links">
               <button
                 type="button"
@@ -287,21 +297,6 @@
                 <CornerDownRight :size="12" />
                 <span>Balas</span>
               </button>
-            </div>
-
-            <!-- Nested Sub-Replies Thread -->
-            <div v-if="comment.replies && comment.replies.length" class="nested-replies-list">
-              <div
-                v-for="reply in comment.replies"
-                :key="reply.id"
-                class="nested-reply-item"
-              >
-                <div class="comment-meta-row">
-                  <span class="comment-author text-muted">{{ reply.author }}</span>
-                  <span class="comment-time">{{ reply.time }}</span>
-                </div>
-                <p class="nested-reply-text">{{ reply.text }}</p>
-              </div>
             </div>
           </div>
         </div>
@@ -328,9 +323,9 @@
           <button
             type="submit"
             class="btn-submit-comment"
-            :disabled="!newCommentText.trim()"
+            :disabled="!newCommentText.trim() || commentsSending"
           >
-            Kirim
+            {{ commentsSending ? 'Mengirim…' : 'Kirim' }}
           </button>
         </div>
       </form>
@@ -429,7 +424,7 @@
  *  - 100% theme-token bound (--shell-card, --shell-border, --shell-text, --shell-sub-accent)
  *  - Zero emojis, Lucide SVG icons only.
  */
-import { ref, reactive, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Heart,
@@ -453,6 +448,8 @@ import {
   ChevronRight,
 } from 'lucide-vue-next';
 import ReportFessModal from './ReportFessModal.vue';
+import { api } from '../../api';
+import { mapFessComment } from '../../utils/fessMapper';
 
 const props = defineProps({
   post: {
@@ -657,89 +654,89 @@ function quoteTargetFess(target) {
   saveAndNavigateQuote(target);
 }
 
-/* 4. COMMENTS & REPLIES STATE */
+/* 4. COMMENTS STATE — comments are loaded live from the API */
 const showComments = ref(false);
-const commentsCount = ref(props.post.comments ?? (props.post.commentsCount ?? 2));
+const commentsCount = ref(props.post.commentsCount ?? props.post.comments?.length ?? 0);
 const replyTarget = ref(null);
 const newCommentText = ref('');
 
-const commentsList = reactive([
-  {
-    id: 'c1',
-    author: '@anon_kucing',
-    time: '12m lalu',
-    text: 'Asli ini relate banget wkwk, semangat ya sender!',
-    replies: [
-      {
-        id: 'r1_1',
-        author: '@anon_sender',
-        time: '5m lalu',
-        text: 'Makasih kak dukungannya!',
-      },
-    ],
-  },
-  {
-    id: 'c2',
-    author: '@anon_dev',
-    time: '25m lalu',
-    text: 'Coba konsultasi sama admin base-nya deh barangkali ada info lebih lanjut.',
-    replies: [],
-  },
-]);
+const commentsList = ref([]);
+const commentsLoading = ref(false);
+const commentsError = ref(null);
+const commentsSending = ref(false);
+
+async function loadComments() {
+  commentsLoading.value = true;
+  commentsError.value = null;
+  try {
+    const res = await api.getComments(props.post.id, { limit: 50 });
+    const list = res?.data ?? res ?? [];
+    commentsList.value = list.map(mapFessComment);
+    commentsCount.value = Math.max(commentsCount.value, commentsList.value.length);
+  } catch (e) {
+    commentsError.value = e;
+  } finally {
+    commentsLoading.value = false;
+  }
+}
 
 function toggleComments() {
   showComments.value = !showComments.value;
-  if (!showComments.value) {
+  if (showComments.value) {
+    loadComments();
+  } else {
     replyTarget.value = null;
   }
 }
 
 function initiateReply(comment) {
   replyTarget.value = comment;
+  // Flat comment thread: reply as a mention-style comment.
+  const mention = `${comment.author} `;
+  if (!newCommentText.value.startsWith(mention)) {
+    newCommentText.value = mention;
+  }
 }
 
 function cancelReply() {
   replyTarget.value = null;
 }
 
-function submitComment() {
+async function submitComment() {
   const text = newCommentText.value.trim();
-  if (!text) return;
+  if (!text || commentsSending.value) return;
 
-  if (replyTarget.value) {
-    if (!replyTarget.value.replies) {
-      replyTarget.value.replies = [];
-    }
-    replyTarget.value.replies.push({
-      id: `r_${Date.now()}`,
-      author: '@kamu_anon',
-      time: 'Baru saja',
-      text,
-    });
-    emit('reply', { postId: props.post.id, parentId: replyTarget.value.id, text });
-    replyTarget.value = null;
-  } else {
-    commentsList.push({
-      id: `c_${Date.now()}`,
-      author: '@kamu_anon',
-      time: 'Baru saja',
-      text,
-      replies: [],
-    });
+  commentsSending.value = true;
+  try {
+    await api.addComment(props.post.id, text);
     emit('comment', { postId: props.post.id, text });
+    newCommentText.value = '';
+    replyTarget.value = null;
+    await loadComments();
+    commentsCount.value = Math.max(commentsCount.value, commentsList.value.length);
+  } catch (e) {
+    triggerToast('Gagal mengirim komentar. Coba lagi.');
+  } finally {
+    commentsSending.value = false;
   }
-
-  commentsCount.value += 1;
-  newCommentText.value = '';
 }
 
 /* 5. REPORT MODAL STATE */
 const showReportModal = ref(false);
 
-function handleReportSubmitted(payload) {
+async function handleReportSubmitted(payload) {
   showReportModal.value = false;
-  triggerToast('Laporan berhasil dikirim ke moderator');
-  emit('report', { postId: props.post.id, ...payload });
+  try {
+    await api.reportFess(props.post.id, {
+      fess_id: String(props.post.id),
+      reason: payload.reason,
+      note: payload.note || null,
+    });
+    triggerToast('Laporan berhasil dikirim ke moderator');
+    emit('report', { postId: props.post.id, ...payload });
+  } catch {
+    triggerToast('Gagal mengirim laporan. Coba lagi.');
+  }
 }
 
 function formatCount(num) {

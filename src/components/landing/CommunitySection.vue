@@ -12,8 +12,24 @@
       </router-link>
     </LandingSectionHead>
 
-    <div class="base-cards-grid">
-      <article v-for="base in landingSampleBases" :key="base.handle" class="base-card-item">
+    <!-- Loading skeleton (no fake data) -->
+    <div v-if="loading" class="base-cards-grid" aria-hidden="true">
+      <div v-for="n in 4" :key="n" class="base-card-item is-skeleton">
+        <div class="bci-top">
+          <div class="bci-icon skeleton-block" />
+          <div class="bci-meta">
+            <div class="skeleton-line skeleton-line-lg" />
+            <div class="skeleton-line skeleton-line-sm" />
+          </div>
+        </div>
+        <div class="skeleton-line" />
+        <div class="skeleton-line skeleton-line-sm" />
+      </div>
+    </div>
+
+    <!-- Live base directory (grid hidden gracefully when the API returns none) -->
+    <div v-else-if="showcaseBases.length" class="base-cards-grid">
+      <article v-for="base in showcaseBases" :key="base.handle" class="base-card-item">
         <div class="bci-top">
           <div class="bci-icon" :style="{ background: base.color }" aria-hidden="true">
             {{ base.initial }}
@@ -22,9 +38,11 @@
             <h3>{{ base.name }}</h3>
             <span>{{ base.handle }}</span>
           </div>
-          <span class="bci-badge">{{ base.members }} anggota</span>
+          <span v-if="base.members > 0" class="bci-badge">
+            {{ formatMembers(base.members) }} anggota
+          </span>
         </div>
-        <p class="bci-desc">{{ base.desc }}</p>
+        <p v-if="base.bio" class="bci-desc">{{ base.bio }}</p>
         <div class="bci-footer">
           <router-link to="/login" class="bci-join-btn">
             Kirim Fess Ke Base <ArrowRight :size="15" />
@@ -37,11 +55,31 @@
 
 <script setup>
 /**
- * CommunitySection — `#komunitas` showcase of sample community bases.
+ * CommunitySection — `#komunitas` showcase of community bases.
+ * Live data from GET /bases via the shared useBases() cache.
  */
+import { computed, onMounted } from 'vue';
 import { ArrowRight } from 'lucide-vue-next';
 import LandingSectionHead from './LandingSectionHead.vue';
-import { landingSampleBases } from '../../data/landingData';
+import { useBases } from '../../composables/useBases';
+
+const { bases, loading, ensureLoaded } = useBases();
+
+/** The landing page teases the first few real bases; the rest live behind the CTA. */
+const showcaseBases = computed(() => bases.value.slice(0, 4));
+
+/** 14200 -> "14.2K" compact format for the members badge. */
+function formatMembers(count) {
+  const n = Number(count) || 0;
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(n);
+}
+
+onMounted(() => {
+  /* Best-effort fetch: if it fails the cards stay hidden. */
+  ensureLoaded().catch(() => {});
+});
 </script>
 
 <style scoped>
@@ -91,6 +129,47 @@ import { landingSampleBases } from '../../data/landingData';
 
 .base-card-item:hover {
   transform: translateY(-4px);
+}
+
+/* LOADING SKELETON (shown while GET /bases is in flight) */
+.is-skeleton {
+  pointer-events: none;
+}
+
+.skeleton-block,
+.skeleton-line {
+  background: var(--border-subtle);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-block {
+  border-radius: 14px;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.skeleton-line-lg {
+  width: 140px;
+  height: 14px;
+}
+
+.skeleton-line-sm {
+  width: 90px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
 }
 
 .bci-top {

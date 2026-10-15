@@ -1,57 +1,118 @@
-// src/composables/useFollowBase.js
-// Composable untuk logika follow/unfollow base dengan sinkronisasi localStorage
+/**
+ * src/composables/useFollowBase.js
+ * ---------------------------------------------------------------------------
+ * Follow/unfollow bases through the backend (POST /bases/:handle/follow).
+ * The followed list is cached in localStorage for instant first paint and
+ * refreshed from GET /users/me/following for authenticated users.
+ */
 
 import { ref } from 'vue';
+import { api } from '../api';
+import { useAuthStore } from '../stores/authStore';
 
 const STORAGE_KEY = 'fess_followed_bases';
-const DEFAULT_FOLLOWED = ['@unermenfess', '@codememfess', '@fessugm', '@teramenfess'];
 
-function getInitialFollowed() {
+function readCache() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (e) {
-    // ignore
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
-  return DEFAULT_FOLLOWED;
 }
 
-// Shared module-level reactive state so changes sync across all components!
-const sharedFollowedHandles = ref(getInitialFollowed());
-
-export function useFollowBase(initialFollowed = []) {
-  if (initialFollowed && initialFollowed.length && !sharedFollowedHandles.value.length) {
-    sharedFollowedHandles.value = [...initialFollowed];
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sharedFollowedHandles.value));
+  } catch {
+    // storage full/blocked — cache is best-effort
   }
+}
+
+// Shared module-level reactive state so changes sync across all components.
+const sharedFollowedHandles = ref(readCache());
+let syncInflight = null;
+
+const clean = (handle) => {
+  const h = String(handle || '');
+  return h.startsWith('@') ? h : `@${h}`;
+};
+
+export function useFollowBase() {
+  const authStore = useAuthStore();
 
   function isFollowing(handle) {
     if (!handle) return false;
-    const clean = handle.startsWith('@') ? handle : `@${handle}`;
-    return sharedFollowedHandles.value.includes(clean);
+    return sharedFollowedHandles.value.includes(clean(handle));
   }
 
-  function toggleFollowBase(handle) {
+  /** Refresh the followed list from the backend. */
+  function syncFollowing() {
+    if (!authStore.isAuthenticated) return Promise.resolve(sharedFollowedHandles.value);
+    if (syncInflight) return syncInflight;
+
+    syncInflight = api
+      .getMyFollowing()
+      .then((res) => {
+        const list = (res?.data ?? res ?? []).map((b) => clean(b.handle || b));
+        sharedFollowedHandles.value = list;
+        persist();
+        return list;
+      })
+      .catch(() => sharedFollowedHandles.value)
+      .finally(() => {
+        syncInflight = null;
+      });
+
+    return syncInflight;
+  }
+
+  /**
+   * Toggle follow state (optimistic, reconciled with the API response).
+   * @returns {Promise<boolean>} the new following state
+   */
+  async function toggleFollowBase(handle) {
     if (!handle) return false;
-    const clean = handle.startsWith('@') ? handle : `@${handle}`;
-    if (isFollowing(clean)) {
-      sharedFollowedHandles.value = sharedFollowedHandles.value.filter((h) => h !== clean);
+    const target = clean(handle);
+    const wasFollowing = isFollowing(target);
+
+    // Optimistic update
+    if (wasFollowing) {
+      sharedFollowedHandles.value = sharedFollowedHandles.value.filter((h) => h !== target);
     } else {
-      sharedFollowedHandles.value.push(clean);
+      sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
     }
+    persist();
+
+    if (!authStore.isAuthenticated) return !wasFollowing;
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sharedFollowedHandles.value));
+      const res = await api.followBase(target.replace(/^@/, ''));
+      const nowFollowing = res?.is_following ?? !wasFollowing;
+      if (nowFollowing) {
+        if (!isFollowing(target)) sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
+      } else {
+        sharedFollowedHandles.value = sharedFollowedHandles.value.filter((h) => h !== target);
+      }
+      persist();
+      return nowFollowing;
     } catch (e) {
-      // ignore
+      // Rollback on failure
+      if (wasFollowing) {
+        if (!isFollowing(target)) sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
+      } else {
+        sharedFollowedHandles.value = sharedFollowedHandles.value.filter((h) => h !== target);
+      }
+      persist();
+      throw e;
     }
-    return isFollowing(clean);
   }
 
   return {
     followedHandles: sharedFollowedHandles,
     isFollowing,
     toggleFollowBase,
+    syncFollowing,
   };
 }

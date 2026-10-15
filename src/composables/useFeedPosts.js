@@ -1,61 +1,96 @@
 /**
  * src/composables/useFeedPosts.js
  * ---------------------------------------------------------------------------
- * Feed domain logic, kept out of the view so it can be reused, tested and
- * swapped for a real API without touching any component.
+ * Feed domain logic backed by the real API:
+ *   • GET  /fesses            → timeline
+ *   • POST /fesses/:id/vote   → like / unlike
+ *   • POST /fesses            → publish a new confession
+ *
+ * Module-level state so Home and Composer share the same list.
  */
 
 import { ref, computed } from 'vue';
-import { FEED_POSTS } from '../data/mockPosts';
+import { api } from '../api';
+import { mapFessToPost } from '../utils/fessMapper';
 
-/** Module-level state so Home and Composer share the same list. */
-const posts = ref(FEED_POSTS.map((p) => ({ ...p })));
+const posts = ref([]);
+const loading = ref(false);
+const error = ref(null);
+let loaded = false;
+let inflight = null;
 
 export function useFeedPosts() {
   const feedPosts = computed(() => posts.value);
 
-  /** @param {number} id */
-  function toggleLike(id) {
-    const post = posts.value.find((p) => p.id === id);
-    if (!post) return;
-    post.isLiked = !post.isLiked;
-    post.likes += post.isLiked ? 1 : -1;
+  /** (Re)load the timeline from the API. */
+  async function reload(params = {}) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const res = await api.getFesses({ sort: 'newest', limit: 30, ...params });
+      posts.value = (res?.data || []).map(mapFessToPost);
+      loaded = true;
+      return posts.value;
+    } catch (e) {
+      error.value = e;
+      throw e;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /** Fetch once, then serve from the module cache. */
+  function ensureLoaded(params = {}) {
+    if (loaded) return Promise.resolve(posts.value);
+    if (!inflight) {
+      inflight = reload(params).finally(() => {
+        inflight = null;
+      });
+    }
+    return inflight;
   }
 
   /**
-   * Publish a new confession.
-   * @param {{ handle: string, content: string, avatarBg?: string, avatarText?: string, media?: Array, quotedFess?: any, tag?: string }} payload
-   * @returns {boolean} whether the post was accepted
+   * Toggle like on a post (optimistic, reconciled with the vote response).
+   * @param {string|number} id
    */
-  function publish({
-    handle,
-    content,
-    avatarBg = '#7000FF',
-    avatarText = 'FESS',
-    media = [],
-    quotedFess = null,
-    tag = 'Cerita',
-  }) {
-    const text = String(content ?? '').trim();
-    if (!text && (!media || !media.length)) return false;
+  async function toggleLike(id) {
+    const post = posts.value.find((p) => String(p.id) === String(id));
+    if (!post) return;
 
-    posts.value.unshift({
-      id: Date.now(),
-      handle: handle || '@anonim',
-      senderHandle: handle || '@anonim',
-      time: 'baru saja',
-      tag: tag || 'Cerita',
-      content: text,
-      likes: 0,
-      isLiked: false,
-      avatarBg,
-      avatarText,
-      media: Array.isArray(media) ? media : [],
-      quotedFess: quotedFess || null,
-      status: 'approved',
-    });
-    return true;
+    const wasLiked = post.isLiked;
+    post.isLiked = !wasLiked;
+    post.likes += post.isLiked ? 1 : -1;
+
+    try {
+      const res = await api.voteFess(id, post.isLiked ? 'up' : 'down');
+      if (res && typeof res.upvotes === 'number') {
+        post.likes = res.upvotes;
+        post.downvotes = res.downvotes ?? post.downvotes;
+        post.isLiked = res.user_vote === 'up';
+        post.userVote = res.user_vote ?? null;
+      }
+    } catch (e) {
+      // Rollback on failure
+      post.isLiked = wasLiked;
+      post.likes += post.isLiked ? 1 : -1;
+      throw e;
+    }
   }
 
-  return { feedPosts, toggleLike, publish };
+  /**
+   * Publish a new confession through the API.
+   * @param {object} payload — CreateFess payload (base_handle, content, ...)
+   * @returns {Promise<object|null>} the created fess mapped for the feed
+   */
+  async function publish(payload) {
+    const res = await api.createFess(payload);
+    const created = res?.fess ?? res?.data ?? res;
+    if (!created) return null;
+    const mapped = mapFessToPost(created);
+    posts.value = [mapped, ...posts.value.filter((p) => String(p.id) !== String(mapped.id))];
+    return mapped;
+  }
+
+  return { feedPosts, loading, error, reload, ensureLoaded, toggleLike, publish };
 }

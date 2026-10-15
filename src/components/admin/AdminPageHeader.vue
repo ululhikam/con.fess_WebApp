@@ -39,7 +39,9 @@
  * AdminPageHeader — page title, action cluster and the dashboard tab bar.
  * Presentational only: the active tab is owned by useAdminDashboard().
  */
-import { ADMIN_PANEL_ID } from '../../data/adminData';
+
+/** id of the single tab panel rendered by the Base Admin dashboard. */
+const ADMIN_PANEL_ID = 'admin-tabpanel';
 
 defineProps({
   title: { type: String, default: '' },

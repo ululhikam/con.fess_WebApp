@@ -46,10 +46,31 @@
 <script setup>
 /**
  * FeaturesSection — `#fitur` trio of feature cards.
- * Card copy lives in landingData.js, mock previews in FeaturePreview.vue.
+ * Card copy is inlined here, mock previews in FeaturePreview.vue.
  */
 import FeaturePreview from './FeaturePreview.vue';
-import { landingFeatures } from '../../data/landingData';
+
+/**
+ * Feature trio cards.
+ * `preview` picks which mock-UI illustration is rendered inside the card.
+ */
+const landingFeatures = [
+  {
+    title: 'KIRIM CONFESS ANONIM',
+    desc: 'Tulis pesan tanpa ragu, 100% rahasia tanpa jejak data pribadi.',
+    preview: 'anonim',
+  },
+  {
+    title: 'AUTO-PUBLISH KE SOSMED',
+    desc: 'Bot menyalurkan otomatis ke Instagram, Threads, & X.',
+    preview: 'autopublish',
+  },
+  {
+    title: 'ANALITIK & REAKSI REALTIME',
+    desc: 'Pantau jumlah pembaca & reaksi komunitas dari setiap fess.',
+    preview: 'analitik',
+  },
+];
 </script>
 
 <style scoped>

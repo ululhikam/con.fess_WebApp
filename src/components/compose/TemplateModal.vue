@@ -83,7 +83,7 @@ import {
   ASPECTS,
   getTemplateBackground,
   getTemplateAspectRatio,
-} from '../../data/templates';
+} from '../../config/templates';
 
 const props = defineProps({
   show: { type: Boolean, default: false },

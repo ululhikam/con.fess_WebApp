@@ -24,7 +24,25 @@
  * HowItWorksSection — `#cara-kerja` three-step explainer.
  */
 import LandingSectionHead from './LandingSectionHead.vue';
-import { landingSteps } from '../../data/landingData';
+
+/** "Cara kerja" — three step cards. */
+const landingSteps = [
+  {
+    number: '01',
+    title: 'Pilih Base Komunitas',
+    desc: 'Cari dan pilih Base sesuai topik yang kamu inginkan, mulai dari meme, dunia kampus, hingga teknologi.',
+  },
+  {
+    number: '02',
+    title: 'Tulis Confession Anonim',
+    desc: 'Ketik pesanmu bebas tanpa khawatir. Sistem enkripsi data kami menjaga identitasmu 100% anonim.',
+  },
+  {
+    number: '03',
+    title: 'Auto-Posting Ke Sosmed',
+    desc: 'Bot akan memverifikasi dan memposting pesanmu ke IG/Threads/X secara instan tanpa tunda.',
+  },
+];
 </script>
 
 <style scoped>

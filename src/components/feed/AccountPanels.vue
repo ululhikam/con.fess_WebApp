@@ -21,69 +21,13 @@
             <span>{{ balance.toLocaleString() }}</span>
             <span class="balance-unit">MFC</span>
           </div>
-          <div class="balance-hero-sub">≈ Rp {{ (balance * 1500).toLocaleString('id-ID') }}</div>
         </div>
 
         <div class="section-label mt-6 mb-3">Top Up Saldo</div>
-        <div class="topup-grid">
-          <button
-            v-for="pkg in TOPUP_PACKAGES"
-            :key="pkg.mfc"
-            type="button"
-            class="topup-pkg-card"
-            :class="{ 'is-popular': pkg.popular }"
-            @click="selectedPkg = pkg"
-          >
-            <span v-if="pkg.popular" class="topup-popular-badge">TERPOPULER</span>
-            <span class="topup-mfc">{{ pkg.mfc.toLocaleString() }} MFC</span>
-            <span class="topup-idr">Rp {{ pkg.idr.toLocaleString('id-ID') }}</span>
-            <span v-if="pkg.bonus" class="topup-bonus">+{{ pkg.bonus }} bonus</span>
-          </button>
-        </div>
-
-        <div v-if="selectedPkg" class="topup-confirm-section mt-6">
-          <div class="topup-confirm-row">
-            <span>Paket dipilih</span>
-            <span class="topup-confirm-val">{{ selectedPkg.mfc.toLocaleString() }} MFC</span>
-          </div>
-          <div class="topup-confirm-row">
-            <span>Harga</span>
-            <span class="topup-confirm-val">Rp {{ selectedPkg.idr.toLocaleString('id-ID') }}</span>
-          </div>
-          <div class="section-label mt-4 mb-3">Metode Pembayaran</div>
-          <div class="payment-methods">
-            <button
-              v-for="pm in PAYMENT_METHODS"
-              :key="pm.key"
-              type="button"
-              class="payment-method-btn"
-              :class="{ active: selectedPayment === pm.key }"
-              @click="selectedPayment = pm.key"
-            >
-              <component :is="pm.icon" :size="16" />
-              {{ pm.label }}
-            </button>
-          </div>
-          <button type="button" class="btn-topup-now mt-4" @click="handleTopUp">
-            <Zap :size="16" />
-            Top Up Sekarang
-          </button>
-        </div>
-
-        <div class="section-label mt-6 mb-3">Riwayat Transaksi</div>
-        <div class="tx-list">
-          <div v-for="tx in TX_HISTORY" :key="tx.id" class="tx-row">
-            <div class="tx-icon-wrap" :class="tx.type">
-              <component :is="tx.icon" :size="16" />
-            </div>
-            <div class="tx-info">
-              <div class="tx-desc">{{ tx.desc }}</div>
-              <div class="tx-time">{{ tx.time }}</div>
-            </div>
-            <div class="tx-amount" :class="tx.type">
-              {{ tx.type === 'in' ? '+' : '-' }}{{ tx.amount.toLocaleString() }} MFC
-            </div>
-          </div>
+        <div class="empty-state">
+          <Wallet :size="40" class="empty-icon" />
+          <p>Top up belum tersedia</p>
+          <p>Pengisian saldo MFC akan segera hadir di aplikasi.</p>
         </div>
       </template>
 
@@ -93,7 +37,7 @@
           <ShieldCheck :size="20" class="security-icon" />
           <div>
             <div class="security-title">Akun Aman</div>
-            <div class="security-desc">Terakhir login: {{ lastLogin }}</div>
+            <div class="security-desc">Sesi aktif: {{ currentSession.device }}</div>
           </div>
         </div>
 
@@ -127,21 +71,21 @@
               <input v-model="passwords.confirm" type="password" class="form-input" placeholder="Ulangi password baru" />
             </div>
             <button type="button" class="btn-save-primary" @click="handleChangePassword">Simpan Password</button>
+            <p v-if="passwordMessage" class="form-hint mt-2">{{ passwordMessage }}</p>
           </div>
         </transition>
 
         <div class="section-label mb-3">Sesi Aktif</div>
         <div class="settings-card mb-4">
-          <div v-for="session in SESSIONS" :key="session.id" class="session-row">
+          <div class="session-row">
             <div class="session-icon-wrap">
-              <component :is="session.icon" :size="18" />
+              <Laptop :size="18" />
             </div>
             <div class="session-info">
-              <div class="session-device">{{ session.device }}</div>
-              <div class="session-meta">{{ session.location }} · {{ session.time }}</div>
+              <div class="session-device">{{ currentSession.device }}</div>
+              <div class="session-meta">{{ currentSession.location }} · {{ currentSession.time }}</div>
             </div>
-            <span v-if="session.current" class="session-current-badge">Aktif</span>
-            <button v-else type="button" class="session-revoke-btn" @click="revokeSession(session.id)">Cabut</button>
+            <span class="session-current-badge">Aktif</span>
           </div>
         </div>
 
@@ -179,7 +123,14 @@
           </button>
         </div>
 
-        <div class="my-fess-list">
+        <div v-if="myFessLoading" class="empty-state">
+          <p>Memuat fess kamu…</p>
+        </div>
+        <div v-else-if="myFessError" class="empty-state">
+          <p>Gagal memuat fess kamu.</p>
+          <button type="button" class="btn-save-primary mt-2" @click="loadMyFesses">Coba lagi</button>
+        </div>
+        <div v-else class="my-fess-list">
           <div v-for="fess in filteredMyFess" :key="fess.id" class="my-fess-card">
             <div class="my-fess-header">
               <span class="my-fess-base">{{ fess.base }}</span>
@@ -209,7 +160,14 @@
         </div>
 
         <div class="section-label mb-3">{{ filteredFollowing.length }} Base Diikuti</div>
-        <div class="following-list">
+        <div v-if="followingLoading" class="empty-state">
+          <p>Memuat base yang diikuti…</p>
+        </div>
+        <div v-else-if="followingError" class="empty-state">
+          <p>Gagal memuat daftar base.</p>
+          <button type="button" class="btn-save-primary mt-2" @click="loadFollowing">Coba lagi</button>
+        </div>
+        <div v-else class="following-list">
           <div v-for="base in filteredFollowing" :key="base.handle" class="following-card">
             <div class="following-avatar" :style="{ background: base.color }">
               {{ base.initial }}
@@ -244,8 +202,15 @@
         </div>
 
         <div class="section-label mb-3">Notifikasi Terbaru</div>
-        <div class="notif-list">
-          <div v-for="n in RECENT_NOTIFS" :key="n.id" class="notif-card" :class="{ unread: !n.read }">
+        <div v-if="notifLoading" class="empty-state">
+          <p>Memuat notifikasi…</p>
+        </div>
+        <div v-else-if="notifError" class="empty-state">
+          <p>Gagal memuat notifikasi.</p>
+          <button type="button" class="btn-save-primary mt-2" @click="loadNotifications">Coba lagi</button>
+        </div>
+        <div v-else-if="recentNotifs.length" class="notif-list">
+          <div v-for="n in recentNotifs" :key="n.id" class="notif-card" :class="{ unread: !n.read }">
             <div class="notif-icon-wrap" :class="n.type">
               <component :is="n.icon" :size="16" />
             </div>
@@ -254,6 +219,10 @@
               <div class="notif-time">{{ n.time }}</div>
             </div>
           </div>
+        </div>
+        <div v-else class="empty-state">
+          <Bell :size="40" class="empty-icon" />
+          <p>Belum ada notifikasi</p>
         </div>
       </template>
 
@@ -389,13 +358,19 @@
  * Receives `modelValue` = action key (e.g. 'topup', 'security', …) or null.
  * Each section is rendered in-place so all page state is kept in this one component.
  */
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, watch } from 'vue';
 import {
-  ChevronLeft, ChevronDown, Coins, Zap, ShieldCheck, PenLine, Star, ThumbsUp,
+  ChevronLeft, ChevronDown, Coins, ShieldCheck, PenLine, Star, ThumbsUp,
   MessageCircle, Search, Bell, HelpCircle, Flag, ScrollText, Shield, Info,
-  Mail, ExternalLink, Laptop, Smartphone, CreditCard, Wallet, AlertTriangle,
+  Mail, ExternalLink, Laptop, Wallet, AlertTriangle,
   UserX, Volume2, Bot,
 } from 'lucide-vue-next';
+
+import { api } from '../../api';
+import { mapFessToPost } from '../../utils/fessMapper';
+import { formatRelativeTime } from '../../utils/format';
+import { useBases } from '../../composables/useBases';
+import { useFollowBase } from '../../composables/useFollowBase';
 
 const props = defineProps({
   modelValue: { type: String, default: null },
@@ -419,76 +394,81 @@ const PANEL_TITLES = {
 const panelTitle = computed(() => PANEL_TITLES[props.modelValue] ?? '');
 
 /* ============================================================ TOP UP ============================================================ */
-const balance = ref(1250);
-const selectedPkg = ref(null);
-const selectedPayment = ref('gopay');
-
-const TOPUP_PACKAGES = [
-  { mfc: 500, idr: 7500, bonus: null, popular: false },
-  { mfc: 1000, idr: 14000, bonus: null, popular: false },
-  { mfc: 2500, idr: 32500, bonus: '250 MFC', popular: true },
-  { mfc: 5000, idr: 60000, bonus: '750 MFC', popular: false },
-  { mfc: 10000, idr: 110000, bonus: '2000 MFC', popular: false },
-  { mfc: 25000, idr: 250000, bonus: '5500 MFC', popular: false },
-];
-
-const PAYMENT_METHODS = [
-  { key: 'gopay', label: 'GoPay', icon: Wallet },
-  { key: 'ovo', label: 'OVO', icon: Wallet },
-  { key: 'dana', label: 'DANA', icon: Wallet },
-  { key: 'bca', label: 'BCA', icon: CreditCard },
-  { key: 'bri', label: 'BRI', icon: CreditCard },
-];
-
-const TX_HISTORY = [
-  { id: 1, type: 'in', icon: Coins, desc: 'Top Up via GoPay', time: '12 Okt 2026, 14:32', amount: 2500 },
-  { id: 2, type: 'out', icon: PenLine, desc: 'Kirim Fess ke @randomfess', time: '11 Okt 2026, 09:15', amount: 10 },
-  { id: 3, type: 'out', icon: Star, desc: 'Boost Fess #4821', time: '10 Okt 2026, 21:44', amount: 50 },
-  { id: 4, type: 'in', icon: Zap, desc: 'Reward Fess Populer', time: '9 Okt 2026, 16:00', amount: 150 },
-  { id: 5, type: 'out', icon: PenLine, desc: 'Kirim Fess ke @ugmfess', time: '8 Okt 2026, 11:20', amount: 10 },
-];
-
-function handleTopUp() {
-  if (!selectedPkg.value) return;
-  balance.value += selectedPkg.value.mfc + (selectedPkg.value.bonusAmt || 0);
-  selectedPkg.value = null;
-}
+/** Read-only balance straight from the session user (no top-up API yet). */
+const balance = computed(() => props.user?.balance ?? 0);
 
 /* ============================================================ SECURITY ============================================================ */
 const showChangePassword = ref(false);
 const passwords = reactive({ old: '', new: '', confirm: '' });
 const twoFa = ref(false);
 const loginNotif = ref(true);
-const lastLogin = 'Hari ini, 14:32 WIB dari Chrome / Windows';
+const passwordMessage = ref('');
 
-const SESSIONS = [
-  { id: 1, icon: Laptop, device: 'Chrome · Windows 11', location: 'Surabaya, ID', time: 'Aktif sekarang', current: true },
-  { id: 2, icon: Smartphone, device: 'Mobile · Android 14', location: 'Surabaya, ID', time: '2 jam lalu', current: false },
-];
-
-function revokeSession(id) {
-  const idx = SESSIONS.findIndex((s) => s.id === id);
-  if (idx !== -1) SESSIONS.splice(idx, 1);
-}
+/** Current session descriptor derived from the local browser (no sessions API). */
+const currentSession = computed(() => {
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const platform = /Windows/i.test(ua)
+    ? 'Windows'
+    : /Android/i.test(ua)
+      ? 'Android'
+      : /iPhone|iPad|iPod/i.test(ua)
+        ? 'iOS'
+        : /Mac OS X/i.test(ua)
+          ? 'macOS'
+          : /Linux/i.test(ua)
+            ? 'Linux'
+            : 'Perangkat ini';
+  const browser = /Edg\//i.test(ua)
+    ? 'Edge'
+    : /Chrome\//i.test(ua)
+      ? 'Chrome'
+      : /Firefox\//i.test(ua)
+        ? 'Firefox'
+        : /Safari\//i.test(ua)
+          ? 'Safari'
+          : 'Browser';
+  return {
+    device: `${browser} · ${platform}`,
+    location: 'Perangkat ini',
+    time: 'Aktif sekarang',
+  };
+});
 
 function handleChangePassword() {
-  if (!passwords.old || !passwords.new || !passwords.confirm) return;
-  if (passwords.new !== passwords.confirm) return;
-  passwords.old = '';
-  passwords.new = '';
-  passwords.confirm = '';
-  showChangePassword.value = false;
+  passwordMessage.value =
+    'Ubah password belum tersedia dari aplikasi. Hubungi dukungan jika butuh bantuan.';
 }
 
 /* ============================================================ MY FESS ============================================================ */
 const myFessTab = ref('all');
 
-const FESS_TABS = [
-  { key: 'all', label: 'Semua', count: 8 },
-  { key: 'approved', label: 'Disetujui', count: 5 },
-  { key: 'pending', label: 'Pending', count: 2 },
-  { key: 'rejected', label: 'Ditolak', count: 1 },
-];
+const myFesses = ref([]);
+const myFessLoading = ref(false);
+const myFessError = ref(null);
+
+async function loadMyFesses() {
+  myFessLoading.value = true;
+  myFessError.value = null;
+  try {
+    const res = await api.getMyFesses({ page: 1, limit: 50 });
+    myFesses.value = (res?.data ?? []).map((f) => {
+      const post = mapFessToPost(f);
+      return {
+        id: post.id,
+        base: post.handle,
+        status: post.status,
+        content: post.content,
+        time: post.time,
+        upvotes: post.likes,
+        comments: post.commentsCount,
+      };
+    });
+  } catch (e) {
+    myFessError.value = e;
+  } finally {
+    myFessLoading.value = false;
+  }
+}
 
 const STATUS_LABELS = {
   approved: 'Disetujui',
@@ -496,38 +476,65 @@ const STATUS_LABELS = {
   rejected: 'Ditolak',
 };
 
-const MY_FESSES = [
-  { id: 1, base: '@randomfess', status: 'approved', content: 'Jujur aku lagi punya crush sama teman sekelas yang sama-sama main game, tapi takut diketawain karena selisih umur 3 tahun...', time: '2 jam lalu', upvotes: 84, comments: 17 },
-  { id: 2, base: '@ugmfess', status: 'approved', content: 'Ada yang pernah ngerasa salah jurusan? Aku semester 5 tapi tiap hari ngerasa kayak bukan tempatku...', time: '1 hari lalu', upvotes: 213, comments: 45 },
-  { id: 3, base: '@jogjafess', status: 'pending', content: 'Send fess: siapa yang paling sering makan mie instan lebih dari 3x seminggu karena akhir bulan?', time: '3 jam lalu', upvotes: 0, comments: 0 },
-  { id: 4, base: '@anifess', status: 'approved', content: 'Chainsaw Man season 2 bakal lebih gelap dari yang kita bayangkan. Calling it now!', time: '3 hari lalu', upvotes: 56, comments: 12 },
-  { id: 5, base: '@musikfess', status: 'rejected', content: 'Promo konten disini...', time: '5 hari lalu', upvotes: 0, comments: 0 },
-  { id: 6, base: '@gamingfess', status: 'approved', content: 'Siapa yang masih main MLBB di 2026 ini? Server Asia lagi rame banget akhir-akhir ini.', time: '6 hari lalu', upvotes: 128, comments: 33 },
-  { id: 7, base: '@randomfess', status: 'approved', content: 'Genuinely nggak ngerti kenapa orang Indonesia susah banget bilang "maaf" atau "terima kasih" ke sesama.', time: '1 minggu lalu', upvotes: 442, comments: 88 },
-  { id: 8, base: '@rahasiafess', status: 'pending', content: 'Pernah nggak kalian punya rahasia yang kalau ketahuan bisa ngubah hidup kalian selamanya?', time: '2 jam lalu', upvotes: 0, comments: 0 },
-];
+const FESS_TABS = computed(() => [
+  { key: 'all', label: 'Semua', count: myFesses.value.length },
+  {
+    key: 'approved',
+    label: 'Disetujui',
+    count: myFesses.value.filter((f) => f.status === 'approved').length,
+  },
+  {
+    key: 'pending',
+    label: 'Pending',
+    count: myFesses.value.filter((f) => f.status === 'pending').length,
+  },
+  {
+    key: 'rejected',
+    label: 'Ditolak',
+    count: myFesses.value.filter((f) => f.status === 'rejected').length,
+  },
+]);
 
 const filteredMyFess = computed(() => {
-  if (myFessTab.value === 'all') return MY_FESSES;
-  return MY_FESSES.filter((f) => f.status === myFessTab.value);
+  if (myFessTab.value === 'all') return myFesses.value;
+  return myFesses.value.filter((f) => f.status === myFessTab.value);
 });
 
 /* ============================================================ FOLLOWING ============================================================ */
-import { ALL_BASES } from '../../data/bases.js';
-const followedHandles = ref(['@randomfess', '@ugmfess', '@anifess', '@gamingfess', '@jogjafess']);
+const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
+const { followedHandles, toggleFollowBase, syncFollowing } = useFollowBase();
 const followSearch = ref('');
+const followingLoading = ref(false);
+const followingError = ref(null);
+
+async function loadFollowing() {
+  followingLoading.value = true;
+  followingError.value = null;
+  try {
+    await syncFollowing();
+    await ensureBasesLoaded();
+  } catch (e) {
+    followingError.value = e;
+  } finally {
+    followingLoading.value = false;
+  }
+}
 
 const filteredFollowing = computed(() => {
   const q = followSearch.value.trim().toLowerCase();
-  return ALL_BASES.filter(
+  return bases.value.filter(
     (b) =>
       followedHandles.value.includes(b.handle) &&
       (!q || b.name.toLowerCase().includes(q) || b.handle.toLowerCase().includes(q)),
   );
 });
 
-function unfollowBase(handle) {
-  followedHandles.value = followedHandles.value.filter((h) => h !== handle);
+async function unfollowBase(handle) {
+  try {
+    await toggleFollowBase(handle);
+  } catch {
+    // optimistic update already rolled back by the composable
+  }
 }
 
 /* ============================================================ NOTIFICATIONS ============================================================ */
@@ -539,13 +546,53 @@ const notifSettings = reactive([
   { label: 'Pengumuman Platform', desc: 'Update fitur & pemeliharaan sistem', on: false },
 ]);
 
-const RECENT_NOTIFS = [
-  { id: 1, type: 'upvote', icon: ThumbsUp, text: 'Fess kamu di @randomfess mendapat 100+ upvote!', time: '2 jam lalu', read: false },
-  { id: 2, type: 'comment', icon: MessageCircle, text: '@anon_88 membalas fess kamu: "setuju banget!"', time: '4 jam lalu', read: false },
-  { id: 3, type: 'approved', icon: ShieldCheck, text: 'Fess kamu di @ugmfess telah disetujui moderator.', time: '1 hari lalu', read: true },
-  { id: 4, type: 'reward', icon: Coins, text: 'Kamu mendapat 150 MFC dari Reward Fess Populer!', time: '2 hari lalu', read: true },
-  { id: 5, type: 'comment', icon: MessageCircle, text: '5 orang membalas fess kamu di @jogjafess', time: '3 hari lalu', read: true },
-];
+const recentNotifs = ref([]);
+const notifLoading = ref(false);
+const notifError = ref(null);
+
+/** Presentation mapping for API notification types (icons are UI assets). */
+const NOTIF_PRESENTATION = {
+  vote: { icon: ThumbsUp, type: 'upvote' },
+  comment: { icon: MessageCircle, type: 'comment' },
+  moderation: { icon: ShieldCheck, type: 'approved' },
+};
+
+async function loadNotifications() {
+  notifLoading.value = true;
+  notifError.value = null;
+  try {
+    const res = await api.getNotifications({ page: 1, limit: 30 });
+    const data = res?.data ?? [];
+    recentNotifs.value = data.map((n) => {
+      const pres = NOTIF_PRESENTATION[n.type] || { icon: Bell, type: 'system' };
+      return {
+        id: n.id,
+        type: pres.type,
+        icon: pres.icon,
+        text: n.fess_content ? `${n.text} — "${n.fess_content}"` : n.text,
+        time: formatRelativeTime(n.created_at ?? Date.now()),
+        read: n.read,
+      };
+    });
+
+    const unreadIds = data.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length) api.markNotificationsRead(unreadIds).catch(() => {});
+  } catch (e) {
+    notifError.value = e;
+  } finally {
+    notifLoading.value = false;
+  }
+}
+
+/* ---- Lazy data loading: fetch each panel's data when it opens ---- */
+watch(
+  () => props.modelValue,
+  (panel) => {
+    if (panel === 'my-fess') loadMyFesses();
+    else if (panel === 'following') loadFollowing();
+    else if (panel === 'notifications') loadNotifications();
+  },
+);
 
 /* ============================================================ HELP ============================================================ */
 const FAQS = reactive([

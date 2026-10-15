@@ -26,7 +26,14 @@
  * Scroll state (`isScrolled`) is owned by useLanding() in the page shell.
  */
 import ThemeToggle from '../ui/ThemeToggle.vue';
-import { landingNavLinks } from '../../data/landingData';
+
+/** Anchor links rendered in the sticky nav (targets exist on the page). */
+const landingNavLinks = [
+  { href: '#fitur', label: 'Fitur Utama' },
+  { href: '#cara-kerja', label: 'Cara Kerja' },
+  { href: '#komunitas', label: 'Base Komunitas' },
+  { href: '#faq', label: 'FAQ' },
+];
 
 defineProps({
   isScrolled: { type: Boolean, default: false },

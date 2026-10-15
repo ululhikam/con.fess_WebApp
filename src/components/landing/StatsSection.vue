@@ -20,7 +20,14 @@
  * StatsSection — reputation & platform statistics row.
  */
 import LandingSectionHead from './LandingSectionHead.vue';
-import { landingStats } from '../../data/landingData';
+
+/** Platform statistics row (static marketing copy — no backend endpoint). */
+const landingStats = [
+  { value: '120.4K+', label: 'Total Confession Terkirim' },
+  { value: '48.2K', label: 'Pengguna Aktif Bulanan' },
+  { value: '350+', label: 'Base Komunitas Terhubung' },
+  { value: '0.00s', label: 'Delay Otomatisasi Post' },
+];
 </script>
 
 <style scoped>

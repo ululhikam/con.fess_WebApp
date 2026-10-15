@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { api } from '../api';
 
 /** Safe JSON parse — returns null for missing or corrupt payloads. */
 function readJson(key) {
@@ -12,6 +13,24 @@ function readJson(key) {
 
 /** Plain string values (tokens) are stored unencoded. */
 const readToken = () => localStorage.getItem('fess_token');
+
+/**
+ * Normalize the API User payload (snake_case) into the app user model.
+ * Keeps both aliases so existing components keep working.
+ */
+function normalizeUser(user) {
+  if (!user) return null;
+  return {
+    ...user,
+    managedBases: user.managed_bases ?? user.managedBases ?? [],
+    igAccount: user.ig_account ?? user.igAccount ?? null,
+    followersCount: user.followers_count ?? user.followersCount ?? 0,
+    followingCount: user.following_count ?? user.followingCount ?? 0,
+    fessCount: user.fess_count ?? user.fessCount ?? 0,
+    balance: user.balance ?? 0,
+    createdAt: user.created_at ?? user.createdAt ?? null,
+  };
+}
 
 export const useAuthStore = defineStore('auth', {
   /**
@@ -33,118 +52,76 @@ export const useAuthStore = defineStore('auth', {
     initials: (state) => (state.user?.username ?? 'AN').slice(0, 2).toUpperCase(),
   },
   actions: {
-    login(role = 'User') {
-      const mockUsers = {
-        'Super Admin': {
-          id: 'usr_admin_01',
-          username: 'SuperAdmin_GodMode',
-          handle: '@superadmin',
-          role: 'Super Admin',
-          avatar:
-            'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&w=150&q=80',
-          level: 99,
-          bio: 'Root Administrator of FessHub & AnonBase Engine.',
-          badges: ['ROOT SUPER ADMIN', 'FOUNDER'],
-          managedBases: ['@all_bases'],
-        },
-        'Base Admin': {
-          id: 'usr_base_mod',
-          username: 'BaseModerator_Code',
-          handle: '@code_mod',
-          role: 'Base Admin',
-          avatar:
-            'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
-          level: 28,
-          bio: 'Official moderator for @codememfess base.',
-          badges: ['BASE MODERATOR', 'VERIFIED ADMIN'],
-          managedBases: ['@codememfess'],
-        },
-        User: {
-          id: 'usr_anon_99',
-          username: 'Anon_ShadowX',
-          handle: '@anon_shadow',
-          role: 'User',
-          avatar:
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-          level: 14,
-          bio: 'Secret sender & casual reader.',
-          badges: ['ANON SENDER', 'MEMBER'],
-          managedBases: [],
-        },
-      };
+    /** Persist a session returned by the API ({ user, token }). */
+    setSession({ user, token }) {
+      this.user = normalizeUser(user);
+      if (token) this.token = token;
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+      localStorage.setItem('fess_token', this.token);
+    },
 
-      this.user = mockUsers[role] || mockUsers['User'];
-      this.token = 'mock_jwt_token_' + Date.now();
-      localStorage.setItem('fess_user', JSON.stringify(this.user));
-      localStorage.setItem('fess_token', this.token);
-    },
-    registerUser(payload = {}) {
-      const rawHandle = payload.handle || payload.username || 'anon_user';
-      const cleanHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
-      this.user = {
-        id: 'usr_' + Date.now(),
-        username: payload.username || 'Pengguna Anonim',
-        handle: cleanHandle,
-        email: payload.email || 'user@fesshub.com',
-        role: 'User',
-        avatar:
-          payload.avatar ||
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-        level: 1,
-        bio: payload.bio || 'Secret sender & casual reader di FessHub.',
-        badges: ['NEW MEMBER', 'ANON SENDER'],
-        managedBases: [],
-      };
-      this.token = 'mock_jwt_token_' + Date.now();
-      localStorage.setItem('fess_user', JSON.stringify(this.user));
-      localStorage.setItem('fess_token', this.token);
+    /** Login via the backend. @param {{identifier: string, password: string, role?: string}} credentials */
+    async login({ identifier, password, role = 'User' }) {
+      const res = await api.login({ identifier, password, role });
+      this.setSession(res);
       return this.user;
     },
-    registerBase(payload = {}) {
-      const rawHandle = payload.handle || '@codememfess';
-      const cleanHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
-      this.user = {
-        id: 'usr_base_' + Date.now(),
-        name: payload.name || 'Code & Memes Base',
-        username: payload.name || 'Code & Memes Base',
-        handle: cleanHandle,
-        email: payload.email || 'admin@codememfess.id',
-        role: 'Base Admin',
-        avatar:
-          payload.avatar ||
-          'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-        level: 1,
-        bio:
-          payload.bio ||
-          `Base resmi komunitas ${cleanHandle}. Kirim confession anonim dengan tag keyword base!`,
-        badges: ['BASE CREATOR', 'VERIFIED ADMIN'],
-        managedBases: [cleanHandle],
-        igAccount: payload.igAccount || '@codememfess_ig',
-        followersCount: 18420,
-        followingCount: 42,
-        fessCount: 1284,
-        balance: 24580,
-        revenue: 1120000,
-      };
-      this.token = 'mock_jwt_token_' + Date.now();
-      localStorage.setItem('fess_user', JSON.stringify(this.user));
-      localStorage.setItem('fess_token', this.token);
+
+    /** Social login via Google ID token. */
+    async loginGoogle(payload) {
+      const res = await api.loginGoogle(payload);
+      this.setSession(res);
       return this.user;
     },
-    updateProfile(updates = {}) {
-      if (!this.user) return null;
-      this.user = {
-        ...this.user,
-        ...updates,
-      };
+
+    async registerUser(payload) {
+      const res = await api.registerUser(payload);
+      this.setSession(res);
+      return this.user;
+    },
+
+    async registerBase(payload) {
+      const res = await api.registerBase(payload);
+      this.setSession(res);
+      return this.user;
+    },
+
+    /** Refresh the cached profile from the backend. */
+    async fetchMe() {
+      const res = await api.me();
+      const user = res?.user ?? res;
+      this.user = normalizeUser({ ...this.user, ...user });
       localStorage.setItem('fess_user', JSON.stringify(this.user));
       return this.user;
     },
-    logout() {
+
+    /** Persist profile changes through the API, then update local state. */
+    async updateProfile(updates = {}) {
+      const res = await api.updateProfile(updates);
+      const user = res?.user ?? res;
+      if (user && typeof user === 'object') {
+        this.user = normalizeUser({ ...this.user, ...user });
+      } else {
+        this.user = normalizeUser({ ...this.user, ...updates });
+      }
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+      return this.user;
+    },
+
+    clearSession() {
       this.user = null;
       this.token = null;
       localStorage.removeItem('fess_user');
       localStorage.removeItem('fess_token');
+    },
+
+    async logout() {
+      try {
+        await api.logout();
+      } catch {
+        // Session is cleared locally even if the server call fails.
+      }
+      this.clearSession();
     },
   },
 });

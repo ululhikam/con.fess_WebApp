@@ -101,7 +101,8 @@
  */
 import { ref, computed, watch } from 'vue';
 import { X, Search, Check, Quote } from 'lucide-vue-next';
-import { FEED_POSTS, DUMMY_MENFESS_POSTS } from '../../data/mockPosts';
+import { api } from '../../api';
+import { mapFessToPost } from '../../utils/fessMapper';
 
 const props = defineProps({
   show: {
@@ -118,6 +119,22 @@ const emit = defineEmits(['update:show', 'update:modelValue']);
 
 const searchQuery = ref('');
 const selectedQuote = ref(null);
+const candidates = ref([]);
+const loadingResults = ref(false);
+let searchTimer = null;
+
+/** Fetch quote candidates from the API (published fesses). */
+async function loadFesses(q = '') {
+  loadingResults.value = true;
+  try {
+    const res = await api.getFesses({ query: q || undefined, limit: 20, sort: 'newest' });
+    candidates.value = (res?.data || []).map(mapFessToPost);
+  } catch {
+    candidates.value = [];
+  } finally {
+    loadingResults.value = false;
+  }
+}
 
 watch(
   () => props.show,
@@ -125,32 +142,19 @@ watch(
     if (isOpen) {
       selectedQuote.value = props.modelValue;
       searchQuery.value = '';
+      loadFesses();
     }
   },
   { immediate: true }
 );
 
-// All candidates available to quote
-const candidates = computed(() => {
-  const map = new Map();
-  [...DUMMY_MENFESS_POSTS, ...FEED_POSTS].forEach((p) => {
-    if (!map.has(p.id)) {
-      map.set(p.id, p);
-    }
-  });
-  return Array.from(map.values());
+watch(searchQuery, (q) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadFesses(q.trim()), 300);
 });
 
-const filteredFesses = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return candidates.value;
-  return candidates.value.filter(
-    (p) =>
-      p.content.toLowerCase().includes(q) ||
-      (p.handle && p.handle.toLowerCase().includes(q)) ||
-      (p.tag && p.tag.toLowerCase().includes(q))
-  );
-});
+// Results are already filtered server-side.
+const filteredFesses = computed(() => candidates.value);
 
 function selectQuote(quote) {
   selectedQuote.value = quote;
