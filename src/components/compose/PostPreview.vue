@@ -40,13 +40,22 @@
         <p class="quoted-text">{{ quotedFess.content }}</p>
       </div>
 
-      <!-- Media -->
+      <!-- Media (di pratinjau, media bisa digeser untuk mengatur urutan) -->
       <div
-        v-if="media.length"
+        v-if="mediaItems.length"
         class="post-card__media"
-        :class="media.length === 1 ? 'is-single' : 'is-grid'"
+        :class="[
+          mediaItems.length === 1 ? 'is-single' : 'is-grid',
+          { 'is-reorderable': reorderEnabled },
+        ]"
       >
-        <div v-for="item in media" :key="item.id" class="post-card__media-item">
+        <div
+          v-for="(item, index) in mediaItems"
+          :key="item.id"
+          class="post-card__media-item"
+          :class="{ 'is-drag-source': dragIndex === index }"
+          :data-media-index="index"
+        >
           <img
             v-if="item.type === 'image'"
             :src="item.url || item.preview"
@@ -61,6 +70,20 @@
             playsinline
             controls
           />
+
+          <!-- Pegangan geser pengatur urutan (tidak ikut ter-ekspor ke PNG) -->
+          <button
+            v-if="reorderEnabled"
+            type="button"
+            class="media-reorder-handle"
+            :title="`Geser untuk memindahkan media ${index + 1}`"
+            aria-label="Geser untuk mengubah urutan media"
+            @pointerdown.stop.prevent="startReorder($event, index)"
+            @click.stop
+          >
+            <GripVertical :size="14" />
+          </button>
+          <span v-if="reorderEnabled" class="media-order-badge">{{ index + 1 }}</span>
         </div>
       </div>
 
@@ -85,8 +108,8 @@
  * from the template's `ink`, never from app theme variables — so the node can
  * be rasterised to a PNG and posted to Instagram without losing styling.
  */
-import { ref, computed, toRef } from 'vue';
-import { Heart, MessageCircle, Music } from 'lucide-vue-next';
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue';
+import { Heart, MessageCircle, Music, GripVertical } from 'lucide-vue-next';
 import { formatCompact } from '../../utils/format';
 import { getTemplateByKey, getTemplateAspectRatio } from '../../config/templates';
 import { useTopics } from '../../composables/useTopics';
@@ -104,7 +127,11 @@ const props = defineProps({
   isPreview: { type: Boolean, default: true },
   /** True while html-to-image is rasterising — freezes animations/jitter. */
   exporting: { type: Boolean, default: false },
+  /** Aktifkan pengaturan urutan media via geser (khusus tampilan pratinjau). */
+  reorderable: { type: Boolean, default: false },
 });
+
+const emit = defineEmits(['reorder-media']);
 
 /** Root node, exposed so the parent can hand it to html-to-image. */
 const cardEl = ref(null);
@@ -147,6 +174,85 @@ const textureStyle = computed(() =>
 const displayContent = computed(() => {
   if (props.isPreview && props.content.length > 420) return props.content.slice(0, 420) + '…';
   return props.content;
+});
+
+/* ---- Pengaturan urutan media via geser (khusus pratinjau) ---------------- */
+
+const reorderEnabled = computed(
+  () => props.reorderable && props.isPreview && !props.exporting && (props.media?.length || 0) > 1
+);
+
+// Urutan lokal (daftar id) selama user menggeser; null = ikut urutan prop.
+const dragIds = ref(null);
+const dragIndex = ref(-1);
+
+/** Daftar media yang dirender — mengikuti urutan geser saat sedang aktif. */
+const mediaItems = computed(() => {
+  const list = props.media || [];
+  if (!dragIds.value) return list;
+  const byId = new Map(list.map((m) => [m.id, m]));
+  const ordered = [];
+  for (const id of dragIds.value) {
+    const item = byId.get(id);
+    if (item) ordered.push(item);
+  }
+  for (const item of list) {
+    if (!ordered.includes(item)) ordered.push(item);
+  }
+  return ordered;
+});
+
+function startReorder(event, index) {
+  if (!reorderEnabled.value || dragIndex.value !== -1) return;
+  dragIndex.value = index;
+  dragIds.value = mediaItems.value.map((m) => m.id);
+  window.addEventListener('pointermove', onReorderMove, { passive: false });
+  window.addEventListener('pointerup', finishReorder);
+  window.addEventListener('pointercancel', finishReorder);
+}
+
+/** Tukar posisi item yang digeser dengan tile yang berada di bawah pointer. */
+function onReorderMove(event) {
+  if (dragIndex.value < 0) return;
+  event.preventDefault();
+  const el = document.elementFromPoint(event.clientX, event.clientY);
+  const tile = el && typeof el.closest === 'function' ? el.closest('[data-media-index]') : null;
+  if (!tile) return;
+  const index = Number(tile.getAttribute('data-media-index'));
+  if (Number.isNaN(index) || index === dragIndex.value) return;
+  moveMedia(dragIndex.value, index);
+  dragIndex.value = index;
+}
+
+function moveMedia(from, to) {
+  const ids = (dragIds.value || []).slice();
+  if (from < 0 || from >= ids.length || to < 0 || to >= ids.length) return;
+  const [moved] = ids.splice(from, 1);
+  ids.splice(to, 0, moved);
+  dragIds.value = ids;
+}
+
+function finishReorder() {
+  window.removeEventListener('pointermove', onReorderMove);
+  window.removeEventListener('pointerup', finishReorder);
+  window.removeEventListener('pointercancel', finishReorder);
+  const ids = dragIds.value;
+  dragIndex.value = -1;
+  if (ids && ids.length) {
+    emit('reorder-media', ids);
+    // Lepaskan urutan lokal setelah parent menyinkronkan prop-nya.
+    nextTick(() => {
+      if (dragIndex.value === -1) dragIds.value = null;
+    });
+  } else {
+    dragIds.value = null;
+  }
+}
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointermove', onReorderMove);
+  window.removeEventListener('pointerup', finishReorder);
+  window.removeEventListener('pointercancel', finishReorder);
 });
 
 // Static demo counters — the real values arrive from the API layer.
@@ -399,6 +505,66 @@ const timeAgo = 'baru saja';
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* ---- reorder media (hanya tampil di pratinjau, tidak ikut ter-ekspor) ---- */
+.post-card__media.is-reorderable .post-card__media-item {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.post-card__media-item.is-drag-source {
+  z-index: 2;
+  transform: scale(0.95);
+  box-shadow:
+    0 0 0 2px #00e0a4,
+    0 12px 24px rgba(0, 0, 0, 0.4);
+}
+
+.media-reorder-handle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(10, 12, 20, 0.62);
+  color: #ffffff;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.media-reorder-handle:active {
+  cursor: grabbing;
+  background: rgba(10, 12, 20, 0.82);
+}
+
+.media-order-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 3;
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(10, 12, 20, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 /* ---- footer ---- */

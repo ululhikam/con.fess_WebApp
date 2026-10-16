@@ -172,7 +172,13 @@
             :quoted-fess="form.quotedFess"
             :is-preview="true"
             :exporting="exporting"
+            reorderable
+            @reorder-media="onReorderMedia"
           />
+          <p v-if="form.media.length > 1" class="preview-hint">
+            <GripVertical :size="13" />
+            <span>Geser pegangan di sudut media untuk mengatur urutannya (depan → belakang).</span>
+          </p>
           <p v-if="exportError" class="preview-error" role="alert">
             <AlertCircle :size="14" /> {{ exportError }}
           </p>
@@ -219,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   ChevronLeft,
@@ -232,6 +238,7 @@ import {
   AlertCircle,
   Quote,
   X,
+  GripVertical,
 } from 'lucide-vue-next';
 import { toPng } from 'html-to-image';
 
@@ -322,6 +329,8 @@ async function exportCard() {
   exporting.value = true;
   exportError.value = '';
   try {
+    // Tunggu DOM memperbarui diri (pegangan geser media disembunyikan) sebelum capture.
+    await nextTick();
     const targetWidth = activeAspect.value.exportWidth;
     const naturalWidth = node.getBoundingClientRect().width || node.offsetWidth || targetWidth;
     const pixelRatio = Math.max(1, targetWidth / naturalWidth);
@@ -494,6 +503,24 @@ function onBaseChange(handle) {
 
 function onMediaChange(media) {
   form.value.media = media;
+}
+
+/** Terapkan urutan media baru dari pratinjau (geser depan/tengah/belakang). */
+function onReorderMedia(orderedIds) {
+  const list = form.value.media || [];
+  if (!Array.isArray(orderedIds) || orderedIds.length !== list.length) return;
+  const byId = new Map(list.map((m) => [m.id, m]));
+  const next = [];
+  for (const id of orderedIds) {
+    const item = byId.get(id);
+    if (item) {
+      next.push(item);
+      byId.delete(id);
+    }
+  }
+  for (const leftover of byId.values()) next.push(leftover);
+  const changed = next.some((item, idx) => item !== list[idx]);
+  if (changed) form.value.media = next;
 }
 
 async function saveDraft() {
@@ -965,6 +992,21 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   margin: 10px 0 0;
   font-size: 12px;
   color: var(--danger-text, #ef4444);
+}
+
+/* Petunjuk geser media di pratinjau */
+.preview-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.preview-hint svg {
+  flex-shrink: 0;
 }
 
 .preview-content {

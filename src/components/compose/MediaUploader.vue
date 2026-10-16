@@ -7,7 +7,7 @@
       @dragover.prevent="onDragOver"
       @dragleave.prevent="onDragLeave"
       @drop.prevent="onDrop"
-      @click="triggerFileInput"
+      @click="onDropzoneClick"
       role="button"
       tabindex="0"
       @keydown.enter="triggerFileInput"
@@ -165,6 +165,12 @@
       <span>{{ error }}</span>
     </p>
 
+    <!-- Petunjuk khusus saat picker iOS tidak mengirim file -->
+    <p v-if="pickerHint" class="media-uploader__hint-note" role="status">
+      <AlertCircle :size="15" />
+      <span>{{ pickerHint }}</span>
+    </p>
+
   </div>
 </template>
 
@@ -185,6 +191,7 @@ const emit = defineEmits(['update:modelValue', 'change']);
 const fileInputRef = ref(null);
 const dragActive = ref(false);
 const error = ref('');
+const pickerHint = ref('');
 
 const mediaFiles = computed({
   get() {
@@ -197,6 +204,46 @@ const mediaFiles = computed({
 
 function triggerFileInput() {
   fileInputRef.value?.click();
+}
+
+/**
+ * Safari iOS bermasalah kalau <input type="file"> menerima DUA aktivasi
+ * beruntun (tap native + klik programatik dari bubbling handler): picker
+ * terbuka, user memilih foto, tapi event `change` tidak pernah menyala —
+ * terlihat seperti "tidak terjadi apa-apa". Karena <input> sudah menutupi
+ * seluruh area dropzone (inset: 0), tap dari <input> dibiarkan native dan
+ * klik programatik hanya dipakai untuk tap di luar <input> / keyboard.
+ */
+function onDropzoneClick(event) {
+  if (event.target === fileInputRef.value) return;
+  triggerFileInput();
+}
+
+/** Deteksi perangkat iOS (termasuk saat app dibuka sebagai PWA home-screen). */
+function isIosDevice() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
+/** iOS sesekali mengembalikan FileList kosong — beri tahu user alih-alih diam. */
+function showPickerIssueHint() {
+  if (!isIosDevice()) return;
+  const standalone =
+    typeof navigator !== 'undefined' &&
+    (navigator.standalone === true ||
+      (typeof window.matchMedia === 'function' &&
+        window.matchMedia('(display-mode: standalone)').matches));
+  pickerHint.value = standalone
+    ? 'iOS tidak mengirim file dari aplikasi Foto. Coba pilih lagi, pilih opsi "Pilih File", atau buka Fess n Curious lewat Safari (bukan dari ikon home screen).'
+    : 'iOS tidak mengirim file dari aplikasi Foto. Coba pilih lagi, atau gunakan opsi "Pilih File" pada picker iOS.';
+  window.clearTimeout(showPickerIssueHint._t);
+  showPickerIssueHint._t = window.setTimeout(() => {
+    pickerHint.value = '';
+  }, 9000);
 }
 
 function onDragOver(e) {
@@ -215,9 +262,17 @@ function onDrop(e) {
 }
 
 function onFileSelect(e) {
-  const files = Array.from(e.target.files);
-  handleFiles(files);
-  e.target.value = ''; // Reset for same file re-selection
+  const files = Array.from(e.target.files || []);
+  try {
+    if (!files.length) showPickerIssueHint();
+    handleFiles(files);
+  } catch (err) {
+    // Jangan pernah gagal diam-diam: error tak terduga tetap terlihat user.
+    console.error('[MediaUploader] Gagal memproses file:', err);
+    error.value = `Gagal memproses file: ${err?.message || err}`;
+  } finally {
+    e.target.value = ''; // Reset for same file re-selection
+  }
 }
 
 function handleFiles(files) {
@@ -261,7 +316,7 @@ function getProgress(file) {
 }
 
 function validateFile(file) {
-  const validImageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+  const validImageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'];
   const validVideoExts = ['mp4', 'webm', 'mov', 'mkv', 'avi', 'm4v'];
   const fileExt = (file.name.split('.').pop() || '').toLowerCase();
 
@@ -282,6 +337,53 @@ function validateFile(file) {
   }
 
   return true;
+}
+
+/** Deteksi foto iPhone (HEIC/HEIF) — termasuk saat MIME kosong tapi nama .heic. */
+function isHeicFile(file) {
+  const type = String(file?.type || '').toLowerCase();
+  if (type.includes('heic') || type.includes('heif')) return true;
+  const name = String(file?.name || '').toLowerCase();
+  return (!type || type === 'application/octet-stream') && /\.(heic|heif)$/.test(name);
+}
+
+/** Konversi HEIC/HEIF → JPEG via canvas (Safari men-decode HEIC secara native). */
+async function convertHeicToJpeg(file) {
+  let objectUrl = '';
+  try {
+    objectUrl = URL.createObjectURL(file);
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Tidak bisa membaca gambar'));
+      el.src = objectUrl;
+    });
+
+    const MAX_DIM = 2560;
+    const naturalLongest = Math.max(img.naturalWidth || 0, img.naturalHeight || 0);
+    const longest = naturalLongest || MAX_DIM;
+    const scale = Math.min(1, MAX_DIM / longest);
+    const width = Math.max(1, Math.round((img.naturalWidth || longest) * scale));
+    const height = Math.max(1, Math.round((img.naturalHeight || longest) * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) return null;
+
+    const baseName = String(file.name || 'foto').replace(/\.[^.]+$/, '') || 'foto';
+    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch (err) {
+    console.warn('[MediaUploader] Konversi HEIC gagal, memakai file asli:', err?.message || err);
+    return null;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function processFile(file) {
@@ -322,7 +424,7 @@ function processFile(file) {
 
 /** Upload file ke backend lalu update url final ke state reaktif. */
 async function uploadItem(targetItem, originalFile = null) {
-  const actualFile = originalFile || fileCache.get(targetItem.id) || targetItem.file;
+  let actualFile = originalFile || fileCache.get(targetItem.id) || targetItem.file;
   const st = getProgress(targetItem);
 
   if (!actualFile) {
@@ -343,6 +445,20 @@ async function uploadItem(targetItem, originalFile = null) {
   st.statusText = 'Mengunggah...';
   st.loadedBytes = 0;
   st.totalBytes = actualFile.size || targetItem.size || 0;
+
+  // Foto iPhone umumnya HEIC/HEIF — tidak dirender di browser lain &
+  // ditolak Instagram, jadi konversi ke JPEG dulu sebelum diunggah.
+  if (targetItem.type === 'image' && isHeicFile(actualFile)) {
+    st.statusText = 'Mengonversi foto…';
+    const converted = await convertHeicToJpeg(actualFile);
+    if (abortController.signal.aborted) return;
+    if (converted) {
+      actualFile = converted;
+      fileCache.set(targetItem.id, converted);
+      targetItem.size = converted.size;
+      st.totalBytes = converted.size;
+    }
+  }
 
   try {
     const onProgress = (percent, loaded, total) => {
@@ -1103,6 +1219,25 @@ function truncate(str, max) {
   background: rgba(239, 68, 68, 0.1);
   border-top: 1px solid rgba(239, 68, 68, 0.3);
   margin: 0;
+}
+
+/* Petunjuk picker iOS yang tidak mengirim file (bug Safari) */
+.media-uploader__hint-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 16px;
+  color: #f59e0b;
+  font-size: 12px;
+  line-height: 1.45;
+  background: rgba(245, 158, 11, 0.1);
+  border-top: 1px solid rgba(245, 158, 11, 0.3);
+  margin: 0;
+}
+
+.media-uploader__hint-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 /* CATALOG MODAL */
