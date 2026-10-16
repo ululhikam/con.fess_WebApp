@@ -1,7 +1,10 @@
 <template>
   <section class="view-stage" aria-labelledby="activity-title">
     <div class="stage-header-row mb-4">
-      <h1 id="activity-title" class="stage-title">Notifikasi</h1>
+      <div class="stage-title-wrap">
+        <h1 id="activity-title" class="stage-title">Notifikasi</h1>
+        <span v-if="unreadCount > 0" class="badge-title-count">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+      </div>
 
       <div class="segmented-tabs-container" role="tablist" aria-label="Jenis aktivitas">
         <button
@@ -125,6 +128,7 @@ import { api } from '../../api';
 import { formatRelativeTime, truncate } from '../../utils/format';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { useVisibilityRefresh } from '../../composables/useVisibilityRefresh';
+import { useNotifications } from '../../composables/useNotifications';
 
 /**
  * `loading` / `error` are kept as optional props for backwards compatibility
@@ -215,6 +219,7 @@ function mapNotification(raw) {
 }
 
 const router = useRouter();
+const notifStore = useNotifications();
 
 /**
  * Klik notifikasi: tandai sudah dibaca lalu arahkan ke lokasi yang perlu
@@ -223,8 +228,10 @@ const router = useRouter();
 function openNotification(notif) {
   if (notif.unread) {
     notif.unread = false; // optimistic — rollback kalau request gagal
+    notifStore.decrementUnread(1);
     api.markNotificationsRead([notif.id]).catch(() => {
       notif.unread = true;
+      notifStore.fetchUnreadCount(true);
     });
   }
 
@@ -259,6 +266,8 @@ async function loadNotifications() {
     notifications.value = (res?.data || []).map(mapNotification);
     notifTotal.value = res?.total ?? notifications.value.length;
     notifPage = 1;
+    const serverUnread = res?.unread_count !== undefined ? res.unread_count : unreadCount.value;
+    notifStore.setUnreadCount(serverUnread);
   } catch (e) {
     if (seq !== requestSeq) return;
     notifError.value = e;
@@ -299,6 +308,7 @@ async function markAllRead() {
   notifications.value.forEach((n) => {
     n.unread = false;
   });
+  notifStore.clearUnread();
   markingAllRead.value = true;
   try {
     await api.markAllNotificationsRead();
@@ -306,6 +316,7 @@ async function markAllRead() {
     notifications.value.forEach((n, idx) => {
       n.unread = prev[idx];
     });
+    notifStore.fetchUnreadCount(true);
   } finally {
     markingAllRead.value = false;
   }
@@ -378,11 +389,32 @@ const filteredNotifications = computed(() => {
   gap: 12px;
 }
 
+.stage-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .stage-title {
   font-size: 22px;
   font-weight: 900;
   color: var(--shell-text);
   margin: 0;
+}
+
+.badge-title-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
 }
 
 .segmented-tabs-container {

@@ -492,6 +492,26 @@ function openCompose() {
 }
 
 onMounted(() => {
+  if (route.query.token) {
+    const token = String(route.query.token);
+    localStorage.setItem('fess_token', token);
+    authStore.token = token;
+    authStore.fetchCurrentUser?.().catch(() => {});
+  }
+
+  if (route.query.ig_connected === 'true') {
+    const igUser = route.query.ig_user ? String(route.query.ig_user) : '';
+    alertDialog({
+      title: 'Instagram Terhubung',
+      message: `Akun Instagram ${igUser} berhasil dihubungkan via Meta OAuth! Fitur auto-post canvas confession story siap digunakan.`,
+    });
+    const nextQ = { ...route.query };
+    delete nextQ.ig_connected;
+    delete nextQ.ig_user;
+    delete nextQ.token;
+    router.replace({ query: nextQ });
+  }
+
   reloadFeed().catch(() => {});
   ensureBasesLoaded().catch(() => {});
   loadNotifications();

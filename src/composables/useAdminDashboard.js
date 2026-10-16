@@ -185,16 +185,30 @@ export function useFessModeration(options = {}) {
 
   ensureLoaded().catch(() => {});
 
-  /** POST /fesses/:id/approve — then refresh the queue from the server. */
+  /** POST /fesses/:id/approve — optimistic UI update lalu refresh antrean. */
   async function approve(id) {
-    await api.approveFess(id);
-    await reload();
+    const prev = [...fesses.value];
+    fesses.value = fesses.value.filter((f) => f.id !== id);
+    try {
+      await api.approveFess(id);
+      await reload();
+    } catch (e) {
+      fesses.value = prev;
+      throw e;
+    }
   }
 
-  /** POST /fesses/:id/reject — then refresh the queue from the server. */
+  /** POST /fesses/:id/reject — optimistic UI update lalu refresh antrean. */
   async function hide(id) {
-    await api.rejectFess(id);
-    await reload();
+    const prev = [...fesses.value];
+    fesses.value = fesses.value.filter((f) => f.id !== id);
+    try {
+      await api.rejectFess(id);
+      await reload();
+    } catch (e) {
+      fesses.value = prev;
+      throw e;
+    }
   }
 
   const CANVAS_TEMPLATES = ['default', 'midnight', 'sunset', 'forest', 'noir', 'paper', 'ocean', 'violet'];

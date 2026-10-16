@@ -11,14 +11,22 @@ const DEFAULT_BASE = '/api';
 /** Build full URL with base and query params. Works with absolute or relative bases. */
 function buildUrl(base, path, params) {
   let url;
+  const root = String(base || '').replace(/\/+$/, '');
+  const cleanPath = String(path || '').replace(/^\/+/, '');
+  const full = `${root}/${cleanPath}`;
+
   try {
-    url = new URL(path, base);
+    if (/^https?:\/\//i.test(full)) {
+      url = new URL(full);
+    } else {
+      const clean = full.startsWith('/') ? full : `/${full}`;
+      url = new URL(clean, window.location.origin);
+    }
   } catch {
-    // Relative base (e.g. "/api") — resolve against the current origin.
-    const root = String(base).replace(/\/$/, '');
-    const clean = path.startsWith('/') ? path : `/${path}`;
-    url = new URL(`${root}${clean}`, window.location.origin);
+    const clean = full.startsWith('/') ? full : `/${full}`;
+    url = new URL(clean, window.location.origin);
   }
+
   if (params) {
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
@@ -76,23 +84,82 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
     return res.status === 204 ? null : safeJson(res);
   }
 
-  /** Upload multipart FormData with proper error handling. */
-  async function upload(path, formData, opts = {}) {
-    const token = getToken();
-    const url = buildUrl(baseUrl, path);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-      credentials: 'include',
-      ...opts,
-    });
+  /** Upload multipart FormData with real-time progress, timeout, and abort support. */
+  function upload(path, formData, opts = {}) {
+    return new Promise((resolve, reject) => {
+      const token = getToken();
+      const url = buildUrl(baseUrl, path);
+      const xhr = new XMLHttpRequest();
 
-    if (!res.ok) {
-      const payload = await safeJson(res);
-      throw new ApiError(payload?.message || 'Upload failed', res.status, payload);
-    }
-    return res.status === 204 ? null : safeJson(res);
+      xhr.open('POST', url, true);
+      xhr.withCredentials = true;
+
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      // Upload progress event
+      if (xhr.upload && typeof opts.onProgress === 'function') {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable && event.total > 0) {
+            // Skalakan progres byte client dari 0% ke 85%,
+            // sisa 85%-99% untuk pemrosesan backend & upload ke Supabase Storage
+            const percent = Math.min(85, Math.round((event.loaded / event.total) * 85));
+            opts.onProgress(percent, event.loaded, event.total);
+          }
+        };
+      }
+
+      // Timeout (default 120 detik untuk file media besar)
+      xhr.timeout = opts.timeout ?? 120000;
+
+      xhr.onload = () => {
+        let payload = null;
+        try {
+          payload = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          payload = null;
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (typeof opts.onProgress === 'function') {
+            opts.onProgress(100);
+          }
+          resolve(xhr.status === 204 ? null : payload);
+        } else {
+          const msg = payload?.message || `Upload gagal dengan kode status ${xhr.status}`;
+          reject(new ApiError(msg, xhr.status, payload));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(
+          new ApiError(
+            'Koneksi jaringan terputus atau gagal terhubung ke server saat mengunggah.',
+            0
+          )
+        );
+      };
+
+      xhr.ontimeout = () => {
+        reject(
+          new ApiError(
+            'Waktu unggah habis (timeout). File terlalu besar atau koneksi internet lambat.',
+            408
+          )
+        );
+      };
+
+      xhr.onabort = () => {
+        reject(new ApiError('Unggahan media dibatalkan.', 0));
+      };
+
+      if (opts.signal) {
+        opts.signal.addEventListener('abort', () => xhr.abort());
+      }
+
+      xhr.send(formData);
+    });
   }
 
   return {

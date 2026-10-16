@@ -50,7 +50,9 @@
       >
         <span class="nav-tab-icon relative">
           <Bell :size="20" />
-          <span v-if="unreadCount > 0" class="notif-badge-dot" />
+          <span v-if="effectiveUnreadCount > 0" class="notif-badge-number">
+            {{ displayCount }}
+          </span>
         </span>
         <span class="nav-tab-label">Notif</span>
       </button>
@@ -90,6 +92,7 @@
  */
 import { computed } from 'vue';
 import { Home, Search, Plus, Bell, User } from 'lucide-vue-next';
+import { useNotifications } from '../../composables/useNotifications';
 
 const props = defineProps({
   active: {
@@ -102,11 +105,26 @@ const props = defineProps({
   },
   unreadCount: {
     type: Number,
-    default: 0,
+    default: undefined,
   },
 });
 
 const emit = defineEmits(['navChange', 'changeTab', 'openCompose']);
+
+const notif = useNotifications();
+
+const effectiveUnreadCount = computed(() => {
+  if (typeof props.unreadCount === 'number' && props.unreadCount >= 0) {
+    return props.unreadCount;
+  }
+  return notif.unreadCount.value;
+});
+
+const displayCount = computed(() => {
+  if (effectiveUnreadCount.value <= 0) return '';
+  if (effectiveUnreadCount.value > 99) return '99+';
+  return String(effectiveUnreadCount.value);
+});
 
 const currentActive = computed(() => {
   const val = props.activeTab || props.active || 'home';
@@ -203,15 +221,40 @@ function selectTab(key) {
   transform: scale(1.08);
 }
 
-.notif-badge-dot {
+.notif-badge-number {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ef4444;
-  border: 2px solid var(--shell-card);
+  top: -6px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4.5px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.45);
+  border: 2px solid var(--shell-card, #0f111a);
+  pointer-events: none;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -0.2px;
+  animation: badge-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 480px) {

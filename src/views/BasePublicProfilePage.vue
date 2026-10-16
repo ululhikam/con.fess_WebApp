@@ -663,15 +663,13 @@ function apiHandle(handle) {
   return String(handle || '').replace(/^@/, '');
 }
 
+// Module-level caches across mounts for instant Instagram/X profile loading (SWR)
+const profileCache = new Map();
+const profileFessesCache = new Map();
+
 async function loadBase() {
   const handle = apiHandle(cleanHandle.value);
   const requestId = ++baseRequestId;
-
-  baseLoading.value = true;
-  baseError.value = null;
-  baseData.value = null;
-  baseFesses.value = [];
-  fessesError.value = null;
 
   if (!handle) {
     baseError.value = new Error('Handle base tidak tersedia');
@@ -679,26 +677,54 @@ async function loadBase() {
     return;
   }
 
+  const cacheKey = handle.toLowerCase();
+  const cachedBase = profileCache.get(cacheKey);
+  const cachedFesses = profileFessesCache.get(cacheKey);
+
+  baseError.value = null;
+
+  if (cachedBase) {
+    // TAMPILAN INSTAN: Header dan fess langsung tampil 0ms tanpa skeleton berkedip
+    baseData.value = cachedBase;
+    baseLoading.value = false;
+    document.title = `${cachedBase.name} (${cachedBase.handle}) · Fess n Curious`;
+    if (cachedFesses) {
+      baseFesses.value = cachedFesses;
+      fessesLoading.value = false;
+    }
+  } else {
+    // Kunjungan pertama: tampilkan skeleton halus
+    baseLoading.value = true;
+    baseData.value = null;
+    baseFesses.value = [];
+    fessesError.value = null;
+  }
+
   try {
     const res = await api.getBase(handle);
     if (requestId !== baseRequestId) return;
-    baseData.value = mapBase(res);
-    document.title = `${baseData.value.name} (${baseData.value.handle}) · Fess n Curious`;
-    loadBaseFesses(requestId);
+    const mapped = mapBase(res);
+    baseData.value = mapped;
+    profileCache.set(cacheKey, mapped);
+    document.title = `${mapped.name} (${mapped.handle}) · Fess n Curious`;
+    loadBaseFesses(requestId, !cachedFesses);
   } catch (e) {
     if (requestId !== baseRequestId) return;
-    baseError.value = e;
-    document.title = `${cleanHandle.value} · Fess n Curious`;
+    if (!cachedBase) {
+      baseError.value = e;
+      document.title = `${cleanHandle.value} · Fess n Curious`;
+    }
   } finally {
     if (requestId === baseRequestId) baseLoading.value = false;
   }
 }
 
-async function loadBaseFesses(requestId = baseRequestId) {
+async function loadBaseFesses(requestId = baseRequestId, showLoading = true) {
   const handle = apiHandle(baseData.value?.handle);
   if (!handle) return;
+  const cacheKey = handle.toLowerCase();
 
-  fessesLoading.value = true;
+  if (showLoading) fessesLoading.value = true;
   fessesError.value = null;
 
   try {
@@ -709,11 +735,15 @@ async function loadBaseFesses(requestId = baseRequestId) {
       status: 'published',
     });
     if (requestId !== baseRequestId) return;
-    baseFesses.value = (res?.data || []).map(mapFessToPost).filter(Boolean);
+    const mappedList = (res?.data || []).map(mapFessToPost).filter(Boolean);
+    baseFesses.value = mappedList;
+    profileFessesCache.set(cacheKey, mappedList);
   } catch (e) {
     if (requestId !== baseRequestId) return;
-    fessesError.value = e;
-    baseFesses.value = [];
+    if (!profileFessesCache.has(cacheKey)) {
+      fessesError.value = e;
+      baseFesses.value = [];
+    }
   } finally {
     if (requestId === baseRequestId) fessesLoading.value = false;
   }

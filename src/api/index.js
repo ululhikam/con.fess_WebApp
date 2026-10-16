@@ -54,6 +54,7 @@ export const api = {
 
   /* NOTIFICATIONS */
   getNotifications: (params) => client.get('/notifications', { params }),
+  getUnreadNotificationCount: () => client.get('/notifications/unread-count'),
   markNotificationsRead: (ids) => client.post('/notifications/read', { ids }),
   markAllNotificationsRead: () => client.post('/notifications/read-all'),
   deleteNotification: (id) => client.delete(`/notifications/${encodeURIComponent(id)}`),
@@ -65,16 +66,16 @@ export const api = {
   getMyFollowing: (params) => client.get('/users/me/following', { params }),
 
   /* UPLOAD */
-  uploadMedia: (file, type) => {
+  uploadMedia: (file, type, onProgress, signal) => {
     const fd = new FormData();
     fd.append('file', file);
     if (type) fd.append('type', type);
-    return client.upload('/upload', fd);
+    return client.upload('/upload', fd, { onProgress, signal });
   },
-  uploadAvatar: (file) => {
+  uploadAvatar: (file, onProgress, signal) => {
     const fd = new FormData();
     fd.append('file', file);
-    return client.upload('/upload/avatar', fd);
+    return client.upload('/upload/avatar', fd, { onProgress, signal });
   },
 
   /* SONGS & TOPICS */

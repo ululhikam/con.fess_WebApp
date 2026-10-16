@@ -1,6 +1,7 @@
 <template>
   <AppBottomNav
     :active="active"
+    :unread-count="unreadCount"
     @navChange="$emit('navChange', $event)"
     @openCompose="$emit('openCompose')"
   />
@@ -16,6 +17,10 @@ defineProps({
   active: {
     type: String,
     default: 'home',
+  },
+  unreadCount: {
+    type: Number,
+    default: undefined,
   },
 });
 

@@ -727,24 +727,30 @@ onMounted(() => {
 
 /* ---------- Fess tabs + moderation actions (real API) ---------- */
 
-/** POST /fesses/:id/approve — then refresh the list + counters. */
+/** POST /fesses/:id/approve — optimistic UI update lalu refresh list + counters. */
 async function approveFess(id) {
   actionError.value = '';
+  const prevFesses = [...fesses.value];
+  fesses.value = fesses.value.filter((f) => f.id !== id);
   try {
     await api.approveFess(id);
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
+    fesses.value = prevFesses;
     actionError.value = e?.message || 'Gagal menyetujui fess.';
   }
 }
 
-/** POST /fesses/:id/reject — then refresh the list + counters. */
+/** POST /fesses/:id/reject — optimistic UI update lalu refresh list + counters. */
 async function rejectFess(id) {
   actionError.value = '';
+  const prevFesses = [...fesses.value];
+  fesses.value = fesses.value.filter((f) => f.id !== id);
   try {
     await api.rejectFess(id);
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
+    fesses.value = prevFesses;
     actionError.value = e?.message || 'Gagal menolak fess.';
   }
 }

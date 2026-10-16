@@ -1,5 +1,38 @@
 <template>
-  <div class="user-app-layout">
+  <div class="user-app-layout" ref="appLayoutRef">
+    <!-- Pull-to-refresh indicator -->
+    <Transition name="ptr-fade">
+      <div v-if="pulling" class="ptr-indicator" :class="{ 'ptr-ready': ptrReady }">
+        <svg class="ptr-spinner" :class="{ spin: ptrReady }" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-dasharray="32" stroke-dashoffset="12" stroke-linecap="round" />
+        </svg>
+        <span>{{ ptrReady ? 'Lepas untuk memuat' : 'Tarik untuk memperbarui' }}</span>
+      </div>
+    </Transition>
+
+    <!-- Floating "Ada Fess Baru" Pill (Instagram/X style) -->
+    <Transition name="fade-slide-down">
+      <button
+        v-if="hasNewPosts && activeNav === 'home'"
+        type="button"
+        class="new-posts-pill"
+        @click="scrollToTopAndRefresh"
+      >
+        <ArrowUp :size="14" />
+        <span>Ada fess terbaru</span>
+      </button>
+    </Transition>
+
+    <!-- Global Feed Toast Notification -->
+    <Transition name="toast-slide">
+      <div v-if="toastMessage" class="feed-toast" role="status">
+        <CheckCircle2 v-if="toastType === 'success'" :size="16" class="toast-icon success" />
+        <Clock v-else-if="toastType === 'pending'" :size="16" class="toast-icon pending" />
+        <AlertCircle v-else :size="16" class="toast-icon error" />
+        <span>{{ toastMessage }}</span>
+      </div>
+    </Transition>
+
     <main class="app-main-centered-stage">
       <div class="centered-content-wrapper">
         <!-- Tab memakai KeepAlive: state (daftar, notifikasi, hasil pencarian)
@@ -63,6 +96,7 @@
     <!-- Bottom Navigation Bar (Persistent across all tabs) -->
     <BottomNavBar
       :active="activeNav"
+      :unread-count="notif.unreadCount.value"
       @navChange="onNavChange"
       @openCompose="openComposePage"
     />
@@ -87,8 +121,10 @@
  *
  * Persistent Bottom Navigation stays visible across all 5 tabs.
  */
-import { onMounted, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { ArrowUp, CheckCircle2, Clock, AlertCircle } from 'lucide-vue-next';
+import { api } from '../api';
 
 import BottomNavBar from '../components/layout/BottomNavBar.vue';
 import FeedHomeTab from '../components/feed/FeedHomeTab.vue';
@@ -102,7 +138,9 @@ import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases } from '../composables/useBases';
 import { useFollowBase } from '../composables/useFollowBase';
 import { useVisibilityRefresh } from '../composables/useVisibilityRefresh';
+import { usePullToRefresh } from '../composables/usePullToRefresh';
 import { useTheme } from '../composables/useTheme';
+import { useNotifications } from '../composables/useNotifications';
 
 /** UI filter enums (presentation config, not server data). */
 const FEED_CATEGORIES = ['Semua', 'Kampus', 'Kota', 'Hobi'];
@@ -115,6 +153,7 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const { mode: themeMode, setMode } = useTheme();
+const notif = useNotifications();
 
 /* ---------- domain state ---------- */
 const {
@@ -251,12 +290,113 @@ function loadMoreHome() {
     : loadMore().catch(() => {});
 }
 
+/* ---------- pull-to-refresh ---------- */
+const appLayoutRef = ref(null);
+
+function onPullToRefresh() {
+  if (activeNav.value !== 'home') return;
+  if (homeTab.value === 'mengikuti') refreshFollowing();
+  else refresh();
+}
+
+const { pulling, ready: ptrReady } = usePullToRefresh(appLayoutRef, onPullToRefresh);
+
+/* ---------- global toast notification ---------- */
+const toastMessage = ref('');
+const toastType = ref('success');
+let toastTimer = null;
+
+function showFeedToast(msg, type = 'success', duration = 3500) {
+  clearTimeout(toastTimer);
+  toastMessage.value = msg;
+  toastType.value = type;
+  toastTimer = setTimeout(() => {
+    toastMessage.value = '';
+  }, duration);
+}
+
+// Respon otomatis saat user kembali dari halaman Buat Fess
+watch(
+  () => route.query.postSuccess,
+  (status) => {
+    if (!status) return;
+    if (status === 'pending') {
+      showFeedToast(
+        'Fess terkirim! Fess tersimpan di antrean moderasi admin base.',
+        'pending',
+        5000
+      );
+    } else {
+      showFeedToast('Fess berhasil diterbitkan dan langsung tayang!', 'success', 3500);
+    }
+    // Bersihkan query param agar refresh tidak memunculkan toast lagi
+    const nextQuery = { ...route.query };
+    delete nextQuery.postSuccess;
+    router.replace({ query: nextQuery });
+  },
+  { immediate: true }
+);
+
+/* ---------- Instagram/X style auto-refresh & new posts pill ---------- */
+const hasNewPosts = ref(false);
+let autoPollTimer = null;
+
+async function checkForNewPosts() {
+  if (activeNav.value !== 'home' || document.hidden) return;
+  try {
+    const isMengikuti = homeTab.value === 'mengikuti';
+    const params = {
+      sort: 'newest',
+      limit: 1,
+      page: 1,
+      ...(isMengikuti ? { following: 'true' } : {}),
+    };
+    const res = await api.getFesses(params);
+    const newestServer = (res?.data || [])[0];
+    if (!newestServer) return;
+
+    const currentList = isMengikuti ? followingPosts.value : feedPosts.value;
+    const currentTopId = currentList[0]?.id;
+
+    if (currentTopId && String(newestServer.id) !== String(currentTopId)) {
+      // User di puncak halaman (scrollY <= 40) → auto-update senyap ala Instagram
+      if (window.scrollY <= 40) {
+        if (isMengikuti) refreshFollowing();
+        else refresh();
+        hasNewPosts.value = false;
+      } else {
+        // User sedang membaca fess lama di bawah → tampilkan pill floating "Ada fess terbaru"
+        hasNewPosts.value = true;
+      }
+    }
+  } catch {
+    // Non-blocking
+  }
+}
+
+function scrollToTopAndRefresh() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  hasNewPosts.value = false;
+  if (homeTab.value === 'mengikuti') refreshFollowing();
+  else refresh();
+}
+
 onMounted(() => {
   // SWR: kalau cache modul masih ada (mis. balik dari halaman Buat Fess),
   // feed lama langsung tampil dan refresh terjadi senyap di belakang.
   ensureFeedLoaded().catch(() => {});
   ensureBasesLoaded().catch(() => {});
   syncFollowing();
+  notif.startPolling();
+
+  // Background polling setiap 25 detik untuk update kilat ala Instagram/X
+  autoPollTimer = setInterval(checkForNewPosts, 25000);
+});
+
+onUnmounted(() => {
+  clearInterval(autoPollTimer);
+  clearTimeout(toastTimer);
+  notif.stopPolling();
 });
 
 /* ---------- actions ---------- */
@@ -296,6 +436,66 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   padding-bottom: 84px; /* room for the fixed bottom nav */
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ===== PULL TO REFRESH ===== */
+.ptr-indicator {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--shell-text-muted);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.ptr-indicator.ptr-ready {
+  color: var(--shell-sub-accent, #60a5fa);
+}
+
+.ptr-spinner {
+  width: 16px;
+  height: 16px;
+  color: var(--shell-text-muted);
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ptr-indicator.ptr-ready .ptr-spinner {
+  color: var(--shell-sub-accent, #60a5fa);
+}
+
+.ptr-spinner.spin {
+  animation: ptr-spin 0.8s linear infinite;
+}
+
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ptr-fade-enter-active,
+.ptr-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.ptr-fade-enter-from,
+.ptr-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-8px);
 }
 
 .app-main-centered-stage {
@@ -319,5 +519,88 @@ async function handleLogout() {
   .app-main-centered-stage {
     padding: 16px 12px 32px;
   }
+}
+
+/* NEW POSTS PILL (Instagram / X style) */
+.new-posts-pill {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 250;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  background: var(--shell-accent, #0055ff);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 85, 255, 0.45);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.new-posts-pill:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 85, 255, 0.65);
+}
+
+/* FEED TOAST */
+.feed-toast {
+  position: fixed;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 90vw;
+  width: max-content;
+  padding: 11px 18px;
+  background: var(--shell-card, #131722);
+  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: var(--shell-text, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(12px);
+}
+
+.toast-icon.success {
+  color: #10b981;
+}
+
+.toast-icon.pending {
+  color: #f59e0b;
+}
+
+.toast-icon.error {
+  color: #ef4444;
+}
+
+/* TRANSITIONS */
+.fade-slide-down-enter-active,
+.fade-slide-down-leave-active {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-slide-down-enter-from,
+.fade-slide-down-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-14px);
+}
+
+.toast-slide-enter-active,
+.toast-slide-leave-active {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast-slide-enter-from,
+.toast-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(14px);
 }
 </style>

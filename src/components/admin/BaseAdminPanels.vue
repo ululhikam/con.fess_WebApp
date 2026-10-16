@@ -84,7 +84,16 @@
               />
             </div>
 
-            <div class="mt-3 flex justify-end">
+            <div class="mt-3 flex items-center justify-end gap-2 flex-wrap">
+              <button
+                v-if="conn.id === 'instagram' && !conn.connected"
+                type="button"
+                class="btn-oauth-meta"
+                @click="connectInstagramOAuth"
+              >
+                <Instagram :size="14" />
+                <span>Login Meta OAuth (Auto Post)</span>
+              </button>
               <button
                 type="button"
                 class="btn-test-action"
@@ -96,7 +105,7 @@
                     ? 'Memproses…'
                     : conn.connected
                       ? 'Putuskan Koneksi'
-                      : 'Hubungkan'
+                      : 'Simpan Handle'
                 }}
               </button>
             </div>
@@ -918,6 +927,12 @@ async function toggleConnection(conn) {
   }
 }
 
+function connectInstagramOAuth() {
+  const token = localStorage.getItem('fess_token') || '';
+  const base = baseHandle.value || '';
+  window.location.href = `/api/auth/instagram?token=${encodeURIComponent(token)}&base=${encodeURIComponent(base)}`;
+}
+
 /* 2. Keuangan — real state (GET /admin/treasury + POST /admin/treasury/payout) */
 const treasury = ref(null);
 const treasuryLoading = ref(false);
@@ -1354,6 +1369,28 @@ watch(
   background: var(--shell-card);
   color: var(--shell-text);
   font-weight: 900;
+}
+
+.btn-oauth-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: #ffffff;
+  border: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(220, 39, 67, 0.35);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.btn-oauth-meta:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .btn-test-action {

@@ -429,7 +429,12 @@
                   <div class="row-desc">Atur pemberitahuan fess & aktivitas</div>
                 </div>
               </div>
-              <ChevronRight :size="16" class="chevron-icon" />
+              <div class="row-right-actions">
+                <span v-if="notif.unreadCount.value > 0" class="badge-row-count">
+                  {{ notif.unreadCount.value > 99 ? '99+' : notif.unreadCount.value }}
+                </span>
+                <ChevronRight :size="16" class="chevron-icon" />
+              </div>
             </button>
 
             <!-- 3. Bantuan -->
@@ -675,10 +680,13 @@ import { mapBase } from '../../composables/useBases';
 import { useFollowBase } from '../../composables/useFollowBase';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { useVisibilityRefresh } from '../../composables/useVisibilityRefresh';
+import { useNotifications } from '../../composables/useNotifications';
 
 const props = defineProps({
   themeMode: { type: String, default: 'system' },
 });
+
+const notif = useNotifications();
 
 const emit = defineEmits([
   'setTheme',
@@ -806,18 +814,39 @@ function myFessParams(page) {
   };
 }
 
+// Module-level caches across mounts for instant Instagram/X profile loading (SWR)
+let cachedMyFessesData = null;
+let cachedMyFessesTotal = 0;
+let cachedFollowingData = null;
+let cachedFollowingTotal = 0;
+
 async function loadMyFesses() {
-  myFessLoading.value = true;
   myFessError.value = null;
   myFessLoadMoreError.value = null;
+
+  // SWR: Jika cache ada dan filter 'semua', render instan tanpa skeleton
+  if (cachedMyFessesData && myFessFilter.value === 'semua') {
+    myFesses.value = cachedMyFessesData;
+    myFessQueryTotal.value = cachedMyFessesTotal;
+    myFessTotal.value = cachedMyFessesTotal;
+    myFessLoading.value = false;
+  } else {
+    myFessLoading.value = true;
+  }
+
   try {
     const res = await api.getMyFesses(myFessParams(1));
-    myFesses.value = (res?.data ?? []).map(mapFessToPost);
+    const list = (res?.data ?? []).map(mapFessToPost);
+    myFesses.value = list;
     myFessQueryTotal.value = res?.total ?? myFesses.value.length;
-    if (myFessFilter.value === 'semua') myFessTotal.value = myFessQueryTotal.value;
+    if (myFessFilter.value === 'semua') {
+      myFessTotal.value = myFessQueryTotal.value;
+      cachedMyFessesData = list;
+      cachedMyFessesTotal = myFessTotal.value;
+    }
     myFessPage = 1;
   } catch (e) {
-    myFessError.value = e;
+    if (!cachedMyFessesData) myFessError.value = e;
   } finally {
     myFessLoading.value = false;
   }
@@ -918,17 +947,32 @@ function followingParams(page) {
 }
 
 async function loadFollowing() {
-  followingLoading.value = true;
   followingError.value = null;
   followingLoadMoreError.value = null;
+
+  // SWR: Tampilkan data tersimpan langsung jika tidak sedang melakukan search teks
+  if (cachedFollowingData && !baseSearchQuery.value.trim()) {
+    followingBases.value = cachedFollowingData;
+    followingQueryTotal.value = cachedFollowingTotal;
+    followingLoaded.value = true;
+    followingLoading.value = false;
+  } else {
+    followingLoading.value = true;
+  }
+
   try {
     const res = await api.getMyFollowing(followingParams(1));
-    followingBases.value = (res?.data ?? []).map(mapBase).filter(Boolean);
+    const list = (res?.data ?? []).map(mapBase).filter(Boolean);
+    followingBases.value = list;
     followingQueryTotal.value = res?.total ?? followingBases.value.length;
+    if (!baseSearchQuery.value.trim()) {
+      cachedFollowingData = list;
+      cachedFollowingTotal = followingQueryTotal.value;
+    }
     followingPage = 1;
     followingLoaded.value = true;
   } catch (e) {
-    followingError.value = e;
+    if (!cachedFollowingData) followingError.value = e;
   } finally {
     followingLoading.value = false;
   }
@@ -2079,6 +2123,27 @@ function confirmLogout() {
 
 .chevron-icon {
   color: var(--shell-text-dim);
+}
+
+.row-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge-row-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
 }
 
 .item--danger:hover {

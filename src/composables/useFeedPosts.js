@@ -255,8 +255,19 @@ export function useFeedPosts() {
     const created = res?.fess ?? res?.data ?? res;
     if (!created) return null;
     const mapped = mapFessToPost(created);
-    posts.value = [mapped, ...posts.value.filter((p) => String(p.id) !== String(mapped.id))];
-    postsTotal += 1;
+
+    // PENTING: fess yang baru dibuat biasanya berstatus "pending" (harus dimoderasi
+    // admin base sebelum tayang). JANGAN inject ke posts.value karena:
+    //  1. GET /fesses hanya return published → post akan hilang saat user refresh.
+    //  2. Menyesatkan user: terlihat sudah tayang padahal masih antrean moderasi.
+    // Hanya inject kalau backend benar-benar kembalikan status published/approved
+    // (base pakai auto-approve atau fess lulus filter NLP otomatis).
+    const isPublished = created.status === 'published' || created.status === 'approved';
+    if (isPublished) {
+      posts.value = [mapped, ...posts.value.filter((p) => String(p.id) !== String(mapped.id))];
+      postsTotal += 1;
+    }
+
     return mapped;
   }
 

@@ -48,12 +48,7 @@
     <!-- STEP 2: verifikasi kode OTP -->
     <form v-else-if="step === 'otp'" class="auth-form" novalidate @submit.prevent="handleVerifyOtp">
       <div class="fp-info-box">
-        Kode OTP telah dikirim ke <strong>{{ emailForm.values.email }}</strong>. Kode berlaku 10 menit.
-      </div>
-
-      <div v-if="devOtp" class="fp-dev-box" role="note">
-        <strong>Mode pengembangan:</strong> SMTP belum dikonfigurasi, jadi email tidak benar-benar
-        terkirim. Kode OTP kamu: <code>{{ devOtp }}</code>
+        Kode OTP telah dikirim ke <strong>{{ emailForm.values.email }}</strong>. Silakan periksa kotak masuk atau folder spam email kamu. Kode berlaku 10 menit.
       </div>
 
       <FormField
@@ -183,7 +178,6 @@ const step = ref('email'); // 'email' | 'otp' | 'password' | 'done'
 const stepIndex = computed(
   () => ({ email: 1, otp: 2, password: 3, done: 3 })[step.value] ?? 1,
 );
-const devOtp = ref('');
 const resetToken = ref('');
 
 /* ---------- resend cooldown ---------- */
@@ -282,8 +276,7 @@ async function handleSendOtp() {
 
   let sent = false;
   const ok = await emailForm.submit(async (payload) => {
-    const res = await api.forgotPassword({ email: String(payload.email).trim() });
-    devOtp.value = res?.dev_otp || '';
+    await api.forgotPassword({ email: String(payload.email).trim() });
     sent = true;
   });
 
@@ -323,8 +316,7 @@ async function handleResendOtp() {
   resending.value = true;
   otpSubmitError.value = null;
   try {
-    const res = await api.forgotPassword({ email: String(emailForm.values.email).trim() });
-    devOtp.value = res?.dev_otp || '';
+    await api.forgotPassword({ email: String(emailForm.values.email).trim() });
     otpForm.reset();
     startResendCooldown();
   } catch (err) {
@@ -422,21 +414,6 @@ async function handleResetPassword() {
   line-height: 1.6;
 }
 
-.fp-dev-box {
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px dashed rgba(245, 158, 11, 0.5);
-  color: var(--text-main);
-  font-size: 12.5px;
-  line-height: 1.6;
-}
-
-.fp-dev-box code {
-  font-weight: 800;
-  letter-spacing: 2px;
-  font-size: 14px;
-}
 
 /* ---------- form ---------- */
 .auth-form {

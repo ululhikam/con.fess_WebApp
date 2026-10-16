@@ -18,10 +18,15 @@
         <button
           type="button"
           class="btn-publish"
+          :class="{ 'btn-publish--uploading': hasUploadingMedia }"
           @click="openPublishConfirm"
-          :disabled="publishing || !canPublish"
+          :disabled="publishing"
         >
           <Loader2 v-if="publishing" :size="16" class="spin" />
+          <template v-else-if="hasUploadingMedia">
+            <Loader2 :size="16" class="spin" />
+            <span>Mengunggah…</span>
+          </template>
           <span v-else>{{ isScheduled ? 'Jadwalkan' : 'Posting' }}</span>
         </button>
       </div>
@@ -30,6 +35,15 @@
     <div class="create-content">
       <!-- Main Editor Area -->
       <main class="editor-main">
+        <!-- Error Banner -->
+        <div v-if="publishError" class="publish-error-banner" role="alert">
+          <AlertCircle :size="16" class="flex-shrink-0" />
+          <span class="error-msg">{{ publishError }}</span>
+          <button type="button" class="btn-dismiss-err" @click="publishError = ''" aria-label="Tutup pesan error">
+            <X :size="14" />
+          </button>
+        </div>
+
         <!-- Base Selector (Top) — terkunci ke base asal saat ada kutipan -->
         <BaseSelector
           v-model="form.baseHandle"
@@ -274,6 +288,7 @@ const showQuoteModal = ref(false);
 const showPublishModal = ref(false);
 const savingDraft = ref(false);
 const publishing = ref(false);
+const publishError = ref('');
 
 function handleBack() {
   if (window.history.length > 1) {
@@ -424,7 +439,9 @@ const hasContent = computed(
     !!form.value.quotedFess,
 );
 
-const hasUploadingMedia = computed(() => form.value.media.some((m) => m.uploading));
+const hasUploadingMedia = computed(() =>
+  form.value.media.some((m) => m.uploading || !m.url || String(m.url).startsWith('blob:'))
+);
 
 const canPublish = computed(() => {
   const validation = validateFessContent(form.value.content);
@@ -489,7 +506,6 @@ async function saveDraft() {
       isDraft: true,
     };
     localStorage.setItem('fess_draft', JSON.stringify(draft));
-    // TODO: show toast "Draf tersimpan"
   } finally {
     savingDraft.value = false;
   }
@@ -497,6 +513,21 @@ async function saveDraft() {
 
 function openPublishConfirm() {
   if (publishing.value) return;
+
+  if (hasUploadingMedia.value) {
+    publishError.value = 'Foto/video masih dalam proses unggah. Mohon tunggu hingga lingkaran animasi selesai.';
+    return;
+  }
+  if (!form.value.baseHandle) {
+    publishError.value = 'Silakan pilih base tujuan confession terlebih dahulu.';
+    return;
+  }
+  if (!hasContent.value) {
+    publishError.value = 'Silakan tulis isi confession atau lampirkan foto/video.';
+    return;
+  }
+
+  publishError.value = '';
   showPublishModal.value = true;
 }
 
@@ -506,17 +537,27 @@ async function publishFess() {
   if (publishing.value) return;
   if (!canPublish.value) return;
 
+  publishError.value = '';
   publishing.value = true;
   try {
+    const hasUnfinishedUpload = form.value.media.some(
+      (m) => m.uploading || !m.url || String(m.url).startsWith('blob:')
+    );
+    if (hasUnfinishedUpload) {
+      publishError.value = 'Mohon tunggu beberapa detik hingga upload media selesai.';
+      publishing.value = false;
+      return;
+    }
+
     const payload = {
       base_handle: form.value.baseHandle,
       content: form.value.content.trim(),
       media: form.value.media.map((m) => ({
         type: m.type,
-        url: m.url || m.preview,
-        thumbnail: m.thumbnail,
-        duration: m.duration,
-        caption: m.caption,
+        url: m.url,
+        thumbnail: m.thumbnail || null,
+        duration: m.duration || null,
+        caption: m.caption || null,
       })),
       topic: form.value.topic || null,
       scheduled_at: form.value.scheduledAt || null,
@@ -534,7 +575,7 @@ async function publishFess() {
     };
 
     // Publish through the API — the shared feed store picks up the response.
-    await publish(payload);
+    const createdFess = await publish(payload);
 
     // Kirim fess = otomatis mengikuti base tujuan (backend) — segarkan cache follow.
     syncFollowing().catch(() => {});
@@ -542,14 +583,17 @@ async function publishFess() {
     // Clear draft
     localStorage.removeItem('fess_draft');
 
+    const fessStatus = createdFess?.rawStatus || createdFess?.status || 'pending';
+
     // Role-aware navigation: Base Admin returns to /base-admin, regular user to /feed
     if (authStore.user?.role === 'Base Admin') {
       router.push('/base-admin');
     } else {
-      router.push('/feed');
+      router.push({ path: '/feed', query: { postSuccess: fessStatus } });
     }
   } catch (error) {
     console.error('Publish failed:', error);
+    publishError.value = error?.message || 'Gagal mengirim fess. Pastikan format konten valid dan coba lagi.';
   } finally {
     publishing.value = false;
     showPublishModal.value = false;
@@ -580,7 +624,9 @@ onMounted(async () => {
           Object.assign(form.value, {
             baseHandle: draft.baseHandle || '',
             content: draft.content || '',
-            media: (draft.media || []).filter((m) => !m.uploading),
+            media: (draft.media || []).filter(
+              (m) => !m.uploading && !!m.url && !String(m.url).startsWith('blob:')
+            ),
             topic: draft.topic || '',
             scheduledAt: draft.scheduledAt || null,
             song: draft.song || null,
@@ -1124,9 +1170,46 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+.publish-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.publish-error-banner .error-msg {
+  flex: 1;
+}
+
+.btn-dismiss-err {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.btn-dismiss-err:hover {
+  opacity: 1;
 }
 </style>
