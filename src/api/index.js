@@ -8,6 +8,11 @@ import { createApiClient, ApiError } from './client';
 
 const baseUrl = import.meta.env.VITE_API_BASE || '/api';
 
+// URL absolut ke backend — HANYA untuk OAuth redirect (bukan fetch/XHR).
+// VITE_API_BASE bisa relatif (/api) karena fetch diproxy Vite, tapi browser redirect
+// tidak melewati proxy sehingga harus URL absolut langsung ke backend.
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
 const getToken = () => localStorage.getItem('fess_token');
 
 const client = createApiClient(baseUrl, getToken);
@@ -110,7 +115,7 @@ export { ApiError } from './client';
  */
 export function googleAuthUrl(role = '') {
   const query = role ? `?role=${encodeURIComponent(role)}` : '';
-  const path = `${baseUrl}/auth/google${query}`;
-  // Top-level redirects need an absolute URL when the base is relative.
-  return /^https?:\/\//i.test(path) ? path : `${window.location.origin}${path}`;
+  // Gunakan backendUrl (absolute) bukan baseUrl (relative).
+  // Browser redirect OAuth tidak bisa lewat Vite proxy — harus langsung ke backend.
+  return `${backendUrl}/api/auth/google${query}`;
 }
