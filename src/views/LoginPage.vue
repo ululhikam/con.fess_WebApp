@@ -282,21 +282,20 @@ onMounted(async () => {
     googleError.value = GOOGLE_ERROR_MESSAGES[error] || 'Login Google gagal. Coba lagi.';
   }
 
-  // Never leave the JWT in the URL / browser history.
-  if (token || error || google) {
-    await router.replace({ path: route.path, query: rest });
-  }
-
   if (typeof token === 'string' && token) {
     isSubmitting.value = true;
     try {
       const user = await authStore.loginWithToken(token);
       await redirectRole(user?.role || 'User');
-    } catch {
+    } catch (err) {
+      console.error('Login dengan token Google gagal:', err);
       googleError.value = 'Sesi Google tidak valid. Silakan coba lagi.';
+      await router.replace({ path: route.path, query: rest });
     } finally {
       isSubmitting.value = false;
     }
+  } else if (error || google) {
+    await router.replace({ path: route.path, query: rest });
   }
 });
 

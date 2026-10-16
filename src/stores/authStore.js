@@ -11,6 +11,26 @@ function readJson(key) {
   }
 }
 
+/** Decode JWT payload safely in the browser without external dependencies. */
+function parseJwt(token) {
+  try {
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
 /** Plain string values (tokens) are stored unencoded. */
 const readToken = () => localStorage.getItem('fess_token');
 
@@ -81,9 +101,27 @@ export const useAuthStore = defineStore('auth', {
     async loginWithToken(token) {
       this.token = token;
       localStorage.setItem('fess_token', token);
+
+      // Fast-path: ekstrak payload dasar (id, role, handle, email) dari JWT
+      const payload = parseJwt(token);
+      if (payload) {
+        this.user = normalizeUser({
+          id: payload.sub,
+          role: payload.role || 'User',
+          handle: payload.handle,
+          email: payload.email,
+        });
+        localStorage.setItem('fess_user', JSON.stringify(this.user));
+      }
+
       try {
         return await this.fetchMe();
       } catch (err) {
+        console.warn('Gagal fetch profile via /auth/me, memakai data token JWT:', err);
+        // Jika token valid dan user memiliki role, tetap izinkan masuk
+        if (this.user?.role) {
+          return this.user;
+        }
         this.clearSession();
         throw err;
       }

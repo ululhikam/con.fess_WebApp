@@ -160,14 +160,20 @@ router.beforeEach((to, from, next) => {
   // 4. Strict Role Access Control:
   // If route specifies allowed roles, check if current user matches
   if (to.meta.roles && !to.meta.roles.includes(userRole)) {
-    // Send to appropriate home based on current role
-    if (userRole === 'Super Admin') {
+    // Send to appropriate home based on current role (avoid infinite loops if already on target)
+    if (userRole === 'Super Admin' && to.name !== 'SuperAdmin') {
       return next({ name: 'SuperAdmin' });
     }
-    if (userRole === 'Base Admin') {
+    if (userRole === 'Base Admin' && to.name !== (needsBaseOnboarding ? 'BaseOnboarding' : 'BaseAdmin')) {
       return next(needsBaseOnboarding ? { name: 'BaseOnboarding' } : { name: 'BaseAdmin' });
     }
-    return next({ name: 'Feed' });
+    if (userRole === 'User' && to.name !== 'Feed') {
+      return next({ name: 'Feed' });
+    }
+    if (!userRole) {
+      return next({ name: 'Login' });
+    }
+    return next();
   }
 
   next();
