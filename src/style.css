@@ -243,6 +243,7 @@ body {
   font-family: var(--font-sans);
   min-height: 100vh;
   overflow-x: hidden;
+  overscroll-behavior-y: contain; /* matikan pull-to-refresh bawaan browser */
   -webkit-font-smoothing: antialiased;
 }
 

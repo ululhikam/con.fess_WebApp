@@ -1,15 +1,5 @@
 <template>
-  <div class="user-app-layout" ref="appLayoutRef">
-    <!-- Pull-to-refresh indicator -->
-    <Transition name="ptr-fade">
-      <div v-if="pulling" class="ptr-indicator" :class="{ 'ptr-ready': ptrReady }">
-        <svg class="ptr-spinner" :class="{ spin: ptrReady }" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-dasharray="32" stroke-dashoffset="12" stroke-linecap="round" />
-        </svg>
-        <span>{{ ptrReady ? 'Lepas untuk memuat' : 'Tarik untuk memperbarui' }}</span>
-      </div>
-    </Transition>
-
+  <div class="user-app-layout">
     <!-- Floating "Ada Fess Baru" Pill (Instagram/X style) -->
     <Transition name="fade-slide-down">
       <button
@@ -138,7 +128,6 @@ import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases } from '../composables/useBases';
 import { useFollowBase } from '../composables/useFollowBase';
 import { useVisibilityRefresh } from '../composables/useVisibilityRefresh';
-import { usePullToRefresh } from '../composables/usePullToRefresh';
 import { useTheme } from '../composables/useTheme';
 import { useNotifications } from '../composables/useNotifications';
 
@@ -290,17 +279,6 @@ function loadMoreHome() {
     : loadMore().catch(() => {});
 }
 
-/* ---------- pull-to-refresh ---------- */
-const appLayoutRef = ref(null);
-
-function onPullToRefresh() {
-  if (activeNav.value !== 'home') return;
-  if (homeTab.value === 'mengikuti') refreshFollowing();
-  else refresh();
-}
-
-const { pulling, ready: ptrReady } = usePullToRefresh(appLayoutRef, onPullToRefresh);
-
 /* ---------- global toast notification ---------- */
 const toastMessage = ref('');
 const toastType = ref('success');
@@ -438,64 +416,6 @@ async function handleLogout() {
   padding-bottom: 84px; /* room for the fixed bottom nav */
   position: relative;
   overflow-x: hidden;
-}
-
-/* ===== PULL TO REFRESH ===== */
-.ptr-indicator {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 200;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--shell-card);
-  border: 1px solid var(--shell-border);
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--shell-text-muted);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(12px);
-  pointer-events: none;
-  transition: color 0.2s ease;
-}
-
-.ptr-indicator.ptr-ready {
-  color: var(--shell-sub-accent, #60a5fa);
-}
-
-.ptr-spinner {
-  width: 16px;
-  height: 16px;
-  color: var(--shell-text-muted);
-  transition: color 0.2s ease;
-  flex-shrink: 0;
-}
-
-.ptr-indicator.ptr-ready .ptr-spinner {
-  color: var(--shell-sub-accent, #60a5fa);
-}
-
-.ptr-spinner.spin {
-  animation: ptr-spin 0.8s linear infinite;
-}
-
-@keyframes ptr-spin {
-  to { transform: rotate(360deg); }
-}
-
-.ptr-fade-enter-active,
-.ptr-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.ptr-fade-enter-from,
-.ptr-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-8px);
 }
 
 .app-main-centered-stage {
