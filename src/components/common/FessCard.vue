@@ -513,12 +513,26 @@
                   </div>
                 </div>
 
+                <!-- Thumbnail carousel (jika teks panjang → beberapa card) -->
+                <div v-if="igCardUrls.length > 1" class="ig-card-strip">
+                  <img
+                    v-for="(url, i) in igCardUrls"
+                    :key="url + i"
+                    :src="url"
+                    :alt="`Card ${i + 1} dari ${igCardUrls.length}`"
+                    class="ig-card-strip-img"
+                  />
+                </div>
+                <p v-if="igCardUrls.length > 1" class="ig-card-strip-note">
+                  {{ igCardUrls.length }} card • diposting sebagai carousel Instagram
+                </p>
+
                 <!-- Action Buttons -->
                 <div class="ig-story-actions-row">
                   <a
                     v-if="igPostData?.imageUrl || igPostData?.image_url"
                     :href="igPostData.imageUrl || igPostData.image_url"
-                    download="fess_feed_card.svg"
+                    download="fess_feed_card.png"
                     target="_blank"
                     class="btn-ig-action btn-download"
                   >
@@ -791,6 +805,14 @@ const showInstagramModal = ref(false);
 const igPostLoading = ref(false);
 const igPostData = ref(null);
 
+/** Daftar gambar card hasil render (1 gambar = feed biasa, >1 = carousel). */
+const igCardUrls = computed(() => {
+  const raw = igPostData.value?.image_urls || igPostData.value?.imageUrls || [];
+  if (Array.isArray(raw) && raw.length) return raw;
+  const single = igPostData.value?.imageUrl || igPostData.value?.image_url;
+  return single ? [single] : [];
+});
+
 async function openInstagramStoryAutoPost() {
   showInstagramModal.value = true;
   igPostLoading.value = true;
@@ -804,7 +826,12 @@ async function openInstagramStoryAutoPost() {
     igPostData.value = res?.data || res;
     if (igPostData.value?.meta_published) {
       props.post.postedToIg = true;
-      triggerToast('Card fess berhasil diposting ke Instagram Feed!');
+      const cardCount = igCardUrls.value.length;
+      triggerToast(
+        cardCount > 1
+          ? `Card fess berhasil diposting ke Instagram Feed (carousel ${cardCount} card)!`
+          : 'Card fess berhasil diposting ke Instagram Feed!'
+      );
     } else {
       triggerToast('Card fess selesai dirender — publikasi Instagram belum berhasil.');
     }
@@ -1554,6 +1581,32 @@ function formatCount(num) {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* Strip pratinjau carousel (teks panjang → beberapa card) */
+.ig-card-strip {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 340px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  margin-top: 4px;
+}
+
+.ig-card-strip-img {
+  height: 78px;
+  border-radius: 10px;
+  border: 1.5px solid var(--shell-border);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.ig-card-strip-note {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--shell-sub-accent, #60a5fa);
+  margin: 0;
 }
 
 .ig-story-actions-row {
