@@ -115,7 +115,7 @@
             <input v-model="agreeTerms" type="checkbox" class="terms-checkbox" />
             <span class="terms-text">
               Saya menyetujui <a href="#" class="auth-link">Ketentuan Layanan</a> &amp;
-              <a href="#" class="auth-link">Kebijakan Privasi</a> Komunitas FessHub.
+              <a href="#" class="auth-link">Kebijakan Privasi</a> Komunitas Fess n Curious.
             </span>
           </label>
           <p v-if="termsError" class="field-error-msg" role="alert">
@@ -333,7 +333,7 @@ const form = reactive({
   name: 'Alex Pratama',
   handle: '@alex_reader',
   avatar: USER_AVATAR_PRESETS[0],
-  bio: 'Secret sender & casual reader di FessHub.',
+  bio: 'Secret sender & casual reader di Fess n Curious.',
 });
 
 function handleAvatarFileSelect(e) {

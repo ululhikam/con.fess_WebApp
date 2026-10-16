@@ -15,11 +15,11 @@
       <!-- TOP UP / SALDO -->
       <template v-if="modelValue === 'topup'">
         <div class="balance-hero-card">
-          <div class="balance-hero-label">Saldo MFC Kamu</div>
+          <div class="balance-hero-label">Saldo CTF Kamu</div>
           <div class="balance-hero-amount">
             <Coins :size="28" class="balance-coin-icon" />
             <span>{{ balance.toLocaleString() }}</span>
-            <span class="balance-unit">MFC</span>
+            <span class="balance-unit">CTF</span>
           </div>
         </div>
 
@@ -27,7 +27,7 @@
         <div class="empty-state">
           <Wallet :size="40" class="empty-icon" />
           <p>Top up belum tersedia</p>
-          <p>Pengisian saldo MFC akan segera hadir di aplikasi.</p>
+          <p>Pengisian saldo CTF akan segera hadir di aplikasi.</p>
         </div>
       </template>
 
@@ -189,16 +189,18 @@
       <template v-else-if="modelValue === 'notifications'">
         <div class="section-label mb-3">Preferensi Notifikasi</div>
         <div class="settings-card mb-4">
-          <div v-for="(notif, idx) in notifSettings" :key="idx" class="settings-row">
-            <div>
-              <div class="settings-row-label">{{ notif.label }}</div>
-              <div class="settings-row-sub">{{ notif.desc }}</div>
-            </div>
-            <div class="toggle-switch" :class="{ on: notif.on }" @click="notif.on = !notif.on">
-              <span class="toggle-thumb" />
+          <template v-for="(notif, idx) in notifSettings" :key="idx">
+            <div class="settings-row">
+              <div class="settings-row-text">
+                <div class="settings-row-label">{{ notif.label }}</div>
+                <div class="settings-row-sub">{{ notif.desc }}</div>
+              </div>
+              <div class="toggle-switch" :class="{ on: notif.on }" @click="notif.on = !notif.on">
+                <span class="toggle-thumb" />
+              </div>
             </div>
             <div v-if="idx < notifSettings.length - 1" class="settings-divider" />
-          </div>
+          </template>
         </div>
 
         <div class="section-label mb-3">Notifikasi Terbaru</div>
@@ -230,7 +232,7 @@
       <template v-else-if="modelValue === 'help'">
         <div class="help-hero mb-5">
           <HelpCircle :size="36" class="help-hero-icon" />
-          <h2 class="help-hero-title">Pusat Bantuan FessHub</h2>
+          <h2 class="help-hero-title">Pusat Bantuan Fess n Curious</h2>
           <p class="help-hero-sub">Ada masalah? Kami siap membantu 24/7</p>
         </div>
 
@@ -249,11 +251,11 @@
 
         <div class="section-label mb-3">Hubungi Kami</div>
         <div class="contact-cards">
-          <a href="mailto:internal@myfess.id" class="contact-card">
+          <a href="mailto:fessncurious@gmail.com" class="contact-card">
             <Mail :size="20" class="contact-icon" />
             <div>
               <div class="contact-title">Email Support</div>
-              <div class="contact-val">internal@myfess.id</div>
+              <div class="contact-val">fessncurious@gmail.com</div>
             </div>
           </a>
           <a href="#" class="contact-card">
@@ -263,11 +265,16 @@
               <div class="contact-val">Buka setiap hari 08.00–22.00 WIB</div>
             </div>
           </a>
-          <a href="#" class="contact-card">
+          <a
+            href="https://fessncurious.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="contact-card"
+          >
             <ExternalLink :size="20" class="contact-icon" />
             <div>
-              <div class="contact-title">Dokumentasi</div>
-              <div class="contact-val">docs.fesshub.id</div>
+              <div class="contact-title">Website</div>
+              <div class="contact-val">fessncurious.vercel.app</div>
             </div>
           </a>
         </div>
@@ -278,7 +285,7 @@
         <div class="report-hero mb-5">
           <Flag :size="32" class="report-hero-icon" />
           <h2 class="report-hero-title">Laporkan Pelanggaran</h2>
-          <p class="report-hero-sub">Bantu kami menjaga komunitas FessHub tetap aman dan sehat.</p>
+          <p class="report-hero-sub">Bantu kami menjaga komunitas Fess n Curious tetap aman dan sehat.</p>
         </div>
 
         <div class="form-group mb-3">
@@ -542,7 +549,7 @@ const notifSettings = reactive([
   { label: 'Komentar & Balasan', desc: 'Ketika ada yang membalas fess kamu', on: true },
   { label: 'Upvotes', desc: 'Ketika fess kamu mendapat upvote banyak', on: true },
   { label: 'Fess Disetujui', desc: 'Status moderasi fess kamu berubah', on: true },
-  { label: 'Reward & MFC', desc: 'Kamu mendapat poin reward baru', on: true },
+  { label: 'Reward & CTF', desc: 'Kamu mendapat poin reward baru', on: true },
   { label: 'Pengumuman Platform', desc: 'Update fitur & pemeliharaan sistem', on: false },
 ]);
 
@@ -596,8 +603,8 @@ watch(
 
 /* ============================================================ HELP ============================================================ */
 const FAQS = reactive([
-  { id: 1, q: 'Apa itu MFC dan bagaimana cara mendapatkannya?', a: 'MFC (MyFess Coin) adalah mata uang virtual di FessHub. Kamu bisa mendapatkan MFC dengan top up, mendapat reward dari fess populer, atau dari program referral.', open: false },
-  { id: 2, q: 'Apakah identitas saya aman saat mengirim fess?', a: 'Ya, FessHub menggunakan sistem anonymisasi berlapis. Handle kamu tidak pernah ditampilkan di feed publik. Setiap thread menggunakan alias yang berbeda-beda.', open: false },
+  { id: 1, q: 'Apa itu CTF dan bagaimana cara mendapatkannya?', a: 'CTF (Coin to Fess) adalah mata uang virtual di Fess n Curious. Kamu bisa mendapatkan CTF dengan top up, mendapat reward dari fess populer, atau dari program referral.', open: false },
+  { id: 2, q: 'Apakah identitas saya aman saat mengirim fess?', a: 'Ya, Fess n Curious menggunakan sistem anonymisasi berlapis. Handle kamu tidak pernah ditampilkan di feed publik. Setiap thread menggunakan alias yang berbeda-beda.', open: false },
   { id: 3, q: 'Berapa lama proses moderasi fess?', a: 'Rata-rata fess dimoderasi dalam 15-30 menit. Pada jam sibuk (18.00-22.00 WIB) bisa memakan waktu hingga 2 jam.', open: false },
   { id: 4, q: 'Bagaimana cara membuat Base Confess sendiri?', a: 'Daftar akun Base Confess di /register/base, lalu lengkapi profil base kamu. Tim kami akan memverifikasi dalam 1x24 jam setelah pengajuan.', open: false },
   { id: 5, q: 'Apakah saya bisa menghapus fess yang sudah terkirim?', a: 'Fess yang sudah disetujui dan dipublikasikan tidak bisa dihapus langsung. Kamu bisa mengajukan permintaan hapus melalui menu Laporkan Pelanggaran dengan pilih "Hapus Konten Saya".', open: false },
@@ -629,14 +636,14 @@ const TERMS_SECTIONS = [
   {
     title: '1. Penerimaan Ketentuan',
     paragraphs: [
-      'Dengan mengakses atau menggunakan layanan FessHub ("Platform"), kamu menyetujui ketentuan layanan ini secara menyeluruh. Jika tidak setuju, harap hentikan penggunaan Platform.',
-      'FessHub berhak memperbarui ketentuan ini sewaktu-waktu. Perubahan akan diberitahukan melalui notifikasi di dalam aplikasi atau email terdaftar.',
+      'Dengan mengakses atau menggunakan layanan Fess n Curious ("Platform"), kamu menyetujui ketentuan layanan ini secara menyeluruh. Jika tidak setuju, harap hentikan penggunaan Platform.',
+      'Fess n Curious berhak memperbarui ketentuan ini sewaktu-waktu. Perubahan akan diberitahukan melalui notifikasi di dalam aplikasi atau email terdaftar.',
     ],
   },
   {
     title: '2. Layanan Platform',
     paragraphs: [
-      'FessHub menyediakan platform pengiriman pesan anonim (confession/fess) dalam berbagai komunitas tematik yang disebut "Base". Setiap Base dikelola oleh Base Admin yang telah terverifikasi.',
+      'Fess n Curious menyediakan platform pengiriman pesan anonim (confession/fess) dalam berbagai komunitas tematik yang disebut "Base". Setiap Base dikelola oleh Base Admin yang telah terverifikasi.',
       'Penggunaan Platform hanya diperuntukkan bagi pengguna berusia 13 tahun ke atas. Pengguna di bawah 17 tahun wajib mendapat izin orang tua atau wali.',
     ],
   },
@@ -644,28 +651,28 @@ const TERMS_SECTIONS = [
     title: '3. Konten Terlarang',
     paragraphs: [
       'Dilarang keras mengirim konten yang mengandung: SARA, pelecehan seksual, kekerasan eksplisit, informasi palsu (hoaks), promosi produk ilegal, atau konten yang melanggar hak cipta pihak ketiga.',
-      'Pelanggaran dapat mengakibatkan pembekuan akun sementara hingga penutupan akun permanen tanpa pengembalian saldo MFC.',
+      'Pelanggaran dapat mengakibatkan pembekuan akun sementara hingga penutupan akun permanen tanpa pengembalian saldo CTF.',
     ],
   },
   {
-    title: '4. Mata Uang Virtual (MFC)',
+    title: '4. Mata Uang Virtual (CTF)',
     paragraphs: [
-      'MFC (MyFess Coin) adalah mata uang virtual yang hanya berlaku di dalam ekosistem FessHub. MFC tidak dapat dikonversi kembali ke uang tunai atau mata uang lainnya.',
-      'Top up MFC bersifat final dan tidak dapat dikembalikan (non-refundable), kecuali terdapat kesalahan teknis yang terbukti dari pihak FessHub.',
+      'CTF (Coin to Fess) adalah mata uang virtual yang hanya berlaku di dalam ekosistem Fess n Curious. CTF tidak dapat dikonversi kembali ke uang tunai atau mata uang lainnya.',
+      'Top up CTF bersifat final dan tidak dapat dikembalikan (non-refundable), kecuali terdapat kesalahan teknis yang terbukti dari pihak Fess n Curious.',
     ],
   },
   {
     title: '5. Privasi & Keamanan',
     paragraphs: [
-      'FessHub berkomitmen melindungi privasi penggunanya. Sistem anonymisasi berlapis memastikan identitas kamu tidak bocor ke publik atau sesama pengguna.',
+      'Fess n Curious berkomitmen melindungi privasi penggunanya. Sistem anonymisasi berlapis memastikan identitas kamu tidak bocor ke publik atau sesama pengguna.',
       'Data pengguna tidak dijual atau dibagikan kepada pihak ketiga untuk keperluan komersial tanpa persetujuan eksplisit.',
     ],
   },
   {
     title: '6. Pembatasan Tanggung Jawab',
     paragraphs: [
-      'FessHub tidak bertanggung jawab atas konten yang dikirim oleh pengguna. Tanggung jawab konten sepenuhnya berada pada pengirim.',
-      'Platform disediakan "as is". FessHub tidak menjamin ketersediaan layanan 100% dan tidak bertanggung jawab atas kerugian akibat gangguan sistem.',
+      'Fess n Curious tidak bertanggung jawab atas konten yang dikirim oleh pengguna. Tanggung jawab konten sepenuhnya berada pada pengirim.',
+      'Platform disediakan "as is". Fess n Curious tidak menjamin ketersediaan layanan 100% dan tidak bertanggung jawab atas kerugian akibat gangguan sistem.',
     ],
   },
 ];
@@ -689,7 +696,7 @@ const PRIVACY_SECTIONS = [
   {
     title: '3. Anonymisasi & Perlindungan Identitas',
     paragraphs: [
-      'FessHub menggunakan sistem anonymisasi berlapis. Fess yang kamu kirim diproses melalui sistem enkripsi sebelum diteruskan ke Base Admin. Base Admin tidak dapat mengetahui identitas asli pengirim fess.',
+      'Fess n Curious menggunakan sistem anonymisasi berlapis. Fess yang kamu kirim diproses melalui sistem enkripsi sebelum diteruskan ke Base Admin. Base Admin tidak dapat mengetahui identitas asli pengirim fess.',
       'Handle publik yang muncul di komentar adalah alias acak yang berbeda di setiap thread — tidak terhubung dengan akun asli kamu.',
     ],
   },
@@ -711,13 +718,13 @@ const PRIVACY_SECTIONS = [
     title: '6. Hak Pengguna',
     paragraphs: [
       'Kamu berhak untuk: mengakses data pribadi kamu, memperbaiki data yang tidak akurat, meminta penghapusan akun dan seluruh data terkait, serta mengunduh salinan data kamu (data portability).',
-      'Untuk mengajukan permintaan terkait data, hubungi kami di privacy@fesshub.id atau melalui menu Bantuan di dalam aplikasi.',
+      'Untuk mengajukan permintaan terkait data, hubungi kami di fessncurious@gmail.com atau melalui menu Bantuan di dalam aplikasi.',
     ],
   },
   {
     title: '7. Cookie & Penyimpanan Lokal',
     paragraphs: [
-      'FessHub menggunakan localStorage browser untuk menyimpan sesi login dan preferensi tema. Tidak ada cookie pihak ketiga untuk pelacakan iklan yang dipasang di Platform.',
+      'Fess n Curious menggunakan localStorage browser untuk menyimpan sesi login dan preferensi tema. Tidak ada cookie pihak ketiga untuk pelacakan iklan yang dipasang di Platform.',
     ],
   },
 ];
@@ -855,6 +862,16 @@ const PRIVACY_SECTIONS = [
   height: 1px;
   background: var(--shell-border);
   margin: 0 16px;
+}
+
+/* Teks label/sub mengisi ruang — tombol on/off selalu rata kanan (desktop & mobile) */
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row > .toggle-switch {
+  margin-left: auto;
 }
 
 /* ====== Toggle Switch ====== */
@@ -1076,7 +1093,7 @@ const PRIVACY_SECTIONS = [
   white-space: nowrap;
 }
 
-.topup-mfc {
+.topup-ctf {
   font-size: 13px;
   font-weight: 900;
   color: var(--shell-text);

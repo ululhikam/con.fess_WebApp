@@ -110,7 +110,7 @@ import {
 } from 'lucide-vue-next';
 
 const ACCOUNT_ITEMS = [
-  { icon: CreditCard, label: 'Saldo & Top Up', sub: '1 MFC - 0 MFC beli', action: 'topup' },
+  { icon: CreditCard, label: 'Saldo & Top Up', sub: '1 CTF - 0 CTF beli', action: 'topup' },
   { icon: UserRound, label: 'Profil & avatar', action: 'profile' },
   { icon: KeyRound, label: 'Keamanan akun', sub: 'Email & password', action: 'security' },
   { icon: PenLine, label: 'Fess saya', action: 'my-fess' },
@@ -119,7 +119,7 @@ const ACCOUNT_ITEMS = [
 
 const SETTINGS_ITEMS = [
   { icon: Bell, label: 'Notifikasi', sub: 'Aktivitas di dalam aplikasi', action: 'notifications' },
-  { icon: HelpCircle, label: 'Bantuan', sub: 'internal@myfess.id', action: 'help' },
+  { icon: HelpCircle, label: 'Bantuan', sub: 'fessncurious@gmail.com', action: 'help' },
   { icon: Flag, label: 'Laporkan pelanggaran', sub: 'Konten yang melanggar', action: 'report' },
   { icon: ScrollText, label: 'Ketentuan Layanan', action: 'terms' },
   { icon: Shield, label: 'Kebijakan Privasi', action: 'privacy' },

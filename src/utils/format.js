@@ -111,7 +111,7 @@ export function isTrending(post) {
 
 /**
  * Generate share URL untuk fess.
- * @param {string} baseUrl - origin (e.g. https://fesshub.id)
+ * @param {string} baseUrl - origin (e.g. https://fessncurious.vercel.app)
  * @param {string} fessId
  * @returns {string}
  */

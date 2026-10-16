@@ -61,7 +61,7 @@ const stopAfter = router.afterEach(() => {
 onErrorCaptured((err) => {
   fatalError.value = err;
   // eslint-disable-next-line no-console
-  console.error('[FessHub] render error captured', err);
+  console.error('[Fess n Curious] render error captured', err);
   return false;
 });
 

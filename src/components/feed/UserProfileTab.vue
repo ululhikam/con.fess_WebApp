@@ -63,7 +63,7 @@
         </button>
       </div>
 
-      <!-- Quick Stats Strip (IG Style: Fess, Mengikuti, Saldo MFC) -->
+      <!-- Quick Stats Strip (IG Style: Fess, Mengikuti, Saldo CTF) -->
       <div class="ig-stats-strip">
         <button type="button" class="ig-stat-col" @click="activeSubTab = 'fess'">
           <span class="ig-stat-num">{{ myFessCount }}</span>
@@ -81,7 +81,7 @@
 
         <button type="button" class="ig-stat-col" @click="activeSubTab = 'saldo'">
           <span class="ig-stat-num ig-stat-num--accent">{{ balanceDisplay }}</span>
-          <span class="ig-stat-lbl">Saldo MFC</span>
+          <span class="ig-stat-lbl">Saldo CTF</span>
         </button>
       </div>
     </div>
@@ -322,22 +322,22 @@
       <!-- TAB 3: SALDO & TOP UP -->
       <div v-else-if="activeSubTab === 'saldo'" class="tab-pane-fade">
         <!-- Saldo Hero Card (read-only: balance comes from the session user) -->
-        <div class="balance-mfc-card">
-          <div class="balance-mfc-header">
+        <div class="balance-ctf-card">
+          <div class="balance-ctf-header">
             <div>
-              <div class="balance-mfc-label">SALDO AKUN KAMU</div>
-              <div class="balance-mfc-val">
-                <Coins :size="32" class="balance-mfc-icon" />
+              <div class="balance-ctf-label">SALDO AKUN KAMU</div>
+              <div class="balance-ctf-val">
+                <Coins :size="32" class="balance-ctf-icon" />
                 <span>{{ balanceDisplay }}</span>
-                <span class="balance-mfc-unit">MFC</span>
+                <span class="balance-ctf-unit">CTF</span>
               </div>
             </div>
-            <div v-if="hasBalance" class="balance-mfc-status">
-              <span class="mfc-status-pill">Status: Aktif</span>
+            <div v-if="hasBalance" class="balance-ctf-status">
+              <span class="ctf-status-pill">Status: Aktif</span>
             </div>
           </div>
-          <p class="balance-mfc-note">
-            1 MFC = 1 kali kirim confession reguler tanpa antrian.
+          <p class="balance-ctf-note">
+            1 CTF = 1 kali kirim confession reguler tanpa antrian.
           </p>
         </div>
 
@@ -347,8 +347,8 @@
           <p class="empty-tab-sub">
             {{
               hasBalance
-                ? 'Saldo di atas diambil langsung dari akunmu. Fitur pembelian MFC belum tersedia saat ini.'
-                : 'Saldo dan top up MFC belum tersedia pada akunmu saat ini.'
+                ? 'Saldo di atas diambil langsung dari akunmu. Fitur pembelian CTF belum tersedia saat ini.'
+                : 'Saldo dan top up CTF belum tersedia pada akunmu saat ini.'
             }}
           </p>
         </div>
@@ -447,7 +447,7 @@
                 <HelpCircle :size="18" class="row-icon" />
                 <div>
                   <div class="row-label">Bantuan</div>
-                  <div class="row-desc">FAQ & Pusat Dukungan FessHub</div>
+                  <div class="row-desc">FAQ & Pusat Dukungan Fess n Curious</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="chevron-icon" />
@@ -1702,7 +1702,7 @@ function confirmLogout() {
 }
 
 /* Tab 3: Saldo & Top Up */
-.balance-mfc-card {
+.balance-ctf-card {
   background: linear-gradient(135deg, var(--brand-blue) 0%, var(--shell-sub-accent) 100%);
   color: #fff;
   border-radius: 20px;
@@ -1710,21 +1710,21 @@ function confirmLogout() {
   box-shadow: 0 10px 30px var(--neon-blue-glow);
 }
 
-.balance-mfc-header {
+.balance-ctf-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 14px;
 }
 
-.balance-mfc-label {
+.balance-ctf-label {
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.8px;
   opacity: 0.85;
 }
 
-.balance-mfc-val {
+.balance-ctf-val {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1734,17 +1734,17 @@ function confirmLogout() {
   margin-top: 4px;
 }
 
-.balance-mfc-icon {
+.balance-ctf-icon {
   color: var(--lime-primary);
 }
 
-.balance-mfc-unit {
+.balance-ctf-unit {
   font-size: 16px;
   font-weight: 800;
   opacity: 0.9;
 }
 
-.mfc-status-pill {
+.ctf-status-pill {
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 4px 10px;
@@ -1753,7 +1753,7 @@ function confirmLogout() {
   font-weight: 800;
 }
 
-.balance-mfc-note {
+.balance-ctf-note {
   font-size: 12px;
   opacity: 0.9;
   margin: 0;
@@ -1777,13 +1777,13 @@ function confirmLogout() {
   color: var(--shell-text-muted);
 }
 
-.mfc-packages-grid {
+.ctf-packages-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
-.mfc-pkg-card {
+.ctf-pkg-card {
   position: relative;
   background: var(--shell-card);
   border: 1.5px solid var(--shell-border);
@@ -1794,12 +1794,12 @@ function confirmLogout() {
   transition: all 0.2s ease;
 }
 
-.mfc-pkg-card:hover {
+.ctf-pkg-card:hover {
   border-color: var(--shell-active);
   transform: translateY(-2px);
 }
 
-.mfc-pkg-card.active {
+.ctf-pkg-card.active {
   border-color: var(--shell-active);
   background: var(--shell-chip);
   box-shadow: 0 4px 14px var(--shadow-color);
@@ -1817,7 +1817,7 @@ function confirmLogout() {
   border-radius: var(--radius-pill);
 }
 
-.pkg-mfc-amount {
+.pkg-ctf-amount {
   font-size: 20px;
   font-weight: 900;
   color: var(--shell-text);
@@ -1886,7 +1886,7 @@ function confirmLogout() {
   font-weight: 900;
 }
 
-.btn-bayar-mfc {
+.btn-bayar-ctf {
   width: 100%;
   display: inline-flex;
   align-items: center;
@@ -1905,11 +1905,11 @@ function confirmLogout() {
   transition: transform 0.15s ease;
 }
 
-.btn-bayar-mfc:hover {
+.btn-bayar-ctf:hover {
   transform: translateY(-2px);
 }
 
-.btn-bayar-mfc:disabled {
+.btn-bayar-ctf:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;

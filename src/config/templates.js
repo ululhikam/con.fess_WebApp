@@ -63,7 +63,7 @@ export const TEMPLATES = [
   {
     key: 'default',
     label: 'Standar',
-    description: 'Gradien biru–ungu khas FessHub, siap pakai.',
+    description: 'Gradien biru–ungu khas Fess n Curious, siap pakai.',
     aspect: 'portrait',
     ink: 'light',
     background: 'linear-gradient(135deg, #0038ff 0%, #4b1fff 55%, #7000ff 100%)',

@@ -20,7 +20,7 @@
 
       <form class="modal-body" @submit.prevent="handleSubmit">
         <p class="modal-desc">
-          Bantu kami menjaga kenyamanan komunitas FessHub. Pilih kategori pelanggaran untuk konten
+          Bantu kami menjaga kenyamanan komunitas Fess n Curious. Pilih kategori pelanggaran untuk konten
           <strong>{{ fessHandle || 'ini' }}</strong>:
         </p>
 

@@ -747,8 +747,8 @@
 
         <div class="support-contact-box mt-4">
           <div class="font-bold text-sm">Butuh Bantuan Teknis Tambahan?</div>
-          <p class="text-xs text-muted mt-1">Tim teknis FessHub siap membantu 24/7 terkait integrasi bot dan sistem auto-post.</p>
-          <a href="mailto:admin-support@fesshub.com" class="btn-contact-support mt-3">
+          <p class="text-xs text-muted mt-1">Tim teknis Fess n Curious siap membantu 24/7 terkait integrasi bot dan sistem auto-post.</p>
+          <a href="mailto:fessncurious@gmail.com" class="btn-contact-support mt-3">
             Hubungi Tim Teknis via Email
           </a>
         </div>
@@ -772,7 +772,7 @@
       <template v-else-if="modelValue === 'pengaturan_privasi'">
         <div class="legal-text-container">
           <h4 class="legal-section-title">1. Perlindungan Anonimitas Pengirim</h4>
-          <p class="legal-p">Sistem FessHub mengenkripsi identitas pengirim secara end-to-end. Pengelola base tidak dapat melihat alamat email atau nomor telepon asli dari pengirim confession.</p>
+          <p class="legal-p">Sistem Fess n Curious mengenkripsi identitas pengirim secara end-to-end. Pengelola base tidak dapat melihat alamat email atau nomor telepon asli dari pengirim confession.</p>
 
           <h4 class="legal-section-title mt-4">2. Keamanan Kredensial Media Sosial</h4>
           <p class="legal-p">Token akses Instagram Graph API disimpan dalam brankas kredensial terenkripsi dan hanya digunakan untuk auto-posting fess yang telah disetujui.</p>

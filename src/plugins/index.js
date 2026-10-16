@@ -26,14 +26,14 @@ export function bootstrap() {
 export function configureApp(app) {
   app.config.errorHandler = (err, _instance, info) => {
     // eslint-disable-next-line no-console
-    console.error(`[FessHub] ${info}`, err);
+    console.error(`[Fess n Curious] ${info}`, err);
   };
 
   // Development-only: surface warnings instead of dropping them.
   if (import.meta.env.DEV) {
     app.config.warnHandler = (msg) => {
       // eslint-disable-next-line no-console
-      console.warn(`[FessHub] ${msg}`);
+      console.warn(`[Fess n Curious] ${msg}`);
     };
   }
 
