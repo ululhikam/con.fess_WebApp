@@ -219,7 +219,13 @@ function processFile(file) {
 }
 
 /** Upload the file to the backend and swap the blob preview for the final URL. */
-async function uploadItem(item) {
+async function uploadItem(targetItem) {
+  // PENTING: `targetItem` adalah objek mentah yang disimpan ke array reaktif.
+  // Memutasi objek mentah TIDAK memicu render ulang (progress bar nyangkut &
+  // tombol publish tetap terkunci) — jadi ambil ulang lewat proxy reaktif.
+  const item = mediaFiles.value.find((m) => m.id === targetItem.id);
+  if (!item) return;
+
   item.uploading = true;
   item.progress = 0;
   try {
@@ -231,9 +237,10 @@ async function uploadItem(item) {
     }
     item.progress = 100;
   } catch (e) {
-    error.value = `Gagal mengunggah ${item.name}. Coba lagi.`;
-    const idx = mediaFiles.value.indexOf(item);
-    if (idx !== -1) removeFile(idx);
+    error.value = e?.message
+      ? `Gagal mengunggah ${item.name}: ${e.message}`
+      : `Gagal mengunggah ${item.name}. Coba lagi.`;
+    removeFileById(item.id);
   } finally {
     item.uploading = false;
   }
@@ -241,9 +248,15 @@ async function uploadItem(item) {
 
 function removeFile(index) {
   const item = mediaFiles.value[index];
+  if (!item) return;
   if (item?.file && item?.preview) URL.revokeObjectURL(item.preview);
   mediaFiles.value.splice(index, 1);
   emit('change', mediaFiles.value);
+}
+
+function removeFileById(id) {
+  const idx = mediaFiles.value.findIndex((m) => m.id === id);
+  if (idx !== -1) removeFile(idx);
 }
 
 function formatFileSize(bytes) {
