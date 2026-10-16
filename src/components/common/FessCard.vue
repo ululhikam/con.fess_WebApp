@@ -802,8 +802,12 @@ async function openInstagramStoryAutoPost() {
       aspect: props.post.aspect || 'portrait',
     });
     igPostData.value = res?.data || res;
-    props.post.postedToIg = true;
-    triggerToast('Card fess berhasil di-render untuk Instagram Feed!');
+    if (igPostData.value?.meta_published) {
+      props.post.postedToIg = true;
+      triggerToast('Card fess berhasil diposting ke Instagram Feed!');
+    } else {
+      triggerToast('Card fess selesai dirender — publikasi Instagram belum berhasil.');
+    }
   } catch (err) {
     console.error('Gagal memposting fess ke Instagram:', err);
     triggerToast('Gagal memproses card story. Silakan coba lagi.');
