@@ -86,7 +86,7 @@
     <div class="card-body-text">
       <p class="post-body-content">{{ post.content }}</p>
 
-      <!-- Karosel Media — gaya X/Threads: geser untuk lihat foto/video lainnya -->
+      <!-- Karosel Media — gaya X/Threads: foto berjejer horizontal, berikutnya mengintip -->
       <div v-if="hasMedia" class="card-media-carousel">
         <div
           ref="carouselViewportRef"
@@ -165,19 +165,6 @@
           >
             <ChevronRight :size="18" />
           </button>
-
-          <!-- Titik navigasi ala Threads -->
-          <div v-if="allMedia.length > 1" class="carousel-dots">
-            <button
-              v-for="(_, dotIdx) in allMedia"
-              :key="`dot-${dotIdx}`"
-              type="button"
-              class="carousel-dot"
-              :class="{ active: dotIdx === carouselIndex }"
-              :aria-label="`Ke media ${dotIdx + 1}`"
-              @click.stop="goToMedia(dotIdx)"
-            />
-          </div>
         </div>
       </div>
 
@@ -761,7 +748,9 @@ function closeViewer() {
   viewerOpen.value = false;
 }
 
-/* KAROSEL MEDIA (gaya X/Threads): geser antar media, tinggi mengikuti rasio asli */
+/* KAROSEL MEDIA (gaya X/Threads): foto berjejer horizontal, berikutnya mengintip */
+const CAROUSEL_GAP = 8; // jarak antar media di deretan (px)
+
 const carouselIndex = ref(0);
 const carouselDragX = ref(0);
 const carouselDragging = ref(false);
@@ -782,18 +771,32 @@ const activeRatio = computed(() => {
   return Math.min(1.91, Math.max(0.8, ratio));
 });
 
-/** Tinggi frame mengikuti rasio media aktif — dianimasikan ala Threads. */
+/** Lebar tiap media — tidak penuh agar media berikutnya mengintip di kanan. */
+const carouselSlideWidth = computed(() => {
+  if (carouselWidth.value <= 0) return 0;
+  const peek = Math.min(72, Math.max(44, carouselWidth.value * 0.16));
+  return Math.max(120, carouselWidth.value - peek);
+});
+
+/** Langkah geser antar media (lebar slide + gap). */
+const carouselStep = computed(() => carouselSlideWidth.value + CAROUSEL_GAP);
+
+/** Tinggi deretan mengikuti rasio media aktif — dianimasikan ala Threads. */
 const carouselViewportStyle = computed(() => {
-  const w = carouselWidth.value;
+  const w = carouselSlideWidth.value;
   if (w <= 0) return {};
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
   const cap = Math.min(560, Math.max(320, vh * 0.8));
-  const h = Math.min(cap, Math.max(180, w / activeRatio.value));
-  return { height: `${Math.round(h)}px` };
+  const h = Math.min(cap, Math.max(150, w / activeRatio.value));
+  return {
+    '--slide-w': `${Math.round(w)}px`,
+    height: `${Math.round(h)}px`,
+  };
 });
 
 const carouselTrackStyle = computed(() => ({
-  transform: `translate3d(calc(${-carouselIndex.value * 100}% + ${carouselDragX.value}px), 0, 0)`,
+  gap: `${CAROUSEL_GAP}px`,
+  transform: `translate3d(${Math.round(-carouselIndex.value * carouselStep.value + carouselDragX.value)}px, 0, 0)`,
   transition: carouselDragging.value
     ? 'none'
     : 'transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1)',
@@ -825,6 +828,10 @@ function stepCarousel(dir) {
 
 function onSlideClick(index, evt) {
   if (carouselMoved.value) return; // barusan menggeser, bukan mengetuk
+  if (index !== carouselIndex.value) {
+    goToMedia(index); // ketuk media yang mengintip di kanan → pindah ke sana
+    return;
+  }
   openViewer(index, evt);
 }
 
@@ -895,8 +902,7 @@ function onCarouselTouchEnd(e) {
   }
   carouselDragging.value = false;
 
-  const width = carouselViewportRef.value?.clientWidth || 300;
-  const threshold = Math.min(90, width * 0.18);
+  const threshold = Math.min(90, carouselStep.value * 0.2);
   const dx = carouselDragX.value;
 
   if (dx <= -threshold) {
@@ -2095,20 +2101,16 @@ function formatCount(num) {
   cursor: not-allowed;
 }
 
-/* Karosel Media (gaya X/Threads — tinggi mengikuti rasio asli, geser antar media) */
+/* Karosel Media (gaya X/Threads — foto berjejer horizontal, berikutnya mengintip) */
 .card-media-carousel {
   position: relative;
   margin-top: 10px;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
-  background: #000;
 }
 
 .carousel-viewport {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  min-height: 150px;
   overflow: hidden;
   touch-action: pan-y;
   transition: height 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -2123,10 +2125,12 @@ function formatCount(num) {
 
 .carousel-slide {
   position: relative;
-  flex: 0 0 100%;
-  width: 100%;
+  flex: 0 0 auto;
+  width: var(--slide-w, 100%);
   height: 100%;
+  border-radius: 16px;
   overflow: hidden;
+  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
   cursor: pointer;
   background: #000;
 }
@@ -2172,36 +2176,6 @@ function formatCount(num) {
   font-size: 11px;
   font-weight: 700;
   pointer-events: none;
-}
-
-/* Titik navigasi ala Threads */
-.carousel-dots {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  z-index: 3;
-}
-
-.carousel-dot {
-  width: 6px;
-  height: 6px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.38);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.65);
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.carousel-dot.active {
-  background: #fff;
-  transform: scale(1.25);
 }
 
 /* Panah navigasi (muncul saat hover, ala Threads web) */
