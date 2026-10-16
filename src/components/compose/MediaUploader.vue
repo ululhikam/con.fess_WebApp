@@ -344,46 +344,67 @@ async function uploadItem(targetItem, originalFile = null) {
   st.loadedBytes = 0;
   st.totalBytes = actualFile.size || targetItem.size || 0;
 
-  let simulatedInterval = null;
-
   try {
     const onProgress = (percent, loaded, total) => {
       st.progress = Math.max(st.progress, percent);
       if (loaded) st.loadedBytes = loaded;
       if (total) st.totalBytes = total;
 
-      if (st.progress < 85) {
+      if (st.progress < 99) {
         st.statusText = `Mengunggah ${Math.round(st.progress)}%`;
       } else {
-        st.statusText = 'Menyimpan ke cloud...';
+        st.statusText = 'Menyelesaikan unggahan...';
       }
     };
 
-    const uploadPromise = api.uploadMedia(
-      actualFile,
-      targetItem.type,
-      onProgress,
-      abortController.signal
-    );
+    let uploadedUrl = '';
+    let uploadedThumbnail = undefined;
+    let uploadedSize = actualFile.size;
+    let signedReady = false;
 
-    // Smooth ticker ketika data client selesai dikirim (85%), menunggu Supabase storage di backend
-    simulatedInterval = setInterval(() => {
-      if (!st.uploading) {
-        clearInterval(simulatedInterval);
-        return;
+    try {
+      // 1) Minta URL unggah bertanda tangan. File TIDAK melewati backend karena
+      //    batas body request Vercel (~4,5MB) membuat video besar "koneksi terputus".
+      st.statusText = 'Menyiapkan unggahan...';
+      const signRes = await api.signMediaUpload({
+        filename: actualFile.name,
+        content_type: actualFile.type || '',
+        size: actualFile.size,
+      });
+      const info = signRes?.data || signRes;
+      if (!info?.signed_url) {
+        throw new Error('Server tidak mengembalikan URL unggah.');
       }
-      if (st.progress >= 85 && st.progress < 98) {
-        st.progress = Math.min(98, st.progress + 1.2);
-        st.statusText = 'Menyimpan ke cloud...';
-      }
-    }, 350);
+      signedReady = true;
 
-    const res = await uploadPromise;
-    clearInterval(simulatedInterval);
+      // 2) Unggah file langsung ke Supabase Storage dengan progres real-time.
+      st.statusText = 'Mengunggah...';
+      await api.uploadToSignedUrl(info.signed_url, actualFile, onProgress, abortController.signal);
 
-    const uploadedUrl = res?.url || res?.data?.url;
+      uploadedUrl = info.public_url;
+      uploadedThumbnail = info.type === 'video' ? info.public_url : undefined;
+    } catch (directErr) {
+      if (abortController.signal.aborted) throw directErr;
+
+      // Jangan fallback ke backend setelah PUT berjalan — file besar pasti
+      // gagal lewat backend; cukup tampilkan tombol "coba lagi".
+      if (signedReady) throw directErr;
+
+      // Jalur lama (multipart ke backend) sebagai fallback — mis. dev tanpa
+      // kredensial storage atau backend versi lama.
+      console.warn(
+        '[MediaUploader] Direct upload tidak tersedia, memakai jalur lama:',
+        directErr?.message
+      );
+      st.statusText = 'Mengunggah...';
+      const res = await api.uploadMedia(actualFile, targetItem.type, onProgress, abortController.signal);
+      uploadedUrl = res?.url || res?.data?.url;
+      uploadedThumbnail = res?.thumbnail || res?.data?.thumbnail || undefined;
+      uploadedSize = res?.size ?? res?.data?.size ?? actualFile.size;
+    }
+
     if (!uploadedUrl) {
-      throw new Error('Respons backend tidak menyertakan URL file');
+      throw new Error('Respons server tidak menyertakan URL file');
     }
 
     st.uploading = false;
@@ -397,8 +418,8 @@ async function uploadItem(targetItem, originalFile = null) {
         return {
           ...m,
           url: uploadedUrl,
-          thumbnail: res?.thumbnail || res?.data?.thumbnail || undefined,
-          size: res?.size ?? res?.data?.size ?? actualFile.size,
+          thumbnail: uploadedThumbnail,
+          size: uploadedSize,
           uploading: false,
           failed: false,
           progress: 100,
@@ -410,7 +431,6 @@ async function uploadItem(targetItem, originalFile = null) {
     mediaFiles.value = updated;
     emit('change', updated);
   } catch (e) {
-    if (simulatedInterval) clearInterval(simulatedInterval);
     if (abortController.signal.aborted) return;
 
     const errMsg = e?.message || 'Gagal mengunggah media';

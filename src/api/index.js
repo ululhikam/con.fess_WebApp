@@ -78,6 +78,11 @@ export const api = {
     if (type) fd.append('type', type);
     return client.upload('/upload', fd, { onProgress, signal });
   },
+  /** Minta URL unggah bertanda tangan agar file besar diunggah langsung ke storage. */
+  signMediaUpload: (payload) => client.post('/upload/sign', payload),
+  /** Unggah file langsung ke URL bertanda tangan (tanpa lewat backend). */
+  uploadToSignedUrl: (signedUrl, file, onProgress, signal) =>
+    client.putToSignedUrl(signedUrl, file, { onProgress, signal }),
   uploadAvatar: (file, onProgress, signal) => {
     const fd = new FormData();
     fd.append('file', file);

@@ -162,6 +162,81 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
     });
   }
 
+  /**
+   * Upload file langsung ke URL bertanda tangan (Supabase Storage signed
+   * upload) via PUT, dengan progres real-time & abort. Dipakai agar file besar
+   * (video >4,5MB) tidak melewati batas body request serverless Vercel.
+   */
+  function putToSignedUrl(signedUrl, file, opts = {}) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', signedUrl, true);
+
+      // Header mengikuti protokol signed upload Supabase Storage.
+      xhr.setRequestHeader('x-upsert', 'false');
+      xhr.setRequestHeader('cache-control', 'max-age=3600');
+      if (file?.type) {
+        xhr.setRequestHeader('content-type', file.type);
+      }
+
+      if (xhr.upload && typeof opts.onProgress === 'function') {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable && event.total > 0) {
+            const percent = Math.min(99, Math.round((event.loaded / event.total) * 99));
+            opts.onProgress(percent, event.loaded, event.total);
+          }
+        };
+      }
+
+      // Timeout (default 180 detik untuk video besar)
+      xhr.timeout = opts.timeout ?? 180000;
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (typeof opts.onProgress === 'function') opts.onProgress(100);
+          resolve(true);
+        } else {
+          let message = `Unggah ke storage gagal (kode ${xhr.status}).`;
+          try {
+            const payload = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+            if (payload?.message) message = payload.message;
+          } catch {
+            /* body bukan JSON — pakai pesan default */
+          }
+          reject(new ApiError(message, xhr.status, null));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(
+          new ApiError(
+            'Koneksi terputus saat mengunggah ke storage. Periksa koneksi internet lalu coba lagi.',
+            0
+          )
+        );
+      };
+
+      xhr.ontimeout = () => {
+        reject(
+          new ApiError(
+            'Waktu unggah habis (timeout). File terlalu besar atau koneksi internet lambat.',
+            408
+          )
+        );
+      };
+
+      xhr.onabort = () => {
+        reject(new ApiError('Unggahan media dibatalkan.', 0));
+      };
+
+      if (opts.signal) {
+        opts.signal.addEventListener('abort', () => xhr.abort());
+      }
+
+      xhr.send(file);
+    });
+  }
+
   return {
     get: (path, opts) => request('GET', path, opts),
     post: (path, data, opts) => request('POST', path, { ...opts, data }),
@@ -169,6 +244,7 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
     patch: (path, data, opts) => request('PATCH', path, { ...opts, data }),
     delete: (path, opts) => request('DELETE', path, opts),
     upload,
+    putToSignedUrl,
   };
 }
 
