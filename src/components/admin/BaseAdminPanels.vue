@@ -996,25 +996,44 @@ async function loadAnalytics() {
   analyticsLoading.value = true;
   analyticsError.value = null;
   try {
-    const requests = [api.getStats()];
-    if (baseHandle.value) {
-      requests.push(api.getBase(baseHandle.value));
-      requests.push(
-        api.getFesses({ base: baseHandle.value, status: 'approved', sort: 'popular', limit: 5 }),
-      );
-      // Fess pending terbaru untuk memantau hasil filter NLP di panel moderasi.
-      requests.push(
-        api.getFesses({ base: baseHandle.value, status: 'pending', limit: 20 }),
-      );
+    const withBase = !!baseHandle.value;
+
+    // `allSettled`: request inti (statistik & data base) tetap wajib, tetapi
+    // kegagalan daftar bonus (populer/pending) tidak boleh menyembunyikan
+    // seluruh panel — tombol mode moderasi harus tetap bisa dipakai.
+    const outcomes = await Promise.allSettled(
+      withBase
+        ? [
+            api.getStats(),
+            api.getBase(baseHandle.value),
+            api.getFesses({ base: baseHandle.value, status: 'approved', sort: 'popular', limit: 5 }),
+            // Fess pending terbaru untuk memantau hasil filter NLP di panel moderasi.
+            api.getFesses({ base: baseHandle.value, status: 'pending', limit: 20 }),
+          ]
+        : [api.getStats()],
+    );
+    const [statsOutcome, baseOutcome, popularOutcome, pendingOutcome] = outcomes;
+
+    const coreFailure =
+      (statsOutcome?.status === 'rejected' && statsOutcome) ||
+      (baseOutcome?.status === 'rejected' && baseOutcome) ||
+      null;
+    if (coreFailure) throw coreFailure.reason;
+
+    analyticsStats.value = statsOutcome?.status === 'fulfilled' ? statsOutcome.value || null : null;
+    if (baseOutcome?.status === 'fulfilled' && baseOutcome.value) {
+      analyticsBase.value = baseOutcome.value;
+      syncModerationForm(baseOutcome.value);
     }
-    const [statsRes, baseRes, popularRes, pendingRes] = await Promise.all(requests);
-    analyticsStats.value = statsRes || null;
-    if (baseRes) {
-      analyticsBase.value = baseRes;
-      syncModerationForm(baseRes);
+    analyticsPopular.value =
+      popularOutcome?.status === 'fulfilled' ? popularOutcome.value?.data || [] : [];
+    analyticsFlagged.value =
+      pendingOutcome?.status === 'fulfilled'
+        ? (pendingOutcome.value?.data || []).filter((f) => f.auto_flagged)
+        : [];
+    if (popularOutcome?.status === 'rejected' || pendingOutcome?.status === 'rejected') {
+      console.warn('[moderasi] Sebagian data analitik gagal dimuat (daftar populer/pending).');
     }
-    analyticsPopular.value = popularRes?.data || [];
-    analyticsFlagged.value = (pendingRes?.data || []).filter((f) => f.auto_flagged);
   } catch (e) {
     analyticsError.value = e;
   } finally {
