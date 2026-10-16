@@ -486,8 +486,15 @@
 
               <!-- Content Preview State -->
               <div v-else class="ig-story-preview-container">
-                <div class="ig-story-status-pill" :class="{ success: igPostData?.meta_published || post.postedToIg }">
+                <div
+                  class="ig-story-status-pill"
+                  :class="{
+                    success: igPostData?.meta_published || post.postedToIg,
+                    pending: igPostData?.ig_pending && !igPostData?.meta_published && !post.postedToIg,
+                  }"
+                >
                   <CheckCircle2 v-if="igPostData?.meta_published || post.postedToIg" :size="14" />
+                  <Loader2 v-else-if="igPostData?.ig_pending" :size="14" class="spin" />
                   <Sparkles v-else :size="14" />
                   <span>
                     {{
@@ -847,6 +854,8 @@ async function openInstagramStoryAutoPost() {
           ? `Card fess berhasil diposting ke Instagram Feed (carousel: ${cardCount} card${mediaCount > 0 ? ` + ${mediaCount} media` : ''})!`
           : 'Card fess berhasil diposting ke Instagram Feed!'
       );
+    } else if (igPostData.value?.ig_pending) {
+      triggerToast('Video sedang diproses Instagram — postingan akan terbit otomatis dalam ±1 menit ⏳');
     } else {
       triggerToast('Card fess selesai dirender — publikasi Instagram belum berhasil.');
     }
@@ -1576,6 +1585,12 @@ function formatCount(num) {
   background: rgba(16, 185, 129, 0.12);
   color: #10b981;
   border-color: rgba(16, 185, 129, 0.3);
+}
+
+.ig-story-status-pill.pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .ig-story-card-frame {
