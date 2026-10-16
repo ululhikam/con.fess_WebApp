@@ -91,11 +91,16 @@
         <div
           ref="carouselViewportRef"
           class="carousel-viewport"
+          :class="{ 'carousel-merging': pinchGapScale <= 0.5 }"
           :style="carouselViewportStyle"
-          @touchstart.passive="onCarouselTouchStart"
-          @touchmove="onCarouselTouchMove"
-          @touchend.passive="onCarouselTouchEnd"
-          @touchcancel.passive="onCarouselTouchEnd"
+          @pointerdown="onCarouselPointerDown"
+          @pointermove="onCarouselPointerMove"
+          @pointerup="onCarouselPointerUp"
+          @pointercancel="onCarouselPointerUp"
+          @pointerleave="onCarouselPointerLeave"
+          @wheel="onCarouselWheel"
+          @gesturestart="onCarouselGesture"
+          @gesturechange="onCarouselGesture"
         >
           <div class="carousel-track" :style="carouselTrackStyle">
             <div
@@ -116,6 +121,7 @@
                 :alt="item.caption || `Media ${mediaIdx + 1}`"
                 :loading="mediaIdx < 2 ? 'eager' : 'lazy'"
                 class="carousel-media-element"
+                draggable="false"
                 @load="recordMediaRatio(mediaIdx, $event.target)"
               />
               <template v-else>
@@ -125,6 +131,7 @@
                   :alt="item.caption || `Video ${mediaIdx + 1}`"
                   :loading="mediaIdx < 2 ? 'eager' : 'lazy'"
                   class="carousel-media-element"
+                  draggable="false"
                   @load="recordMediaRatio(mediaIdx, $event.target)"
                 />
                 <video
@@ -143,28 +150,6 @@
               </template>
             </div>
           </div>
-
-          <!-- Panah navigasi (hanya tampil saat hover di desktop) -->
-          <button
-            v-if="carouselIndex > 0"
-            type="button"
-            class="carousel-nav prev"
-            title="Sebelumnya"
-            aria-label="Media sebelumnya"
-            @click.stop="stepCarousel(-1)"
-          >
-            <ChevronLeft :size="18" />
-          </button>
-          <button
-            v-if="carouselIndex < allMedia.length - 1"
-            type="button"
-            class="carousel-nav next"
-            title="Selanjutnya"
-            aria-label="Media berikutnya"
-            @click.stop="stepCarousel(1)"
-          >
-            <ChevronRight :size="18" />
-          </button>
         </div>
       </div>
 
@@ -560,8 +545,6 @@ import {
   X,
   Quote,
   Play,
-  ChevronLeft,
-  ChevronRight,
   ShieldAlert,
   Trash2,
   Download,
@@ -746,6 +729,7 @@ function openViewer(index = 0, evt = null) {
 
 function closeViewer() {
   viewerOpen.value = false;
+  pinchGapScale.value = 1; // gap antar foto kembali normal setelah viewer ditutup
 }
 
 /* KAROSEL MEDIA (gaya X/Threads): foto berjejer horizontal, berikutnya mengintip */
@@ -759,9 +743,17 @@ const carouselViewportRef = ref(null);
 const carouselWidth = ref(0);
 const mediaRatios = ref({});
 
+const pinchGapScale = ref(1); // 1 = gap normal, 0 = foto menyatu (gap antar foto hilang)
+const pinchActive = ref(false);
+
+const carouselPointers = new Map(); // pointerId → { x, y }
 let carouselStartX = 0;
 let carouselStartY = 0;
 let carouselPinchStart = 0;
+let carouselCaptured = false;
+let pinchWasActive = false;
+let trackpadPinchAccum = 0;
+let trackpadPinchTimer = null;
 let carouselResizeObserver = null;
 
 /** Rasio media aktif (dibatasi 4:5 – 1.91:1 seperti standar feed). */
@@ -778,8 +770,11 @@ const carouselSlideWidth = computed(() => {
   return Math.max(120, carouselWidth.value - peek);
 });
 
+/** Gap antar media saat ini — mengecil saat dicubit (foto menyatu). */
+const carouselGap = computed(() => CAROUSEL_GAP * pinchGapScale.value);
+
 /** Langkah geser antar media (lebar slide + gap). */
-const carouselStep = computed(() => carouselSlideWidth.value + CAROUSEL_GAP);
+const carouselStep = computed(() => carouselSlideWidth.value + carouselGap.value);
 
 /** Tinggi deretan mengikuti rasio media aktif — dianimasikan ala Threads. */
 const carouselViewportStyle = computed(() => {
@@ -795,17 +790,16 @@ const carouselViewportStyle = computed(() => {
 });
 
 const carouselTrackStyle = computed(() => ({
-  gap: `${CAROUSEL_GAP}px`,
+  gap: `${carouselGap.value.toFixed(2)}px`,
   transform: `translate3d(${Math.round(-carouselIndex.value * carouselStep.value + carouselDragX.value)}px, 0, 0)`,
-  transition: carouselDragging.value
-    ? 'none'
-    : 'transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1)',
+  transition:
+    carouselDragging.value || pinchActive.value
+      ? 'none'
+      : 'transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1), gap 240ms ease',
 }));
 
-function touchDistance(touches) {
-  const dx = touches[0].clientX - touches[1].clientX;
-  const dy = touches[0].clientY - touches[1].clientY;
-  return Math.hypot(dx, dy);
+function pointerDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 /** Catat rasio asli media supaya tinggi frame karosel pas (tanpa crop besar). */
@@ -822,10 +816,6 @@ function goToMedia(index) {
   carouselIndex.value = index;
 }
 
-function stepCarousel(dir) {
-  goToMedia(carouselIndex.value + dir);
-}
-
 function onSlideClick(index, evt) {
   if (carouselMoved.value) return; // barusan menggeser, bukan mengetuk
   if (index !== carouselIndex.value) {
@@ -835,28 +825,12 @@ function onSlideClick(index, evt) {
   openViewer(index, evt);
 }
 
-function onCarouselTouchStart(e) {
-  if (e.touches.length === 2) {
-    carouselPinchStart = touchDistance(e.touches);
-    carouselDragging.value = false;
-    carouselDragX.value = 0;
-    return;
-  }
-  if (e.touches.length !== 1) return;
+/** Akhiri cubit: kalau gap sudah hampir penuh menutup → buka viewer (foto menyatu). */
+function finishPinch() {
   carouselPinchStart = 0;
-  carouselDragging.value = true;
-  carouselMoved.value = false;
-  carouselStartX = e.touches[0].clientX;
-  carouselStartY = e.touches[0].clientY;
-  carouselDragX.value = 0;
-}
+  pinchActive.value = false;
 
-function onCarouselTouchMove(e) {
-  // Cubit dua jari → media "menyatu" jadi satu tampilan penuh.
-  if (carouselPinchStart && e.touches.length === 2) {
-    const scale = touchDistance(e.touches) / carouselPinchStart;
-    if (Math.abs(scale - 1) < 0.18) return;
-    carouselPinchStart = 0;
+  if (pinchGapScale.value <= 0.35) {
     const viewport = carouselViewportRef.value;
     let rect = null;
     if (viewport && typeof viewport.getBoundingClientRect === 'function') {
@@ -866,13 +840,58 @@ function onCarouselTouchMove(e) {
     viewerIndex.value = carouselIndex.value;
     viewerOriginRect.value = rect;
     viewerOpen.value = true;
+    // Gap dibiarkan tertutup selama viewer terbuka; dipulihkan saat closeViewer().
+  } else {
+    pinchGapScale.value = 1;
+  }
+}
+
+/* Drag dinamis via pointer events — jalan untuk sentuh DAN mouse. */
+function onCarouselPointerDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+  carouselPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (carouselPointers.size === 2) {
+    // Dua jari → mode cubit (foto menyatu).
+    const pts = [...carouselPointers.values()];
+    carouselPinchStart = pointerDistance(pts[0], pts[1]);
+    pinchWasActive = true;
+    pinchActive.value = true;
+    carouselMoved.value = true; // klik sisa dari gesture cubit jangan membuka viewer
+    carouselDragging.value = false;
+    carouselDragX.value = 0;
+    return;
+  }
+  if (carouselPointers.size !== 1) return;
+
+  carouselPinchStart = 0;
+  pinchWasActive = false;
+  carouselCaptured = false;
+  carouselDragging.value = true;
+  carouselMoved.value = false;
+  carouselStartX = e.clientX;
+  carouselStartY = e.clientY;
+  carouselDragX.value = 0;
+}
+
+function onCarouselPointerMove(e) {
+  if (carouselPointers.has(e.pointerId)) {
+    carouselPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+
+  // Cubit: gap antar foto menutup secara live → foto menyatu.
+  if (pinchWasActive && carouselPointers.size >= 2 && carouselPinchStart > 0) {
+    const pts = [...carouselPointers.values()];
+    const scale = pointerDistance(pts[0], pts[1]) / carouselPinchStart;
+    pinchGapScale.value = Math.max(0, Math.min(1, 1 - Math.abs(1 - scale) * 2.2));
     return;
   }
 
-  if (!carouselDragging.value || e.touches.length !== 1) return;
+  if (!carouselDragging.value) return;
 
-  const dx = e.touches[0].clientX - carouselStartX;
-  const dy = e.touches[0].clientY - carouselStartY;
+  const dx = e.clientX - carouselStartX;
+  const dy = e.clientY - carouselStartY;
 
   if (!carouselMoved.value) {
     if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
@@ -881,6 +900,16 @@ function onCarouselTouchMove(e) {
       return;
     }
     carouselMoved.value = true;
+    // Pointer capture dipasang saat drag benar-benar mulai (bukan saat tap),
+    // supaya event click pada foto tetap mengarah ke slide-nya.
+    if (!carouselCaptured) {
+      carouselCaptured = true;
+      try {
+        e.currentTarget?.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* pointer capture tidak tersedia — abaikan */
+      }
+    }
   }
 
   // Rubber band di ujung kiri/kanan.
@@ -892,9 +921,17 @@ function onCarouselTouchMove(e) {
   carouselDragX.value = drag;
 }
 
-function onCarouselTouchEnd(e) {
-  if (e.touches.length > 0) return;
-  carouselPinchStart = 0;
+function onCarouselPointerUp(e) {
+  carouselPointers.delete(e.pointerId);
+  carouselCaptured = false;
+
+  if (pinchWasActive) {
+    if (carouselPointers.size === 0) {
+      pinchWasActive = false;
+      finishPinch();
+    }
+    return;
+  }
 
   if (!carouselDragging.value) {
     carouselDragX.value = 0;
@@ -902,15 +939,57 @@ function onCarouselTouchEnd(e) {
   }
   carouselDragging.value = false;
 
-  const threshold = Math.min(90, carouselStep.value * 0.2);
-  const dx = carouselDragX.value;
-
-  if (dx <= -threshold) {
-    goToMedia(carouselIndex.value + 1);
-  } else if (dx >= threshold) {
-    goToMedia(carouselIndex.value - 1);
-  }
+  // Geser dinamis: bisa lompat beberapa media sekaligus sesuai jauhnya geseran.
+  const step = carouselStep.value || 1;
+  const raw = -carouselDragX.value / step;
+  let target = carouselIndex.value + Math.trunc(raw);
+  const frac = raw - Math.trunc(raw);
+  if (Math.abs(frac) >= 0.35) target += Math.sign(frac);
+  target = Math.max(0, Math.min(target, allMedia.value.length - 1));
+  carouselIndex.value = target;
   carouselDragX.value = 0;
+}
+
+function onCarouselPointerLeave(e) {
+  if (carouselCaptured) return; // drag berjalan dengan pointer capture — biarkan
+  carouselPointers.delete(e.pointerId);
+  if (carouselPointers.size === 0 && !pinchWasActive) {
+    carouselDragging.value = false;
+    carouselDragX.value = 0;
+  }
+}
+
+/** Cubit di trackpad/laptop (ctrl+wheel) — efek menyatu yang sama. */
+function onCarouselWheel(e) {
+  if (!e.ctrlKey && !e.metaKey) return; // gulir biasa → biarkan scroll halaman
+  e.preventDefault();
+
+  trackpadPinchAccum += e.deltaY;
+  pinchActive.value = true;
+  const magnitude = Math.min(1, Math.abs(trackpadPinchAccum) / 160);
+  pinchGapScale.value = Math.max(0, 1 - magnitude);
+
+  if (trackpadPinchTimer) clearTimeout(trackpadPinchTimer);
+  trackpadPinchTimer = setTimeout(() => {
+    trackpadPinchTimer = null;
+    trackpadPinchAccum = 0;
+    finishPinch();
+  }, 200);
+}
+
+/** Cubit trackpad Safari (gesture events) — efek menyatu yang sama. */
+function onCarouselGesture(e) {
+  if (typeof e.preventDefault === 'function') e.preventDefault();
+  pinchActive.value = true;
+  const scale = typeof e.scale === 'number' && e.scale > 0 ? e.scale : 1;
+  const magnitude = Math.min(1, Math.abs(1 - scale) * 3);
+  pinchGapScale.value = Math.max(0, 1 - magnitude);
+
+  if (trackpadPinchTimer) clearTimeout(trackpadPinchTimer);
+  trackpadPinchTimer = setTimeout(() => {
+    trackpadPinchTimer = null;
+    finishPinch();
+  }, 200);
 }
 
 onMounted(() => {
@@ -930,6 +1009,10 @@ onBeforeUnmount(() => {
     carouselResizeObserver.disconnect();
     carouselResizeObserver = null;
   }
+  if (trackpadPinchTimer) {
+    clearTimeout(trackpadPinchTimer);
+    trackpadPinchTimer = null;
+  }
 });
 
 /** Reset posisi karosel saat daftar media berubah (mis. setelah edit fess). */
@@ -937,6 +1020,10 @@ watch(allMedia, () => {
   carouselIndex.value = 0;
   carouselDragX.value = 0;
   mediaRatios.value = {};
+  pinchGapScale.value = 1;
+  pinchActive.value = false;
+  carouselPointers.clear();
+  pinchWasActive = false;
 });
 
 /* 3. SHARE MENU & TOAST */
@@ -2113,7 +2200,15 @@ function formatCount(num) {
   min-height: 150px;
   overflow: hidden;
   touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
   transition: height 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.carousel-viewport:active,
+.carousel-viewport:active .carousel-slide {
+  cursor: grabbing;
 }
 
 .carousel-track {
@@ -2131,12 +2226,19 @@ function formatCount(num) {
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
-  cursor: pointer;
   background: #000;
+  transition: border-radius 220ms ease, border-color 220ms ease;
+  cursor: grab;
 }
 
 .carousel-slide-hidden {
   opacity: 0;
+}
+
+/* Saat dicubit: foto menyatu — gap dan sudut hilang, jadi satu deretan utuh. */
+.carousel-viewport.carousel-merging .carousel-slide {
+  border-radius: 0;
+  border-color: transparent;
 }
 
 .carousel-media-element {
@@ -2144,6 +2246,8 @@ function formatCount(num) {
   height: 100%;
   object-fit: cover;
   display: block;
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 .carousel-play-badge {
@@ -2178,43 +2282,7 @@ function formatCount(num) {
   pointer-events: none;
 }
 
-/* Panah navigasi (muncul saat hover, ala Threads web) */
-.carousel-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(15, 17, 24, 0.55);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #fff;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 3;
-  display: none;
-  transition: background 0.15s ease;
-}
 
-.carousel-nav:hover {
-  background: rgba(15, 17, 24, 0.85);
-}
-
-.carousel-nav.prev {
-  left: 8px;
-}
-
-.carousel-nav.next {
-  right: 8px;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .carousel-nav {
-    display: flex;
-  }
-}
 
 @media (max-width: 600px) {
   .fess-feed-card {
