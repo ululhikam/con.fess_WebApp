@@ -29,6 +29,9 @@
         </transition>
       </router-view>
     </template>
+
+    <!-- Dialog global bertema app — pengganti alert()/confirm() bawaan browser -->
+    <AppDialogHost />
   </div>
 </template>
 
@@ -36,6 +39,7 @@
 import { ref, onErrorCaptured, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AppStateView from './components/ui/AppStateView.vue';
+import AppDialogHost from './components/ui/AppDialogHost.vue';
 
 const router = useRouter();
 const isNavigating = ref(false);

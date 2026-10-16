@@ -174,6 +174,7 @@ import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases } from '../composables/useBases';
 import { useInfiniteScroll } from '../composables/useInfiniteScroll';
 import { useVisibilityRefresh } from '../composables/useVisibilityRefresh';
+import { alertDialog, confirmDialog } from '../composables/useAppDialog';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 
@@ -296,15 +297,22 @@ function toggleLikePost(payload) {
  */
 async function handleTakeDownFess(id) {
   if (!id) return;
-  const confirmed = window.confirm(
-    'Take down fess ini? Fess akan dihapus dari feed dan tidak bisa dikembalikan.'
-  );
+  const confirmed = await confirmDialog({
+    title: 'Take Down Fess',
+    message: 'Take down fess ini? Fess akan dihapus dari feed dan tidak bisa dikembalikan.',
+    confirmLabel: 'Take Down',
+    variant: 'danger',
+  });
   if (!confirmed) return;
   try {
     await api.deleteFess(id);
     await reloadHomeFeed();
   } catch (e) {
-    window.alert(e?.message || 'Gagal melakukan take down. Coba lagi.');
+    await alertDialog({
+      title: 'Take Down Gagal',
+      message: e?.message || 'Gagal melakukan take down. Coba lagi.',
+      variant: 'danger',
+    });
   }
 }
 

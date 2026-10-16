@@ -523,6 +523,7 @@ import { useTheme } from '../../composables/useTheme';
 import { api } from '../../api';
 import { mapFessToPost } from '../../utils/fessMapper';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
+import { confirmDialog } from '../../composables/useAppDialog';
 import BaseAdminPanels from './BaseAdminPanels.vue';
 import AdminFessCard from './AdminFessCard.vue';
 
@@ -753,9 +754,13 @@ async function rejectFess(id) {
  * Konfirmasi dulu karena permanen; backend mencatat audit + notif author.
  */
 async function takeDownFess(id) {
-  if (!window.confirm('Take down fess ini? Fess akan dihapus dan tidak bisa dikembalikan.')) {
-    return;
-  }
+  const confirmed = await confirmDialog({
+    title: 'Take Down Fess',
+    message: 'Take down fess ini? Fess akan dihapus dan tidak bisa dikembalikan.',
+    confirmLabel: 'Take Down',
+    variant: 'danger',
+  });
+  if (!confirmed) return;
   actionError.value = '';
   try {
     await api.deleteFess(id);
