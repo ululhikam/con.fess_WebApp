@@ -164,17 +164,22 @@ export const useAuthStore = defineStore('auth', {
     clearSession() {
       this.user = null;
       this.token = null;
-      localStorage.removeItem('fess_user');
-      localStorage.removeItem('fess_token');
+      try {
+        localStorage.removeItem('fess_user');
+        localStorage.removeItem('fess_token');
+        sessionStorage.clear();
+      } catch {
+        // Storage not available
+      }
     },
 
     async logout() {
+      this.clearSession();
       try {
         await api.logout();
       } catch {
         // Session is cleared locally even if the server call fails.
       }
-      this.clearSession();
     },
   },
 });

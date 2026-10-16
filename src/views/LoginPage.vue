@@ -272,14 +272,14 @@ const GOOGLE_ERROR_MESSAGES = {
 };
 
 /**
- * Handle the JWT handed back by the backend Google callback
- * (`/login?google=1&token=…`) and surface OAuth failures.
+ * Handle the JWT handed back by the backend Google/Instagram callback
+ * (`/login?google=1&token=…` or `/login?instagram=1&token=…`) and surface OAuth failures.
  */
 onMounted(async () => {
-  const { token, error, google, ...rest } = route.query;
+  const { token, error, google, instagram, ...rest } = route.query;
 
   if (typeof error === 'string' && error) {
-    googleError.value = GOOGLE_ERROR_MESSAGES[error] || 'Login Google gagal. Coba lagi.';
+    googleError.value = GOOGLE_ERROR_MESSAGES[error] || decodeURIComponent(error) || 'Login gagal. Coba lagi.';
   }
 
   if (typeof token === 'string' && token) {
@@ -288,13 +288,13 @@ onMounted(async () => {
       const user = await authStore.loginWithToken(token);
       await redirectRole(user?.role || 'User');
     } catch (err) {
-      console.error('Login dengan token Google gagal:', err);
-      googleError.value = 'Sesi Google tidak valid. Silakan coba lagi.';
+      console.error('Login dengan token OAuth gagal:', err);
+      googleError.value = 'Sesi login tidak valid. Silakan coba lagi.';
       await router.replace({ path: route.path, query: rest });
     } finally {
       isSubmitting.value = false;
     }
-  } else if (error || google) {
+  } else if (error || google || instagram) {
     await router.replace({ path: route.path, query: rest });
   }
 });
@@ -459,7 +459,8 @@ const registerBaseTarget = computed(() => ({ path: '/register/base', query: rout
 
 .social-login {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .btn-google {

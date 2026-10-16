@@ -127,8 +127,18 @@ const router = createRouter({
 });
 
 /** Global guard: auth -> base-admin onboarding gate -> role separation -> title. */
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
+
+  // Ingest token dari OAuth redirect (Google / Instagram) secara instan jika ada di query URL
+  if (to.query.token && typeof to.query.token === 'string') {
+    try {
+      await authStore.loginWithToken(to.query.token);
+    } catch (e) {
+      console.warn('[Router Guard] Gagal autentikasi token dari query URL:', e);
+    }
+  }
+
   const userRole = authStore.user?.role;
   const hasManagedBase = (authStore.user?.managedBases?.length ?? 0) > 0;
   const needsBaseOnboarding = userRole === 'Base Admin' && !hasManagedBase;

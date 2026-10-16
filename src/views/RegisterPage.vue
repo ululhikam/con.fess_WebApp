@@ -167,22 +167,44 @@
           </div>
 
           <div class="medsos-input-row mt-3">
-            <label for="ig-username" class="visually-hidden">Username Instagram</label>
-            <input
-              id="ig-username"
-              v-model="form.igAccount"
-              type="text"
-              placeholder="@username_ig_base"
-              class="form-input text-xs"
-            />
             <button
+              v-if="!igConnected"
               type="button"
-              class="btn-connect-action"
-              :class="{ 'btn-connected': igConnected }"
+              class="btn-meta-oauth"
+              @click="handleInstagramOAuth"
+            >
+              <Instagram :size="15" />
+              <span>Konek ke Instagram via Meta OAuth</span>
+            </button>
+            <button
+              v-else
+              type="button"
+              class="btn-meta-oauth-connected"
               @click="toggleConnectIg"
             >
-              {{ igConnected ? 'Terputus' : 'Hubungkan' }}
+              <span>✓ Terhubung ({{ form.igAccount }}) — Putuskan</span>
             </button>
+          </div>
+
+          <div class="manual-ig-row mt-2">
+            <label for="ig-username" class="text-xs text-muted block mb-1">Atau masukkan handle manual:</label>
+            <div class="flex gap-2">
+              <input
+                id="ig-username"
+                v-model="form.igAccount"
+                type="text"
+                placeholder="@username_ig_base"
+                class="form-input text-xs"
+              />
+              <button
+                type="button"
+                class="btn-connect-action"
+                :class="{ 'btn-connected': igConnected }"
+                @click="toggleConnectIg"
+              >
+                {{ igConnected ? 'Tersimpan' : 'Set Handle' }}
+              </button>
+            </div>
           </div>
 
           <!-- Feature Highlights of Instagram Link -->
@@ -330,8 +352,8 @@
  *
  * After completion: redirects straight to the Admin Base Home (/base-admin).
  */
-import { ref, computed, reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, reactive, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import {
   ArrowRight,
   ArrowLeft,
@@ -346,9 +368,10 @@ import {
 import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
-import { googleAuthUrl } from '../api';
+import { googleAuthUrl, instagramAuthUrl } from '../api';
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 
 const STEPS = [
@@ -356,6 +379,8 @@ const STEPS = [
   { step: 2, label: 'Instagram' },
   { step: 3, label: 'Profil Base' },
 ];
+
+const DRAFT_KEY = 'fess_base_register_draft';
 
 const currentStep = ref(1);
 const isSubmitting = ref(false);
@@ -473,6 +498,27 @@ function handleGoogleRegister() {
   window.location.href = googleAuthUrl('Base Admin');
 }
 
+function handleInstagramOAuth() {
+  try {
+    sessionStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        step: 2,
+        form: { ...form },
+      })
+    );
+  } catch {
+    // Ignored
+  }
+
+  const token = localStorage.getItem('fess_token') || '';
+  window.location.href = instagramAuthUrl({
+    token,
+    base: form.handle || '',
+    origin: 'register',
+  });
+}
+
 function toggleConnectIg() {
   igConnected.value = !igConnected.value;
 }
@@ -499,6 +545,12 @@ async function handleCompleteRegister() {
       igAccount: form.igAccount.trim(),
     });
 
+    try {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // Ignored
+    }
+
     // Langsung diarahkan ke Home Admin Base!
     await router.push('/base-admin');
   } catch (err) {
@@ -507,6 +559,38 @@ async function handleCompleteRegister() {
     isSubmitting.value = false;
   }
 }
+
+onMounted(() => {
+  // Restore draft if returning from OAuth
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.form) Object.assign(form, parsed.form);
+      if (parsed?.step) currentStep.value = parsed.step;
+    }
+  } catch {
+    // Ignored
+  }
+
+  const query = route.query;
+  if (query.ig_connected === 'true') {
+    igConnected.value = true;
+    if (query.ig_user) {
+      form.igAccount = String(query.ig_user);
+    }
+    currentStep.value = 2;
+    try {
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // Ignored
+    }
+  }
+
+  if (query.ig_connected || query.error || query.ig_user || query.token) {
+    router.replace({ path: route.path, query: {} }).catch(() => {});
+  }
+});
 </script>
 
 <style scoped>
@@ -705,6 +789,50 @@ async function handleCompleteRegister() {
 .medsos-input-row {
   display: flex;
   gap: 8px;
+}
+
+.btn-meta-oauth {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(225, 48, 108, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-meta-oauth:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(225, 48, 108, 0.45);
+}
+
+.btn-meta-oauth-connected {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-meta-oauth-connected:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: #f87171;
+  color: #f87171;
 }
 
 .btn-connect-action {

@@ -119,3 +119,18 @@ export function googleAuthUrl(role = '') {
   // Browser redirect OAuth tidak bisa lewat Vite proxy — harus langsung ke backend.
   return `${backendUrl}/api/auth/google${query}`;
 }
+
+/**
+ * Absolute URL that starts the Meta Instagram OAuth flow.
+ * Passes token (if logged in), optional base handle, and origin context
+ * ('onboarding', 'register', or 'connections').
+ */
+export function instagramAuthUrl({ token = '', base = '', origin = 'connections' } = {}) {
+  const params = new URLSearchParams();
+  if (token) params.set('token', token);
+  if (base) params.set('base', base);
+  if (origin) params.set('origin', origin);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return `${backendUrl}/api/auth/instagram${qs}`;
+}
+
