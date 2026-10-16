@@ -523,8 +523,8 @@
                     class="ig-card-strip-img"
                   />
                 </div>
-                <p v-if="igCardUrls.length > 1" class="ig-card-strip-note">
-                  {{ igCardUrls.length }} card • diposting sebagai carousel Instagram
+                <p v-if="igCardUrls.length > 1 || igMediaCount > 0" class="ig-card-strip-note">
+                  {{ igCarouselSummary }}
                 </p>
 
                 <!-- Action Buttons -->
@@ -813,6 +813,20 @@ const igCardUrls = computed(() => {
   return single ? [single] : [];
 });
 
+/** Jumlah media user (gambar/video) yang ikut diposting ke Instagram. */
+const igMediaCount = computed(() => {
+  const n = Number(igPostData.value?.media_count);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+});
+
+/** Ringkasan isi carousel: jumlah card + media user. */
+const igCarouselSummary = computed(() => {
+  const parts = [];
+  if (igCardUrls.value.length > 1) parts.push(`${igCardUrls.value.length} card`);
+  if (igMediaCount.value > 0) parts.push(`${igMediaCount.value} media`);
+  return `${parts.join(' + ')} • diposting sebagai carousel Instagram`;
+});
+
 async function openInstagramStoryAutoPost() {
   showInstagramModal.value = true;
   igPostLoading.value = true;
@@ -827,9 +841,10 @@ async function openInstagramStoryAutoPost() {
     if (igPostData.value?.meta_published) {
       props.post.postedToIg = true;
       const cardCount = igCardUrls.value.length;
+      const mediaCount = igMediaCount.value;
       triggerToast(
-        cardCount > 1
-          ? `Card fess berhasil diposting ke Instagram Feed (carousel ${cardCount} card)!`
+        cardCount > 1 || mediaCount > 0
+          ? `Card fess berhasil diposting ke Instagram Feed (carousel: ${cardCount} card${mediaCount > 0 ? ` + ${mediaCount} media` : ''})!`
           : 'Card fess berhasil diposting ke Instagram Feed!'
       );
     } else {
