@@ -86,60 +86,97 @@
     <div class="card-body-text">
       <p class="post-body-content">{{ post.content }}</p>
 
-      <!-- Media Attachments — kolase menyatu gaya X/Threads (foto + video) -->
-      <div
-        v-if="hasMedia"
-        class="card-media-collage"
-        :class="`collage-layout-${Math.min(allMedia.length, 4)}`"
-        title="Ketuk untuk lihat • cubit untuk menyatukan"
-        @touchstart.passive="onCollageTouchStart"
-        @touchmove="onCollageTouchMove"
-        @touchend.passive="onCollageTouchEnd"
-        @touchcancel.passive="onCollageTouchEnd"
-      >
+      <!-- Karosel Media — gaya X/Threads: geser untuk lihat foto/video lainnya -->
+      <div v-if="hasMedia" class="card-media-carousel">
         <div
-          v-for="(item, mediaIdx) in allMedia.slice(0, 4)"
-          :key="`media-${mediaIdx}`"
-          class="collage-tile"
-          :class="{ 'collage-tile-hidden': viewerOpen && viewerIndex === mediaIdx }"
-          :data-media-index="mediaIdx"
-          role="button"
-          tabindex="0"
-          :aria-label="`Buka media ${mediaIdx + 1} dari ${allMedia.length}`"
-          @click.stop="openViewer(mediaIdx, $event)"
-          @keydown.enter.stop="openViewer(mediaIdx, $event)"
+          ref="carouselViewportRef"
+          class="carousel-viewport"
+          :style="carouselViewportStyle"
+          @touchstart.passive="onCarouselTouchStart"
+          @touchmove="onCarouselTouchMove"
+          @touchend.passive="onCarouselTouchEnd"
+          @touchcancel.passive="onCarouselTouchEnd"
         >
-          <img
-            v-if="item.type === 'image'"
-            :src="item.url"
-            :alt="item.caption || `Media ${mediaIdx + 1}`"
-            loading="lazy"
-            class="collage-media-element"
-          />
-          <template v-else>
-            <img
-              v-if="item.thumbnail"
-              :src="item.thumbnail"
-              :alt="item.caption || `Video ${mediaIdx + 1}`"
-              loading="lazy"
-              class="collage-media-element"
-            />
-            <video
-              v-else
-              :src="item.url"
-              class="collage-media-element"
-              preload="metadata"
-              muted
-              playsinline
-            />
-            <span class="collage-play-badge">
-              <Play :size="15" fill="currentColor" />
-            </span>
-            <span v-if="item.duration" class="collage-duration-pill">{{ item.duration }}</span>
-          </template>
+          <div class="carousel-track" :style="carouselTrackStyle">
+            <div
+              v-for="(item, mediaIdx) in allMedia"
+              :key="`media-${mediaIdx}`"
+              class="carousel-slide"
+              :class="{ 'carousel-slide-hidden': viewerOpen && viewerIndex === mediaIdx }"
+              :data-media-index="mediaIdx"
+              role="button"
+              tabindex="0"
+              :aria-label="`Buka media ${mediaIdx + 1} dari ${allMedia.length}`"
+              @click.stop="onSlideClick(mediaIdx, $event)"
+              @keydown.enter.stop="openViewer(mediaIdx, $event)"
+            >
+              <img
+                v-if="item.type === 'image'"
+                :src="item.url"
+                :alt="item.caption || `Media ${mediaIdx + 1}`"
+                :loading="mediaIdx < 2 ? 'eager' : 'lazy'"
+                class="carousel-media-element"
+                @load="recordMediaRatio(mediaIdx, $event.target)"
+              />
+              <template v-else>
+                <img
+                  v-if="item.thumbnail"
+                  :src="item.thumbnail"
+                  :alt="item.caption || `Video ${mediaIdx + 1}`"
+                  :loading="mediaIdx < 2 ? 'eager' : 'lazy'"
+                  class="carousel-media-element"
+                  @load="recordMediaRatio(mediaIdx, $event.target)"
+                />
+                <video
+                  v-else
+                  :src="item.url"
+                  class="carousel-media-element"
+                  preload="metadata"
+                  muted
+                  playsinline
+                  @loadedmetadata="recordMediaRatio(mediaIdx, $event.target)"
+                />
+                <span class="carousel-play-badge">
+                  <Play :size="17" fill="currentColor" />
+                </span>
+                <span v-if="item.duration" class="carousel-duration-pill">{{ item.duration }}</span>
+              </template>
+            </div>
+          </div>
 
-          <div v-if="mediaIdx === 3 && allMedia.length > 4" class="collage-more-overlay">
-            <span>+{{ allMedia.length - 4 }}</span>
+          <!-- Panah navigasi (hanya tampil saat hover di desktop) -->
+          <button
+            v-if="carouselIndex > 0"
+            type="button"
+            class="carousel-nav prev"
+            title="Sebelumnya"
+            aria-label="Media sebelumnya"
+            @click.stop="stepCarousel(-1)"
+          >
+            <ChevronLeft :size="18" />
+          </button>
+          <button
+            v-if="carouselIndex < allMedia.length - 1"
+            type="button"
+            class="carousel-nav next"
+            title="Selanjutnya"
+            aria-label="Media berikutnya"
+            @click.stop="stepCarousel(1)"
+          >
+            <ChevronRight :size="18" />
+          </button>
+
+          <!-- Titik navigasi ala Threads -->
+          <div v-if="allMedia.length > 1" class="carousel-dots">
+            <button
+              v-for="(_, dotIdx) in allMedia"
+              :key="`dot-${dotIdx}`"
+              type="button"
+              class="carousel-dot"
+              :class="{ active: dotIdx === carouselIndex }"
+              :aria-label="`Ke media ${dotIdx + 1}`"
+              @click.stop="goToMedia(dotIdx)"
+            />
           </div>
         </div>
       </div>
@@ -517,7 +554,7 @@
  *  - 100% theme-token bound (--shell-card, --shell-border, --shell-text, --shell-sub-accent)
  *  - Zero emojis, Lucide SVG icons only.
  */
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Heart,
@@ -536,6 +573,8 @@ import {
   X,
   Quote,
   Play,
+  ChevronLeft,
+  ChevronRight,
   ShieldAlert,
   Trash2,
   Download,
@@ -685,11 +724,11 @@ const viewerIndex = ref(0);
 const viewerOriginRect = ref(null);
 const cardRootRef = ref(null);
 
-/** Rect tile media di kolase (untuk animasi "menyatu" buka/tutup viewer). */
+/** Rect slide media di karosel (untuk animasi "menyatu" buka/tutup viewer). */
 function resolveMediaOrigin(index) {
   const root = cardRootRef.value;
   if (!root || typeof root.querySelector !== 'function') return null;
-  const el = root.querySelector(`[data-media-index="${Math.min(index, 3)}"]`);
+  const el = root.querySelector(`[data-media-index="${index}"]`);
   if (!el) return null;
   const r = el.getBoundingClientRect();
   return { left: r.left, top: r.top, width: r.width, height: r.height };
@@ -722,8 +761,43 @@ function closeViewer() {
   viewerOpen.value = false;
 }
 
-/* CUBIT (pinch) di kolase: dua jari → semua media "menyatu" jadi satu tampilan */
-let collagePinchStart = 0;
+/* KAROSEL MEDIA (gaya X/Threads): geser antar media, tinggi mengikuti rasio asli */
+const carouselIndex = ref(0);
+const carouselDragX = ref(0);
+const carouselDragging = ref(false);
+const carouselMoved = ref(false);
+const carouselViewportRef = ref(null);
+const carouselWidth = ref(0);
+const mediaRatios = ref({});
+
+let carouselStartX = 0;
+let carouselStartY = 0;
+let carouselPinchStart = 0;
+let carouselResizeObserver = null;
+
+/** Rasio media aktif (dibatasi 4:5 – 1.91:1 seperti standar feed). */
+const activeRatio = computed(() => {
+  const raw = Number(mediaRatios.value[carouselIndex.value]);
+  const ratio = Number.isFinite(raw) && raw > 0 ? raw : 0.8;
+  return Math.min(1.91, Math.max(0.8, ratio));
+});
+
+/** Tinggi frame mengikuti rasio media aktif — dianimasikan ala Threads. */
+const carouselViewportStyle = computed(() => {
+  const w = carouselWidth.value;
+  if (w <= 0) return {};
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const cap = Math.min(560, Math.max(320, vh * 0.8));
+  const h = Math.min(cap, Math.max(180, w / activeRatio.value));
+  return { height: `${Math.round(h)}px` };
+});
+
+const carouselTrackStyle = computed(() => ({
+  transform: `translate3d(calc(${-carouselIndex.value * 100}% + ${carouselDragX.value}px), 0, 0)`,
+  transition: carouselDragging.value
+    ? 'none'
+    : 'transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1)',
+}));
 
 function touchDistance(touches) {
   const dx = touches[0].clientX - touches[1].clientX;
@@ -731,32 +805,133 @@ function touchDistance(touches) {
   return Math.hypot(dx, dy);
 }
 
-function onCollageTouchStart(e) {
-  collagePinchStart = e.touches && e.touches.length === 2 ? touchDistance(e.touches) : 0;
-}
-
-function onCollageTouchMove(e) {
-  if (!collagePinchStart || !e.touches || e.touches.length !== 2) return;
-  const scale = touchDistance(e.touches) / collagePinchStart;
-  if (Math.abs(scale - 1) < 0.18) return;
-
-  // Menyatu: buka viewer dengan animasi dari kotak kolase → satu media.
-  collagePinchStart = 0;
-  const card =
-    e.currentTarget || (e.target && e.target.closest ? e.target.closest('.card-media-collage') : null);
-  let rect = null;
-  if (card && typeof card.getBoundingClientRect === 'function') {
-    const r = card.getBoundingClientRect();
-    rect = { left: r.left, top: r.top, width: r.width, height: r.height };
+/** Catat rasio asli media supaya tinggi frame karosel pas (tanpa crop besar). */
+function recordMediaRatio(index, el) {
+  const w = (el && (el.naturalWidth || el.videoWidth)) || 0;
+  const h = (el && (el.naturalHeight || el.videoHeight)) || 0;
+  if (w > 0 && h > 0 && !mediaRatios.value[index]) {
+    mediaRatios.value = { ...mediaRatios.value, [index]: w / h };
   }
-  viewerIndex.value = 0;
-  viewerOriginRect.value = rect;
-  viewerOpen.value = true;
 }
 
-function onCollageTouchEnd(e) {
-  if (!e.touches || e.touches.length < 2) collagePinchStart = 0;
+function goToMedia(index) {
+  if (index < 0 || index > allMedia.value.length - 1) return;
+  carouselIndex.value = index;
 }
+
+function stepCarousel(dir) {
+  goToMedia(carouselIndex.value + dir);
+}
+
+function onSlideClick(index, evt) {
+  if (carouselMoved.value) return; // barusan menggeser, bukan mengetuk
+  openViewer(index, evt);
+}
+
+function onCarouselTouchStart(e) {
+  if (e.touches.length === 2) {
+    carouselPinchStart = touchDistance(e.touches);
+    carouselDragging.value = false;
+    carouselDragX.value = 0;
+    return;
+  }
+  if (e.touches.length !== 1) return;
+  carouselPinchStart = 0;
+  carouselDragging.value = true;
+  carouselMoved.value = false;
+  carouselStartX = e.touches[0].clientX;
+  carouselStartY = e.touches[0].clientY;
+  carouselDragX.value = 0;
+}
+
+function onCarouselTouchMove(e) {
+  // Cubit dua jari → media "menyatu" jadi satu tampilan penuh.
+  if (carouselPinchStart && e.touches.length === 2) {
+    const scale = touchDistance(e.touches) / carouselPinchStart;
+    if (Math.abs(scale - 1) < 0.18) return;
+    carouselPinchStart = 0;
+    const viewport = carouselViewportRef.value;
+    let rect = null;
+    if (viewport && typeof viewport.getBoundingClientRect === 'function') {
+      const r = viewport.getBoundingClientRect();
+      rect = { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+    viewerIndex.value = carouselIndex.value;
+    viewerOriginRect.value = rect;
+    viewerOpen.value = true;
+    return;
+  }
+
+  if (!carouselDragging.value || e.touches.length !== 1) return;
+
+  const dx = e.touches[0].clientX - carouselStartX;
+  const dy = e.touches[0].clientY - carouselStartY;
+
+  if (!carouselMoved.value) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    if (Math.abs(dy) > Math.abs(dx)) {
+      carouselDragging.value = false; // serahkan ke scroll vertikal halaman
+      return;
+    }
+    carouselMoved.value = true;
+  }
+
+  // Rubber band di ujung kiri/kanan.
+  let drag = dx;
+  const atStart = carouselIndex.value === 0 && dx > 0;
+  const atEnd = carouselIndex.value === allMedia.value.length - 1 && dx < 0;
+  if (atStart || atEnd) drag = dx * 0.35;
+
+  carouselDragX.value = drag;
+}
+
+function onCarouselTouchEnd(e) {
+  if (e.touches.length > 0) return;
+  carouselPinchStart = 0;
+
+  if (!carouselDragging.value) {
+    carouselDragX.value = 0;
+    return;
+  }
+  carouselDragging.value = false;
+
+  const width = carouselViewportRef.value?.clientWidth || 300;
+  const threshold = Math.min(90, width * 0.18);
+  const dx = carouselDragX.value;
+
+  if (dx <= -threshold) {
+    goToMedia(carouselIndex.value + 1);
+  } else if (dx >= threshold) {
+    goToMedia(carouselIndex.value - 1);
+  }
+  carouselDragX.value = 0;
+}
+
+onMounted(() => {
+  const el = carouselViewportRef.value;
+  if (el) carouselWidth.value = el.clientWidth;
+  if (el && typeof ResizeObserver !== 'undefined') {
+    carouselResizeObserver = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect?.width || 0;
+      if (w > 0) carouselWidth.value = w;
+    });
+    carouselResizeObserver.observe(el);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (carouselResizeObserver) {
+    carouselResizeObserver.disconnect();
+    carouselResizeObserver = null;
+  }
+});
+
+/** Reset posisi karosel saat daftar media berubah (mis. setelah edit fess). */
+watch(allMedia, () => {
+  carouselIndex.value = 0;
+  carouselDragX.value = 0;
+  mediaRatios.value = {};
+});
 
 /* 3. SHARE MENU & TOAST */
 const showShareMenu = ref(false);
@@ -1920,89 +2095,60 @@ function formatCount(num) {
   cursor: not-allowed;
 }
 
-/* Kolase Media (gaya X/Threads — foto + video menyatu) */
-.card-media-collage {
+/* Karosel Media (gaya X/Threads — tinggi mengikuti rasio asli, geser antar media) */
+.card-media-carousel {
+  position: relative;
   margin-top: 10px;
   border-radius: 16px;
   overflow: hidden;
-  display: grid;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
-  touch-action: pan-y;
+  background: #000;
 }
 
-.collage-tile {
+.carousel-viewport {
   position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  touch-action: pan-y;
+  transition: height 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.carousel-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.carousel-slide {
+  position: relative;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   cursor: pointer;
   background: #000;
-  min-width: 0;
-  min-height: 0;
 }
 
-.collage-tile-hidden {
+.carousel-slide-hidden {
   opacity: 0;
 }
 
-/* 1 media — rasio 4:5 seperti X/Threads */
-.collage-layout-1 {
-  grid-template-columns: 1fr;
-}
-
-.collage-layout-1 .collage-tile {
-  aspect-ratio: 4 / 5;
-  max-height: 470px;
-}
-
-/* 2 media — berdampingan */
-.collage-layout-2 {
-  grid-template-columns: 1fr 1fr;
-}
-
-.collage-layout-2 .collage-tile {
-  aspect-ratio: 1 / 1;
-}
-
-/* 3 media — kiri besar, kanan dua kecil */
-.collage-layout-3 {
-  grid-template-columns: 1.45fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  aspect-ratio: 16 / 11;
-}
-
-.collage-layout-3 .collage-tile:first-child {
-  grid-row: span 2;
-}
-
-/* 4+ media — kotak 2x2 */
-.collage-layout-4 {
-  grid-template-columns: 1fr 1fr;
-}
-
-.collage-layout-4 .collage-tile {
-  aspect-ratio: 1 / 1;
-}
-
-.collage-media-element {
+.carousel-media-element {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.25s ease;
 }
 
-.collage-tile:hover .collage-media-element {
-  transform: scale(1.03);
-}
-
-.collage-play-badge {
+.carousel-play-badge {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(6px);
@@ -2015,7 +2161,7 @@ function formatCount(num) {
   pointer-events: none;
 }
 
-.collage-duration-pill {
+.carousel-duration-pill {
   position: absolute;
   right: 8px;
   bottom: 8px;
@@ -2028,17 +2174,72 @@ function formatCount(num) {
   pointer-events: none;
 }
 
-.collage-more-overlay {
+/* Titik navigasi ala Threads */
+.carousel-dots {
   position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
+  left: 0;
+  right: 0;
+  bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
+  z-index: 3;
+}
+
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.carousel-dot.active {
+  background: #fff;
+  transform: scale(1.25);
+}
+
+/* Panah navigasi (muncul saat hover, ala Threads web) */
+.carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(15, 17, 24, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   color: #fff;
-  font-size: 22px;
-  font-weight: 800;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  display: none;
+  transition: background 0.15s ease;
+}
+
+.carousel-nav:hover {
+  background: rgba(15, 17, 24, 0.85);
+}
+
+.carousel-nav.prev {
+  left: 8px;
+}
+
+.carousel-nav.next {
+  right: 8px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .carousel-nav {
+    display: flex;
+  }
 }
 
 @media (max-width: 600px) {
