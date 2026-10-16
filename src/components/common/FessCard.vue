@@ -735,10 +735,10 @@ function closeViewer() {
 /* KAROSEL MEDIA (gaya X/Threads): foto berjejer horizontal, berikutnya mengintip */
 const CAROUSEL_GAP = 8; // jarak antar media di deretan (px)
 
-const carouselIndex = ref(0);
-const carouselDragX = ref(0);
+const carouselOffset = ref(0); // posisi geser bebas (px) — bisa berhenti di mana saja
 const carouselDragging = ref(false);
 const carouselMoved = ref(false);
+const carouselWheelActive = ref(false);
 const carouselViewportRef = ref(null);
 const carouselWidth = ref(0);
 const mediaRatios = ref({});
@@ -749,11 +749,16 @@ const pinchActive = ref(false);
 const carouselPointers = new Map(); // pointerId → { x, y }
 let carouselStartX = 0;
 let carouselStartY = 0;
+let carouselStartOffset = 0;
 let carouselPinchStart = 0;
 let carouselCaptured = false;
 let pinchWasActive = false;
+let pointerVelocity = 0; // px/ms (positif = jari bergerak ke kanan)
+let lastPointerX = 0;
+let lastPointerTime = 0;
 let trackpadPinchAccum = 0;
 let trackpadPinchTimer = null;
+let carouselWheelTimer = null;
 let carouselResizeObserver = null;
 
 /** Rasio media aktif (dibatasi 4:5 – 1.91:1 seperti standar feed). */
@@ -766,6 +771,7 @@ const activeRatio = computed(() => {
 /** Lebar tiap media — tidak penuh agar media berikutnya mengintip di kanan. */
 const carouselSlideWidth = computed(() => {
   if (carouselWidth.value <= 0) return 0;
+  if (allMedia.value.length <= 1) return carouselWidth.value; // media tunggal: penuh
   const peek = Math.min(72, Math.max(44, carouselWidth.value * 0.16));
   return Math.max(120, carouselWidth.value - peek);
 });
@@ -775,6 +781,21 @@ const carouselGap = computed(() => CAROUSEL_GAP * pinchGapScale.value);
 
 /** Langkah geser antar media (lebar slide + gap). */
 const carouselStep = computed(() => carouselSlideWidth.value + carouselGap.value);
+
+/** Batas geser maksimum — deretan tidak bisa ditarik melewati ujung kanan. */
+const carouselMaxOffset = computed(() => {
+  const n = allMedia.value.length;
+  if (n <= 1 || carouselWidth.value <= 0) return 0;
+  const content = n * carouselSlideWidth.value + (n - 1) * carouselGap.value;
+  return Math.max(0, content - carouselWidth.value);
+});
+
+/** Media paling dekat dengan posisi geser saat ini (untuk tinggi frame & viewer). */
+const carouselIndex = computed(() => {
+  const step = carouselStep.value || 1;
+  const idx = Math.round(carouselOffset.value / step);
+  return Math.max(0, Math.min(idx, Math.max(0, allMedia.value.length - 1)));
+});
 
 /** Tinggi deretan mengikuti rasio media aktif — dianimasikan ala Threads. */
 const carouselViewportStyle = computed(() => {
@@ -791,11 +812,11 @@ const carouselViewportStyle = computed(() => {
 
 const carouselTrackStyle = computed(() => ({
   gap: `${carouselGap.value.toFixed(2)}px`,
-  transform: `translate3d(${Math.round(-carouselIndex.value * carouselStep.value + carouselDragX.value)}px, 0, 0)`,
+  transform: `translate3d(${Math.round(-carouselOffset.value)}px, 0, 0)`,
   transition:
-    carouselDragging.value || pinchActive.value
+    carouselDragging.value || pinchActive.value || carouselWheelActive.value
       ? 'none'
-      : 'transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1), gap 240ms ease',
+      : 'transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1), gap 240ms ease',
 }));
 
 function pointerDistance(a, b) {
@@ -811,15 +832,19 @@ function recordMediaRatio(index, el) {
   }
 }
 
+/** Pindahkan deretan supaya media ke-index berhenti di tepi kiri. */
 function goToMedia(index) {
   if (index < 0 || index > allMedia.value.length - 1) return;
-  carouselIndex.value = index;
+  const step = carouselStep.value || 1;
+  carouselOffset.value = Math.max(0, Math.min(index * step, carouselMaxOffset.value));
 }
 
 function onSlideClick(index, evt) {
   if (carouselMoved.value) return; // barusan menggeser, bukan mengetuk
-  if (index !== carouselIndex.value) {
-    goToMedia(index); // ketuk media yang mengintip di kanan → pindah ke sana
+  const step = carouselStep.value || 1;
+  const snapOffset = Math.min(index * step, carouselMaxOffset.value);
+  if (Math.abs(carouselOffset.value - snapOffset) > 2) {
+    goToMedia(index); // ketuk media lain yang terlihat → pindahkan ke tepi kiri
     return;
   }
   openViewer(index, evt);
@@ -860,7 +885,6 @@ function onCarouselPointerDown(e) {
     pinchActive.value = true;
     carouselMoved.value = true; // klik sisa dari gesture cubit jangan membuka viewer
     carouselDragging.value = false;
-    carouselDragX.value = 0;
     return;
   }
   if (carouselPointers.size !== 1) return;
@@ -872,7 +896,10 @@ function onCarouselPointerDown(e) {
   carouselMoved.value = false;
   carouselStartX = e.clientX;
   carouselStartY = e.clientY;
-  carouselDragX.value = 0;
+  carouselStartOffset = carouselOffset.value;
+  pointerVelocity = 0;
+  lastPointerX = e.clientX;
+  lastPointerTime = performance.now();
 }
 
 function onCarouselPointerMove(e) {
@@ -912,13 +939,23 @@ function onCarouselPointerMove(e) {
     }
   }
 
-  // Rubber band di ujung kiri/kanan.
-  let drag = dx;
-  const atStart = carouselIndex.value === 0 && dx > 0;
-  const atEnd = carouselIndex.value === allMedia.value.length - 1 && dx < 0;
-  if (atStart || atEnd) drag = dx * 0.35;
+  // Kecepatan jari (px/ms) untuk momentum saat dilepas.
+  const now = performance.now();
+  const dt = now - lastPointerTime;
+  if (dt > 0) {
+    const inst = (e.clientX - lastPointerX) / dt;
+    pointerVelocity = pointerVelocity * 0.7 + inst * 0.3;
+  }
+  lastPointerX = e.clientX;
+  lastPointerTime = now;
 
-  carouselDragX.value = drag;
+  // Geser bebas 1:1 — bisa berhenti di posisi mana pun; sedikit kenyal di ujung.
+  const max = carouselMaxOffset.value;
+  let next = carouselStartOffset - dx;
+  if (next < 0) next *= 0.35;
+  else if (next > max) next = max + (next - max) * 0.35;
+
+  carouselOffset.value = next;
 }
 
 function onCarouselPointerUp(e) {
@@ -933,21 +970,23 @@ function onCarouselPointerUp(e) {
     return;
   }
 
-  if (!carouselDragging.value) {
-    carouselDragX.value = 0;
-    return;
-  }
+  if (!carouselDragging.value) return;
   carouselDragging.value = false;
 
-  // Geser dinamis: bisa lompat beberapa media sekaligus sesuai jauhnya geseran.
-  const step = carouselStep.value || 1;
-  const raw = -carouselDragX.value / step;
-  let target = carouselIndex.value + Math.trunc(raw);
-  const frac = raw - Math.trunc(raw);
-  if (Math.abs(frac) >= 0.35) target += Math.sign(frac);
-  target = Math.max(0, Math.min(target, allMedia.value.length - 1));
-  carouselIndex.value = target;
-  carouselDragX.value = 0;
+  // Geser bebas: dilepas di mana pun → berhenti di situ (plus momentum singkat),
+  // tanpa dipaksa snap ke media terdekat.
+  const max = carouselMaxOffset.value;
+  const idle = performance.now() - lastPointerTime;
+  if (idle > 90) pointerVelocity = 0; // jari sempat diam dulu → tanpa lemparan
+  let target = carouselOffset.value;
+  if (target <= 0 || target >= max) {
+    target = target <= 0 ? 0 : max; // memantul kembali dari ujung
+  } else {
+    const v = Math.max(-2.4, Math.min(2.4, pointerVelocity)); // px/ms
+    target = Math.max(0, Math.min(carouselOffset.value - v * 180, max));
+  }
+  carouselOffset.value = target;
+  pointerVelocity = 0;
 }
 
 function onCarouselPointerLeave(e) {
@@ -955,26 +994,44 @@ function onCarouselPointerLeave(e) {
   carouselPointers.delete(e.pointerId);
   if (carouselPointers.size === 0 && !pinchWasActive) {
     carouselDragging.value = false;
-    carouselDragX.value = 0;
   }
 }
 
 /** Cubit di trackpad/laptop (ctrl+wheel) — efek menyatu yang sama. */
 function onCarouselWheel(e) {
-  if (!e.ctrlKey && !e.metaKey) return; // gulir biasa → biarkan scroll halaman
+  // Cubit trackpad → foto menyatu.
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    trackpadPinchAccum += e.deltaY;
+    pinchActive.value = true;
+    const magnitude = Math.min(1, Math.abs(trackpadPinchAccum) / 160);
+    pinchGapScale.value = Math.max(0, 1 - magnitude);
+
+    if (trackpadPinchTimer) clearTimeout(trackpadPinchTimer);
+    trackpadPinchTimer = setTimeout(() => {
+      trackpadPinchTimer = null;
+      trackpadPinchAccum = 0;
+      finishPinch();
+    }, 200);
+    return;
+  }
+
+  // Geser bebas dengan trackpad (swipe horizontal) — bisa berhenti di mana saja.
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : 0;
+  if (!delta) return; // gulir vertikal → biarkan scroll halaman
   e.preventDefault();
 
-  trackpadPinchAccum += e.deltaY;
-  pinchActive.value = true;
-  const magnitude = Math.min(1, Math.abs(trackpadPinchAccum) / 160);
-  pinchGapScale.value = Math.max(0, 1 - magnitude);
+  carouselWheelActive.value = true;
+  carouselOffset.value = Math.max(
+    0,
+    Math.min(carouselOffset.value + delta, carouselMaxOffset.value)
+  );
 
-  if (trackpadPinchTimer) clearTimeout(trackpadPinchTimer);
-  trackpadPinchTimer = setTimeout(() => {
-    trackpadPinchTimer = null;
-    trackpadPinchAccum = 0;
-    finishPinch();
-  }, 200);
+  if (carouselWheelTimer) clearTimeout(carouselWheelTimer);
+  carouselWheelTimer = setTimeout(() => {
+    carouselWheelTimer = null;
+    carouselWheelActive.value = false;
+  }, 140);
 }
 
 /** Cubit trackpad Safari (gesture events) — efek menyatu yang sama. */
@@ -1013,12 +1070,20 @@ onBeforeUnmount(() => {
     clearTimeout(trackpadPinchTimer);
     trackpadPinchTimer = null;
   }
+  if (carouselWheelTimer) {
+    clearTimeout(carouselWheelTimer);
+    carouselWheelTimer = null;
+  }
+});
+
+/** Jaga posisi geser tetap dalam batas saat lebar/daftar media berubah. */
+watch(carouselMaxOffset, (max) => {
+  if (carouselOffset.value > max) carouselOffset.value = Math.max(0, max);
 });
 
 /** Reset posisi karosel saat daftar media berubah (mis. setelah edit fess). */
 watch(allMedia, () => {
-  carouselIndex.value = 0;
-  carouselDragX.value = 0;
+  carouselOffset.value = 0;
   mediaRatios.value = {};
   pinchGapScale.value = 1;
   pinchActive.value = false;
