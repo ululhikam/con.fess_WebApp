@@ -55,9 +55,8 @@ const rings = (w = 90, stroke = 'rgba(255,255,255,0.12)') =>
   );
 
 export const ASPECTS = {
-  square: { key: 'square', value: '1 / 1', label: 'Persegi 1:1', exportWidth: 1080 },
-  portrait: { key: 'portrait', value: '4 / 5', label: 'Potret 4:5', exportWidth: 1080 },
-  story: { key: 'story', value: '9 / 16', label: 'Story 9:16', exportWidth: 1080 },
+  square: { key: 'square', value: '1 / 1', label: 'Feed Persegi 1:1', exportWidth: 1080 },
+  portrait: { key: 'portrait', value: '4 / 5', label: 'Feed Potret 4:5', exportWidth: 1080 },
 };
 
 export const TEMPLATES = [
@@ -147,9 +146,9 @@ export const TEMPLATES = [
   },
   {
     key: 'violet',
-    label: 'Cerita',
-    description: 'Format story 9:16, dirancang untuk story Instagram.',
-    aspect: 'story',
+    label: 'Violet',
+    description: 'Format feed potret 4:5, gradien ungu–pink cerah di feed Instagram.',
+    aspect: 'portrait',
     ink: 'light',
     background: 'linear-gradient(180deg, #7000ff 0%, #c026d3 45%, #f472b6 100%)',
     texture: rings(90, 'rgba(255,255,255,0.16)'),

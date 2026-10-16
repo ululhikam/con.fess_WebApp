@@ -29,10 +29,10 @@
           <span>{{ post.topicLabel || post.tag }}</span>
         </span>
 
-        <!-- Instagram Story Sync Badge (Admin / Feed) -->
+        <!-- Instagram Feed Post Badge (Admin / Feed) -->
         <span v-if="post.postedToIg" class="badge-subtle badge-ig">
           <Instagram :size="12" />
-          <span>Story</span>
+          <span>Feed</span>
         </span>
 
         <!-- Indikasi filter NLP (mode auto post) — hanya terlihat admin base -->
@@ -236,7 +236,7 @@
           </button>
           <button type="button" class="share-menu-item" @click="shareToInstagram">
             <Instagram :size="14" />
-            <span>Bagikan ke Story</span>
+            <span>Post ke Feed Instagram</span>
           </button>
           <button type="button" class="share-menu-item" @click="shareToTwitter">
             <Twitter :size="14" />
@@ -256,24 +256,36 @@
         <Bookmark :size="17" :fill="isSaved ? 'currentColor' : 'none'" />
       </button>
 
-      <!-- 5. ADMIN MODERASI (Jika mode admin dan status butuh tindakan) -->
-      <div v-if="isAdmin && post.status === 'pending'" class="admin-quick-actions">
+      <!-- 5. ADMIN MODERASI & AUTO-POST -->
+      <div v-if="isAdmin" class="admin-quick-actions">
+        <template v-if="post.status === 'pending'">
+          <button
+            type="button"
+            class="btn-mod-approve"
+            title="Setujui dan Terbitkan"
+            @click="$emit('approve', post.id)"
+          >
+            <Check :size="13" />
+            <span>Setujui</span>
+          </button>
+          <button
+            type="button"
+            class="btn-mod-hide"
+            title="Sembunyikan atau Tolak"
+            @click="$emit('reject', post.id)"
+          >
+            <span>Tolak</span>
+          </button>
+        </template>
         <button
           type="button"
-          class="btn-mod-approve"
-          title="Setujui dan Terbitkan"
-          @click="$emit('approve', post.id)"
+          class="btn-mod-ig"
+          :class="{ 'is-posted': post.postedToIg }"
+          title="Auto-Post Card ke Instagram Feed"
+          @click="shareToInstagram"
         >
-          <Check :size="13" />
-          <span>Setujui</span>
-        </button>
-        <button
-          type="button"
-          class="btn-mod-hide"
-          title="Sembunyikan atau Tolak"
-          @click="$emit('reject', post.id)"
-        >
-          <span>Tolak</span>
+          <Instagram :size="13" />
+          <span>{{ post.postedToIg ? 'Feed ✓' : 'Post IG' }}</span>
         </button>
       </div>
     </footer>
@@ -431,6 +443,103 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- INSTAGRAM STORY AUTO-POST PREVIEW MODAL -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="showInstagramModal"
+          class="ig-story-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Instagram Story Auto-Post"
+          @click.self="showInstagramModal = false"
+        >
+          <div class="ig-story-modal-box" @click.stop>
+            <div class="ig-story-modal-header">
+              <div class="ig-story-header-left">
+                <div class="ig-story-avatar-icon">
+                  <Instagram :size="18" />
+                </div>
+                <div>
+                  <h3 class="ig-story-title">Instagram Feed Auto-Post</h3>
+                  <p class="ig-story-sub">Visual card confession (1:1 / 4:5) untuk Instagram Feed base</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-close-modal"
+                aria-label="Tutup"
+                @click="showInstagramModal = false"
+              >
+                <X :size="18" />
+              </button>
+            </div>
+
+            <div class="ig-story-modal-body">
+              <!-- Loading State -->
+              <div v-if="igPostLoading" class="ig-story-loading-state">
+                <Loader2 :size="32" class="spin mb-2" />
+                <p class="font-bold">Merender Card &amp; Memproses Auto-Post…</p>
+                <p class="text-xs text-muted">Mengonversi template card menjadi visual Feed resolusi tinggi (1:1 / 4:5)</p>
+              </div>
+
+              <!-- Content Preview State -->
+              <div v-else class="ig-story-preview-container">
+                <div class="ig-story-status-pill" :class="{ success: igPostData?.meta_published || post.postedToIg }">
+                  <CheckCircle2 v-if="igPostData?.meta_published || post.postedToIg" :size="14" />
+                  <Sparkles v-else :size="14" />
+                  <span>
+                    {{
+                      igPostData?.message ||
+                      (post.postedToIg
+                        ? `Telah diposting otomatis ke Instagram Feed ${post.handle}`
+                        : `Card fess siap diposting ke Feed Instagram`)
+                    }}
+                  </span>
+                </div>
+
+                <!-- Preview Image Frame (9:16 Aspect Ratio) -->
+                <div class="ig-story-card-frame">
+                  <img
+                    v-if="igPostData?.imageUrl || igPostData?.image_url"
+                    :src="igPostData.imageUrl || igPostData.image_url"
+                    alt="Card Fess Story"
+                    class="ig-story-rendered-img"
+                  />
+                  <div v-else class="ig-story-fallback-card">
+                    <p class="text-sm font-bold">{{ post.content }}</p>
+                    <span class="text-xs text-muted mt-2">{{ post.handle }}</span>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="ig-story-actions-row">
+                  <a
+                    v-if="igPostData?.imageUrl || igPostData?.image_url"
+                    :href="igPostData.imageUrl || igPostData.image_url"
+                    download="fess_feed_card.svg"
+                    target="_blank"
+                    class="btn-ig-action btn-download"
+                  >
+                    <Download :size="15" />
+                    <span>Unduh Card Feed HD</span>
+                  </a>
+                  <button
+                    type="button"
+                    class="btn-ig-action btn-open-ig"
+                    @click="openInstagramApp"
+                  >
+                    <Instagram :size="15" />
+                    <span>Buka Instagram</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </article>
 </template>
 
@@ -474,6 +583,10 @@ import {
   ChevronRight,
   ShieldAlert,
   Trash2,
+  Download,
+  Loader2,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-vue-next';
 import ReportFessModal from './ReportFessModal.vue';
 import { api } from '../../api';
@@ -671,8 +784,36 @@ function copyFessLink() {
 
 function shareToInstagram() {
   showShareMenu.value = false;
-  triggerToast('Membuka format Instagram Story');
-  emit('share', { id: props.post.id, platform: 'instagram' });
+  openInstagramStoryAutoPost();
+}
+
+const showInstagramModal = ref(false);
+const igPostLoading = ref(false);
+const igPostData = ref(null);
+
+async function openInstagramStoryAutoPost() {
+  showInstagramModal.value = true;
+  igPostLoading.value = true;
+  igPostData.value = null;
+
+  try {
+    const res = await api.postFessToInstagram(props.post.id, {
+      template: props.post.template || 'default',
+      aspect: props.post.aspect || 'portrait',
+    });
+    igPostData.value = res?.data || res;
+    props.post.postedToIg = true;
+    triggerToast('Card fess berhasil di-render untuk Instagram Feed!');
+  } catch (err) {
+    console.error('Gagal memposting fess ke Instagram:', err);
+    triggerToast('Gagal memproses card story. Silakan coba lagi.');
+  } finally {
+    igPostLoading.value = false;
+  }
+}
+
+function openInstagramApp() {
+  window.open('https://instagram.com', '_blank');
 }
 
 function shareToTwitter() {
@@ -1235,6 +1376,226 @@ function formatCount(num) {
 
 .btn-mod-hide:hover {
   background: var(--shell-card);
+}
+
+.btn-mod-ig {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: #ffffff;
+  border: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(225, 48, 108, 0.3);
+  transition: all 0.15s ease;
+}
+
+.btn-mod-ig:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(225, 48, 108, 0.45);
+}
+
+.btn-mod-ig.is-posted {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  box-shadow: none;
+}
+
+/* Modal Instagram Story */
+.ig-story-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ig-story-modal-box {
+  background: var(--shell-card);
+  border: 1.5px solid var(--shell-border);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+}
+
+.ig-story-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.ig-story-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ig-story-avatar-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ig-story-title {
+  font-size: 14.5px;
+  font-weight: 900;
+  margin: 0;
+  color: var(--shell-text);
+}
+
+.ig-story-sub {
+  font-size: 11px;
+  color: var(--shell-text-muted);
+  margin: 2px 0 0;
+}
+
+.btn-close-modal {
+  background: var(--shell-chip);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--shell-text-muted);
+  cursor: pointer;
+}
+
+.btn-close-modal:hover {
+  color: var(--shell-text);
+  background: var(--shell-border);
+}
+
+.ig-story-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ig-story-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.ig-story-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.ig-story-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 800;
+  background: rgba(0, 85, 255, 0.12);
+  color: var(--brand-blue, #0055ff);
+  border: 1px solid rgba(0, 85, 255, 0.25);
+  text-align: center;
+}
+
+.ig-story-status-pill.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.ig-story-card-frame {
+  width: 100%;
+  max-width: 250px;
+  aspect-ratio: 9 / 16;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--shell-border);
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ig-story-rendered-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ig-story-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.btn-ig-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-ig-action.btn-download {
+  background: var(--shell-chip);
+  border: 1px solid var(--shell-border-strong, var(--shell-border));
+  color: var(--shell-text);
+}
+
+.btn-ig-action.btn-download:hover {
+  background: var(--shell-card);
+  border-color: var(--brand-blue);
+}
+
+.btn-ig-action.btn-open-ig {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(220, 39, 67, 0.3);
+}
+
+.btn-ig-action.btn-open-ig:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(220, 39, 67, 0.45);
 }
 
 /* Share Dropdown Wrapper & Popover */

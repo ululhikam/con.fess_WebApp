@@ -138,6 +138,10 @@
 
     <!-- KONTEN FESS BASE (real dari GET /bases/:handle/fesses) -->
     <div class="ig-fess-content-area">
+      <div v-if="actionNotice" class="alert-success-banner mb-3">
+        <CheckCircle2 :size="15" />
+        <span>{{ actionNotice }}</span>
+      </div>
       <div v-if="actionError" class="state-banner state-banner-error mb-3">{{ actionError }}</div>
       <div v-if="fesses.length" class="fess-cards-stream">
         <AdminFessCard
@@ -545,6 +549,7 @@ const base = ref(null);
 const stats = ref(null);
 const fesses = ref([]);
 const actionError = ref('');
+const actionNotice = ref('');
 
 const managedHandle = computed(() => authStore.user?.managedBases?.[0] || null);
 
@@ -730,10 +735,13 @@ onMounted(() => {
 /** POST /fesses/:id/approve — optimistic UI update lalu refresh list + counters. */
 async function approveFess(id) {
   actionError.value = '';
+  actionNotice.value = '';
   const prevFesses = [...fesses.value];
   fesses.value = fesses.value.filter((f) => f.id !== id);
   try {
     await api.approveFess(id);
+    actionNotice.value = `Fess #${id} berhasil disetujui & otomatis diposting ke Instagram Story base!`;
+    setTimeout(() => { actionNotice.value = ''; }, 6000);
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
     fesses.value = prevFesses;
@@ -1128,6 +1136,19 @@ async function handleAdminLogout() {
 .feed-load-retry:hover {
   color: var(--shell-text);
   border-color: var(--shell-border-strong);
+}
+
+.alert-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  font-size: 12.5px;
+  font-weight: 700;
 }
 
 .base-fess-card {
