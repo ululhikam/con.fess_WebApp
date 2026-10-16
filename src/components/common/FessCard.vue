@@ -125,27 +125,17 @@
                 @load="recordMediaRatio(mediaIdx, $event.target)"
               />
               <template v-else>
-                <img
-                  v-if="item.thumbnail"
-                  :src="item.thumbnail"
-                  :alt="item.caption || `Video ${mediaIdx + 1}`"
-                  :loading="mediaIdx < 2 ? 'eager' : 'lazy'"
-                  class="carousel-media-element"
-                  draggable="false"
-                  @load="recordMediaRatio(mediaIdx, $event.target)"
-                />
                 <video
-                  v-else
+                  :ref="(el) => registerCarouselVideo(mediaIdx, el)"
                   :src="item.url"
+                  :poster="item.thumbnail || undefined"
                   class="carousel-media-element"
                   preload="metadata"
                   muted
                   playsinline
+                  loop
                   @loadedmetadata="recordMediaRatio(mediaIdx, $event.target)"
                 />
-                <span class="carousel-play-badge">
-                  <Play :size="17" fill="currentColor" />
-                </span>
                 <span v-if="item.duration" class="carousel-duration-pill">{{ item.duration }}</span>
               </template>
             </div>
@@ -526,7 +516,7 @@
  *  - 100% theme-token bound (--shell-card, --shell-border, --shell-text, --shell-sub-accent)
  *  - Zero emojis, Lucide SVG icons only.
  */
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   Heart,
@@ -544,7 +534,6 @@ import {
   CornerDownRight,
   X,
   Quote,
-  Play,
   ShieldAlert,
   Trash2,
   Download,
@@ -746,6 +735,11 @@ const mediaRatios = ref({});
 const pinchGapScale = ref(1); // 1 = gap normal, 0 = foto menyatu (gap antar foto hilang)
 const pinchActive = ref(false);
 
+const carouselVideoEls = new Map(); // mediaIdx → elemen <video> karosel
+const carouselInView = ref(true);
+let carouselViewObserver = null;
+let carouselVisibilityHandler = null;
+
 const carouselPointers = new Map(); // pointerId → { x, y }
 let carouselStartX = 0;
 let carouselStartY = 0;
@@ -831,6 +825,30 @@ function recordMediaRatio(index, el) {
     mediaRatios.value = { ...mediaRatios.value, [index]: w / h };
   }
 }
+
+/** Daftarkan elemen video karosel agar bisa diputar hanya saat tampil. */
+function registerCarouselVideo(index, el) {
+  if (el) carouselVideoEls.set(index, el);
+  else carouselVideoEls.delete(index);
+}
+
+/** Autoplay video karosel: video aktif langsung berputar — tanpa ikon play. */
+function syncCarouselVideos() {
+  const active = carouselIndex.value;
+  const canPlay = !viewerOpen.value && carouselInView.value && !document.hidden;
+  carouselVideoEls.forEach((el, idx) => {
+    if (canPlay && idx === active) {
+      if (el.paused) {
+        const p = el.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    } else if (!el.paused) {
+      el.pause();
+    }
+  });
+}
+
+watch([carouselIndex, viewerOpen, carouselInView], syncCarouselVideos);
 
 /** Pindahkan deretan supaya media ke-index berhenti di tepi kiri. */
 function goToMedia(index) {
@@ -1059,12 +1077,33 @@ onMounted(() => {
     });
     carouselResizeObserver.observe(el);
   }
+  if (el && typeof IntersectionObserver !== 'undefined') {
+    carouselViewObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry) carouselInView.value = entry.isIntersecting;
+      },
+      { threshold: 0.25 }
+    );
+    carouselViewObserver.observe(el);
+  }
+  carouselVisibilityHandler = () => syncCarouselVideos();
+  document.addEventListener('visibilitychange', carouselVisibilityHandler);
+  nextTick(() => syncCarouselVideos());
 });
 
 onBeforeUnmount(() => {
   if (carouselResizeObserver) {
     carouselResizeObserver.disconnect();
     carouselResizeObserver = null;
+  }
+  if (carouselViewObserver) {
+    carouselViewObserver.disconnect();
+    carouselViewObserver = null;
+  }
+  if (carouselVisibilityHandler) {
+    document.removeEventListener('visibilitychange', carouselVisibilityHandler);
+    carouselVisibilityHandler = null;
   }
   if (trackpadPinchTimer) {
     clearTimeout(trackpadPinchTimer);
@@ -1089,6 +1128,7 @@ watch(allMedia, () => {
   pinchActive.value = false;
   carouselPointers.clear();
   pinchWasActive = false;
+  nextTick(() => syncCarouselVideos());
 });
 
 /* 3. SHARE MENU & TOAST */
@@ -2313,25 +2353,6 @@ function formatCount(num) {
   display: block;
   -webkit-user-drag: none;
   user-select: none;
-}
-
-.carousel-play-badge {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding-left: 2px;
-  pointer-events: none;
 }
 
 .carousel-duration-pill {
