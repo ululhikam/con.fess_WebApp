@@ -1,5 +1,5 @@
 <template>
-  <article class="fess-feed-card">
+  <article ref="cardRootRef" class="fess-feed-card">
     <!-- Header: Author, Tag / Status, Report Button -->
     <header class="card-header-row">
       <div
@@ -86,68 +86,60 @@
     <div class="card-body-text">
       <p class="post-body-content">{{ post.content }}</p>
 
-      <!-- Media Attachments (Photos and Videos) -->
-      <div v-if="hasMedia" class="card-media-stream">
-        <!-- 1. Video Player Container -->
+      <!-- Media Attachments — kolase menyatu gaya X/Threads (foto + video) -->
+      <div
+        v-if="hasMedia"
+        class="card-media-collage"
+        :class="`collage-layout-${Math.min(allMedia.length, 4)}`"
+        title="Ketuk untuk lihat • cubit untuk menyatukan"
+        @touchstart.passive="onCollageTouchStart"
+        @touchmove="onCollageTouchMove"
+        @touchend.passive="onCollageTouchEnd"
+        @touchcancel.passive="onCollageTouchEnd"
+      >
         <div
-          v-for="(vid, vIdx) in videoMediaList"
-          :key="`video-${vIdx}`"
-          class="fess-video-container"
+          v-for="(item, mediaIdx) in allMedia.slice(0, 4)"
+          :key="`media-${mediaIdx}`"
+          class="collage-tile"
+          :class="{ 'collage-tile-hidden': viewerOpen && viewerIndex === mediaIdx }"
+          :data-media-index="mediaIdx"
+          role="button"
+          tabindex="0"
+          :aria-label="`Buka media ${mediaIdx + 1} dari ${allMedia.length}`"
+          @click.stop="openViewer(mediaIdx, $event)"
+          @keydown.enter.stop="openViewer(mediaIdx, $event)"
         >
-          <div class="video-wrapper-frame">
-            <video
-              :src="vid.url"
-              :poster="vid.thumbnail"
-              controls
-              playsinline
-              preload="metadata"
-              class="fess-video-player"
-            />
-            <div class="video-indicator-badge">
-              <Film :size="12" />
-              <span>Video</span>
-              <span v-if="vid.duration" class="video-duration-sub">• {{ vid.duration }}</span>
-            </div>
-          </div>
-          <p v-if="vid.caption" class="media-caption-text">{{ vid.caption }}</p>
-        </div>
-
-        <!-- 2. Images Grid Container (1, 2, 3, or 4 images) -->
-        <div
-          v-if="imageMediaList.length"
-          class="fess-images-grid"
-          :class="`grid-layout-${Math.min(imageMediaList.length, 4)}`"
-        >
-          <div
-            v-for="(img, imgIdx) in imageMediaList.slice(0, 4)"
-            :key="`img-${imgIdx}`"
-            class="image-grid-item"
-            role="button"
-            tabindex="0"
-            :title="`Klik untuk memperbesar gambar (${imgIdx + 1} dari ${imageMediaList.length})`"
-            @click.stop="openLightbox(imgIdx)"
-          >
+          <img
+            v-if="item.type === 'image'"
+            :src="item.url"
+            :alt="item.caption || `Media ${mediaIdx + 1}`"
+            loading="lazy"
+            class="collage-media-element"
+          />
+          <template v-else>
             <img
-              :src="img.url || img"
-              :alt="img.caption || `Foto confession ${imgIdx + 1}`"
+              v-if="item.thumbnail"
+              :src="item.thumbnail"
+              :alt="item.caption || `Video ${mediaIdx + 1}`"
               loading="lazy"
-              class="fess-img-element"
+              class="collage-media-element"
             />
-            <div
-              v-if="imgIdx === 3 && imageMediaList.length > 4"
-              class="more-images-overlay-tag"
-            >
-              <span>+{{ imageMediaList.length - 4 }}</span>
-            </div>
-            <button
-              type="button"
-              class="btn-zoom-corner-overlay"
-              title="Perbesar Foto"
-              aria-label="Perbesar foto"
-              @click.stop="openLightbox(imgIdx)"
-            >
-              <Maximize2 :size="13" />
-            </button>
+            <video
+              v-else
+              :src="item.url"
+              class="collage-media-element"
+              preload="metadata"
+              muted
+              playsinline
+            />
+            <span class="collage-play-badge">
+              <Play :size="15" fill="currentColor" />
+            </span>
+            <span v-if="item.duration" class="collage-duration-pill">{{ item.duration }}</span>
+          </template>
+
+          <div v-if="mediaIdx === 3 && allMedia.length > 4" class="collage-more-overlay">
+            <span>+{{ allMedia.length - 4 }}</span>
           </div>
         </div>
       </div>
@@ -378,71 +370,16 @@
       @submit="handleReportSubmitted"
     />
 
-    <!-- FULLSCREEN LIGHTBOX IMAGE VIEWER -->
-    <Teleport to="body">
-      <Transition name="fade-lightbox">
-        <div
-          v-if="showLightbox"
-          class="fess-lightbox-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Pratinjau Foto"
-          @click="closeLightbox"
-          @keydown.esc="closeLightbox"
-        >
-          <div class="lightbox-stage-box" @click.stop>
-            <div class="lightbox-header-bar">
-              <span class="lightbox-index-badge">
-                Foto {{ activeImageIndex + 1 }} dari {{ imageMediaList.length }}
-              </span>
-              <button
-                type="button"
-                class="btn-close-lightbox"
-                title="Tutup (ESC)"
-                aria-label="Tutup"
-                @click="closeLightbox"
-              >
-                <X :size="20" />
-              </button>
-            </div>
-
-            <div class="lightbox-main-viewport">
-              <button
-                v-if="imageMediaList.length > 1"
-                type="button"
-                class="lightbox-nav-arrow left"
-                title="Sebelumnya"
-                aria-label="Sebelumnya"
-                @click="prevImage"
-              >
-                <ChevronLeft :size="26" />
-              </button>
-
-              <img
-                :src="activeImage?.url || activeImage"
-                :alt="activeImage?.caption || 'Pratinjau Foto'"
-                class="lightbox-zoom-image"
-              />
-
-              <button
-                v-if="imageMediaList.length > 1"
-                type="button"
-                class="lightbox-nav-arrow right"
-                title="Selanjutnya"
-                aria-label="Selanjutnya"
-                @click="nextImage"
-              >
-                <ChevronRight :size="26" />
-              </button>
-            </div>
-
-            <p v-if="activeImage?.caption" class="lightbox-caption-text">
-              {{ activeImage.caption }}
-            </p>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- PENAMPIL MEDIA GAYA X / THREADS (foto + video menyatu) -->
+    <MediaViewer
+      v-if="viewerOpen"
+      :items="allMedia"
+      :initial-index="viewerIndex"
+      :origin-rect="viewerOriginRect"
+      :resolve-origin="resolveMediaOrigin"
+      :post="viewerPostInfo"
+      @close="closeViewer"
+    />
 
     <!-- INSTAGRAM STORY AUTO-POST PREVIEW MODAL -->
     <Teleport to="body">
@@ -598,10 +535,7 @@ import {
   CornerDownRight,
   X,
   Quote,
-  Film,
-  Maximize2,
-  ChevronLeft,
-  ChevronRight,
+  Play,
   ShieldAlert,
   Trash2,
   Download,
@@ -610,6 +544,7 @@ import {
   CheckCircle2,
 } from 'lucide-vue-next';
 import ReportFessModal from './ReportFessModal.vue';
+import MediaViewer from './MediaViewer.vue';
 import { api } from '../../api';
 import { mapFessComment } from '../../utils/fessMapper';
 import { useAuthStore } from '../../stores/authStore';
@@ -706,7 +641,7 @@ function toggleBookmark() {
   emit('bookmark', { id: props.post.id, isSaved: isSaved.value });
 }
 
-/* MEDIA HANDLING (PHOTOS & VIDEOS) */
+/* MEDIA HANDLING (PHOTOS & VIDEOS — kolase menyatu ala X/Threads) */
 const parsedMedia = computed(() => {
   const p = props.post;
   if (!p) return [];
@@ -731,47 +666,96 @@ const parsedMedia = computed(() => {
   return list;
 });
 
-const imageMediaList = computed(() => {
-  return parsedMedia.value.filter((m) => m.type === 'image');
-});
+/** Daftar media gabungan (foto + video) sesuai urutan aslinya. */
+const allMedia = computed(() =>
+  parsedMedia.value
+    .map((m) => {
+      if (typeof m === 'string') return { type: 'image', url: m };
+      if (!m || typeof m.url !== 'string') return null;
+      return { ...m, type: m.type === 'video' ? 'video' : 'image' };
+    })
+    .filter((m) => m && m.url.length > 0)
+);
 
-const videoMediaList = computed(() => {
-  return parsedMedia.value.filter((m) => m.type === 'video');
-});
+const hasMedia = computed(() => allMedia.value.length > 0);
 
-const hasMedia = computed(() => parsedMedia.value.length > 0);
+/* PENAMPIL MEDIA FULL-SCREEN (gaya X / Threads) */
+const viewerOpen = ref(false);
+const viewerIndex = ref(0);
+const viewerOriginRect = ref(null);
+const cardRootRef = ref(null);
 
-/* LIGHTBOX MODAL STATE */
-const showLightbox = ref(false);
-const activeImageIndex = ref(0);
-
-const activeImage = computed(() => {
-  return imageMediaList.value[activeImageIndex.value] || null;
-});
-
-function openLightbox(index = 0) {
-  activeImageIndex.value = index;
-  showLightbox.value = true;
+/** Rect tile media di kolase (untuk animasi "menyatu" buka/tutup viewer). */
+function resolveMediaOrigin(index) {
+  const root = cardRootRef.value;
+  if (!root || typeof root.querySelector !== 'function') return null;
+  const el = root.querySelector(`[data-media-index="${Math.min(index, 3)}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width, height: r.height };
 }
 
-function closeLightbox() {
-  showLightbox.value = false;
-}
+const viewerPostInfo = computed(() => ({
+  handle: props.post?.handle || props.post?.senderHandle || '@anonim',
+  avatarText: props.post?.avatarText,
+  avatarBg: props.post?.avatarBg,
+  avatarImg: props.post?.avatarImg,
+  content: props.post?.content || '',
+  time: props.post?.time || 'Baru saja',
+}));
 
-function nextImage() {
-  if (activeImageIndex.value < imageMediaList.value.length - 1) {
-    activeImageIndex.value++;
-  } else {
-    activeImageIndex.value = 0;
+/** Buka viewer dari tile yang diketuk — dengan animasi "menyatu" (grid → satu media). */
+function openViewer(index = 0, evt = null) {
+  viewerIndex.value = Math.max(0, Math.min(index, allMedia.value.length - 1));
+
+  let rect = null;
+  const el = evt?.currentTarget;
+  if (el && typeof el.getBoundingClientRect === 'function') {
+    const r = el.getBoundingClientRect();
+    rect = { left: r.left, top: r.top, width: r.width, height: r.height };
   }
+  viewerOriginRect.value = rect;
+  viewerOpen.value = true;
 }
 
-function prevImage() {
-  if (activeImageIndex.value > 0) {
-    activeImageIndex.value--;
-  } else {
-    activeImageIndex.value = imageMediaList.value.length - 1;
+function closeViewer() {
+  viewerOpen.value = false;
+}
+
+/* CUBIT (pinch) di kolase: dua jari → semua media "menyatu" jadi satu tampilan */
+let collagePinchStart = 0;
+
+function touchDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(dx, dy);
+}
+
+function onCollageTouchStart(e) {
+  collagePinchStart = e.touches && e.touches.length === 2 ? touchDistance(e.touches) : 0;
+}
+
+function onCollageTouchMove(e) {
+  if (!collagePinchStart || !e.touches || e.touches.length !== 2) return;
+  const scale = touchDistance(e.touches) / collagePinchStart;
+  if (Math.abs(scale - 1) < 0.18) return;
+
+  // Menyatu: buka viewer dengan animasi dari kotak kolase → satu media.
+  collagePinchStart = 0;
+  const card =
+    e.currentTarget || (e.target && e.target.closest ? e.target.closest('.card-media-collage') : null);
+  let rect = null;
+  if (card && typeof card.getBoundingClientRect === 'function') {
+    const r = card.getBoundingClientRect();
+    rect = { left: r.left, top: r.top, width: r.width, height: r.height };
   }
+  viewerIndex.value = 0;
+  viewerOriginRect.value = rect;
+  viewerOpen.value = true;
+}
+
+function onCollageTouchEnd(e) {
+  if (!e.touches || e.touches.length < 2) collagePinchStart = 0;
 }
 
 /* 3. SHARE MENU & TOAST */
@@ -1936,150 +1920,115 @@ function formatCount(num) {
   cursor: not-allowed;
 }
 
-/* Card Media Stream */
-.card-media-stream {
+/* Kolase Media (gaya X/Threads — foto + video menyatu) */
+.card-media-collage {
   margin-top: 10px;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Video Player */
-.fess-video-container {
-  width: 100%;
-  border-radius: 14px;
-  overflow: hidden;
-  background: #000;
+  display: grid;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
+  touch-action: pan-y;
 }
 
-.video-wrapper-frame {
+.collage-tile {
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  cursor: pointer;
   background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 0;
+  min-height: 0;
 }
 
-.fess-video-player {
+.collage-tile-hidden {
+  opacity: 0;
+}
+
+/* 1 media — rasio 4:5 seperti X/Threads */
+.collage-layout-1 {
+  grid-template-columns: 1fr;
+}
+
+.collage-layout-1 .collage-tile {
+  aspect-ratio: 4 / 5;
+  max-height: 470px;
+}
+
+/* 2 media — berdampingan */
+.collage-layout-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.collage-layout-2 .collage-tile {
+  aspect-ratio: 1 / 1;
+}
+
+/* 3 media — kiri besar, kanan dua kecil */
+.collage-layout-3 {
+  grid-template-columns: 1.45fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  aspect-ratio: 16 / 11;
+}
+
+.collage-layout-3 .collage-tile:first-child {
+  grid-row: span 2;
+}
+
+/* 4+ media — kotak 2x2 */
+.collage-layout-4 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.collage-layout-4 .collage-tile {
+  aspect-ratio: 1 / 1;
+}
+
+.collage-media-element {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 14px;
+  display: block;
+  transition: transform 0.25s ease;
 }
 
-.video-indicator-badge {
+.collage-tile:hover .collage-media-element {
+  transform: scale(1.03);
+}
+
+.collage-play-badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
+  justify-content: center;
+  padding-left: 2px;
+  pointer-events: none;
+}
+
+.collage-duration-pill {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.7);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
   pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.media-caption-text {
-  font-size: 12px;
-  color: var(--shell-text-muted, #94a3b8);
-  padding: 6px 10px;
-  margin: 0;
-}
-
-/* Images Grid Layout */
-.fess-images-grid {
-  display: grid;
-  gap: 4px;
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.fess-images-grid.grid-layout-1 {
-  grid-template-columns: 1fr;
-  max-height: 440px;
-}
-
-.fess-images-grid.grid-layout-2 {
-  grid-template-columns: 1fr 1fr;
-  aspect-ratio: 16 / 9;
-}
-
-.fess-images-grid.grid-layout-3 {
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  aspect-ratio: 16 / 10;
-}
-
-.fess-images-grid.grid-layout-3 .image-grid-item:first-child {
-  grid-row: span 2;
-}
-
-.fess-images-grid.grid-layout-4 {
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  aspect-ratio: 16 / 10;
-}
-
-.image-grid-item {
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  background: #000;
-  width: 100%;
-  height: 100%;
-}
-
-.fess-img-element {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.25s ease;
-  display: block;
-}
-
-.image-grid-item:hover .fess-img-element {
-  transform: scale(1.03);
-}
-
-.btn-zoom-corner-overlay {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.85);
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.image-grid-item:hover .btn-zoom-corner-overlay {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.more-images-overlay-tag {
+.collage-more-overlay {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
@@ -2090,131 +2039,6 @@ function formatCount(num) {
   color: #fff;
   font-size: 22px;
   font-weight: 800;
-}
-
-/* Lightbox Modal */
-.fess-lightbox-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.88);
-  backdrop-filter: blur(12px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.lightbox-stage-box {
-  width: 100%;
-  max-width: 900px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.lightbox-header-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0 14px;
-}
-
-.lightbox-index-badge {
-  font-size: 13px;
-  font-weight: 600;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-
-.btn-close-lightbox {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-close-lightbox:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: scale(1.08);
-}
-
-.lightbox-main-viewport {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  min-height: 300px;
-  max-height: 75vh;
-}
-
-.lightbox-zoom-image {
-  max-width: 100%;
-  max-height: 72vh;
-  object-fit: contain;
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
-}
-
-.lightbox-nav-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 10;
-}
-
-.lightbox-nav-arrow:hover {
-  background: rgba(0, 85, 255, 0.8);
-  transform: translateY(-50%) scale(1.1);
-}
-
-.lightbox-nav-arrow.left {
-  left: 10px;
-}
-
-.lightbox-nav-arrow.right {
-  right: 10px;
-}
-
-.lightbox-caption-text {
-  text-align: center;
-  font-size: 13px;
-  color: #cbd5e1;
-  padding-top: 10px;
-  margin: 0;
-}
-
-.fade-lightbox-enter-active,
-.fade-lightbox-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-lightbox-enter-from,
-.fade-lightbox-leave-to {
-  opacity: 0;
 }
 
 @media (max-width: 600px) {
