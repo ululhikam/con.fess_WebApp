@@ -2272,13 +2272,17 @@ function formatCount(num) {
   align-items: center;
 }
 
+/* Baris input komentar — tombol Kirim wajib tetap di dalam kartu di layar mobile */
 .input-row-flex {
   display: flex;
+  align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .comment-text-field {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
   background: var(--shell-chip);
   border: 1px solid var(--shell-border);
   border-radius: var(--radius-pill);
@@ -2294,6 +2298,8 @@ function formatCount(num) {
 }
 
 .btn-submit-comment {
+  flex-shrink: 0;
+  white-space: nowrap;
   background: var(--shell-sub-accent);
   color: #ffffff;
   border: none;

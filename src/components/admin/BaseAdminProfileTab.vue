@@ -44,15 +44,25 @@
             <span class="ig-metric-num">{{ fessCount.toLocaleString('id-ID') }}</span>
           </div>
 
-          <div class="ig-metric-col">
+          <button
+            type="button"
+            class="ig-metric-col ig-metric-btn"
+            title="Lihat daftar follower"
+            @click="openFollowModal('followers')"
+          >
             <span class="ig-metric-label">Follower</span>
             <span class="ig-metric-num">{{ followersCount.toLocaleString('id-ID') }}</span>
-          </div>
+          </button>
 
-          <div class="ig-metric-col">
-            <span class="ig-metric-label">Sejak</span>
-            <span class="ig-metric-num">{{ established }}</span>
-          </div>
+          <button
+            type="button"
+            class="ig-metric-col ig-metric-btn"
+            title="Lihat daftar following"
+            @click="openFollowModal('following')"
+          >
+            <span class="ig-metric-label">Following</span>
+            <span class="ig-metric-num">{{ myFollowingCount.toLocaleString('id-ID') }}</span>
+          </button>
         </div>
       </div>
 
@@ -485,6 +495,17 @@
       @setTheme="changeTheme"
       @logout="handleAdminLogout"
     />
+
+    <!-- MODAL DAFTAR FOLLOWER / FOLLOWING (data real dari server) -->
+    <FollowListModal
+      v-model:show="showFollowModal"
+      v-model:tab="followModalTab"
+      :base-handle="cleanHandle"
+      :followers-count="followersCount"
+      :following-count="myFollowingCount"
+      following-source="me"
+      @changed="loadMyFollowingCount"
+    />
   </div>
 </template>
 
@@ -530,6 +551,7 @@ import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { confirmDialog } from '../../composables/useAppDialog';
 import BaseAdminPanels from './BaseAdminPanels.vue';
 import AdminFessCard from './AdminFessCard.vue';
+import FollowListModal from '../common/FollowListModal.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -568,7 +590,30 @@ const baseAvatarUrl = computed(() => {
 const igAccount = computed(() => base.value?.ig_account || '');
 const followersCount = computed(() => base.value?.followers_count ?? 0);
 const fessCount = computed(() => base.value?.fess_count ?? 0);
-const established = computed(() => base.value?.established || '2024');
+
+/* ---------- Modal daftar Follower / Following (data real) ---------- */
+const showFollowModal = ref(false);
+const followModalTab = ref('followers');
+/** Angka following real milik akun (jumlah base yang diikuti dari GET /users/me/following). */
+const myFollowingCount = ref(authStore.user?.followingCount ?? 0);
+
+const cleanHandle = computed(() =>
+  String(baseHandle.value || managedHandle.value || '').replace(/^@/, '')
+);
+
+function openFollowModal(tab = 'followers') {
+  followModalTab.value = tab;
+  showFollowModal.value = true;
+}
+
+async function loadMyFollowingCount() {
+  try {
+    const res = await api.getMyFollowing({ limit: 1 });
+    if (typeof res?.total === 'number') myFollowingCount.value = res.total;
+  } catch {
+    // pertahankan angka dari auth store bila permintaan gagal
+  }
+}
 
 const pendingCount = computed(() => stats.value?.pending ?? 0);
 const approvedTotal = computed(() => stats.value?.published ?? 0);
@@ -670,7 +715,7 @@ async function loadProfile() {
   loading.value = true;
   try {
     base.value = await api.getBase(handle);
-    await Promise.all([loadFesses(), loadStats()]);
+    await Promise.all([loadFesses(), loadStats(), loadMyFollowingCount()]);
   } catch (e) {
     error.value = e;
   } finally {
@@ -952,6 +997,8 @@ async function handleAdminLogout() {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  padding: 6px 12px;
+  border-radius: 12px;
 }
 
 .ig-metric-btn {

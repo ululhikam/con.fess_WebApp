@@ -39,6 +39,8 @@ export const api = {
   createBase: (payload) => client.post('/bases', payload),
   getBaseFesses: (handle, params) =>
     client.get(`/bases/${encodeURIComponent(handle)}/fesses`, { params }),
+  getBaseFollowers: (handle, params) =>
+    client.get(`/bases/${encodeURIComponent(handle)}/followers`, { params }),
   followBase: (handle) => client.post(`/bases/${encodeURIComponent(handle)}/follow`),
   updateBaseSettings: (handle, payload) =>
     client.patch(`/bases/${encodeURIComponent(handle)}/settings`, payload),

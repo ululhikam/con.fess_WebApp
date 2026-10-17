@@ -451,114 +451,15 @@
       </div>
     </Transition>
 
-    <!-- MODAL DAFTAR FOLLOW & FOLLOWER -->
-    <div
-      v-if="showFollowModal"
-      class="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="followModalTab === 'followers' ? 'Daftar Pengikut' : 'Daftar Mengikuti'"
-      @click.self="showFollowModal = false"
-    >
-      <div class="modal-card follow-modal-card">
-        <div class="follow-modal-header">
-          <!-- Tab Switcher: Follower vs Following -->
-          <div class="follow-tabs-nav">
-            <button
-              type="button"
-              class="follow-tab-btn"
-              :class="{ active: followModalTab === 'followers' }"
-              @click="followModalTab = 'followers'"
-            >
-              <span>Follower</span>
-              <span class="follow-tab-count">{{ currentFollowersDisplay }}</span>
-            </button>
-            <button
-              type="button"
-              class="follow-tab-btn"
-              :class="{ active: followModalTab === 'following' }"
-              @click="followModalTab = 'following'"
-            >
-              <span>Follow</span>
-              <span class="follow-tab-count">{{ baseData?.followingCount ?? 0 }}</span>
-            </button>
-          </div>
-          <button
-            type="button"
-            class="btn-close-modal"
-            aria-label="Tutup"
-            @click="showFollowModal = false"
-          >
-            <X :size="18" />
-          </button>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="follow-search-box">
-          <Search :size="15" class="follow-search-icon" />
-          <input
-            v-model="followSearchQuery"
-            type="text"
-            class="follow-search-input"
-            :placeholder="followModalTab === 'followers' ? 'Cari di daftar follower...' : 'Cari di daftar following...'"
-          />
-          <button
-            v-if="followSearchQuery"
-            type="button"
-            class="btn-clear-search"
-            @click="followSearchQuery = ''"
-          >
-            <X :size="13" />
-          </button>
-        </div>
-
-        <!-- Users List -->
-        <div class="follow-list-body custom-scrollbar">
-          <div v-if="filteredFollowList.length === 0" class="follow-empty-state">
-            <Users :size="32" class="empty-icon" />
-            <p class="empty-text">
-              {{ followSearchQuery ? 'Tidak ada akun yang cocok dengan pencarian' : 'Belum ada data akun' }}
-            </p>
-          </div>
-
-          <div
-            v-for="user in filteredFollowList"
-            :key="user.id"
-            class="follow-user-row"
-          >
-            <div class="follow-user-avatar-wrap">
-              <img :src="user.avatar" :alt="user.name" class="follow-user-avatar" />
-              <span v-if="user.isVerified" class="follow-verified-dot" title="Verified">✓</span>
-            </div>
-
-            <div class="follow-user-info">
-              <div class="follow-user-name-line">
-                <span class="follow-user-name">{{ user.name }}</span>
-                <span v-if="user.isVerified" class="verified-tag">Base</span>
-              </div>
-              <div class="follow-user-handle">{{ user.handle }}</div>
-              <p class="follow-user-bio">{{ user.bio }}</p>
-            </div>
-
-            <button
-              type="button"
-              class="btn-follow-toggle"
-              :class="{ 'btn-following': user.isFollowing }"
-              @click="toggleFollowUser(user)"
-            >
-              <template v-if="user.isFollowing">
-                <UserCheck :size="13" />
-                <span>Mengikuti</span>
-              </template>
-              <template v-else>
-                <UserPlus :size="13" />
-                <span>Ikuti</span>
-              </template>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- MODAL DAFTAR FOLLOWER / FOLLOWING (komponen bersama — data real dari server) -->
+    <FollowListModal
+      v-model:show="showFollowModal"
+      v-model:tab="followModalTab"
+      :base-handle="cleanHandle"
+      :followers-count="baseData?.followersCount ?? 0"
+      :following-count="baseData?.followingCount ?? 0"
+      following-source="none"
+    />
   </div>
 </template>
 
@@ -580,9 +481,6 @@ import {
   FileText,
   Info,
   Inbox,
-  X,
-  Search,
-  Users,
   Copy,
   ExternalLink,
   Award,
@@ -591,6 +489,7 @@ import {
 
 import FessCard from '../components/common/FessCard.vue';
 import AppBottomNav from '../components/common/AppBottomNav.vue';
+import FollowListModal from '../components/common/FollowListModal.vue';
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
 import { api } from '../api';
@@ -608,37 +507,16 @@ const activeTab = ref('posts');
 const toastMessage = ref('');
 let toastTimer = null;
 
-// Follow Modal State
+// Follow Modal State — daftar pengikut & following dimuat oleh komponen
+// FollowListModal dari endpoint real (GET /bases/:handle/followers,
+// GET /users/me/following). Tanpa akun fake & tanpa follow antar-user.
 const showFollowModal = ref(false);
 const followModalTab = ref('followers'); // 'followers' or 'following'
-const followSearchQuery = ref('');
-
-// The API surface has no endpoint for a base's follower/following directory yet,
-// so the modal lists start empty and show their designed empty state — no fake accounts.
-const followersList = ref([]);
-const followingList = ref([]);
 
 function openFollowModal(tab = 'followers') {
   followModalTab.value = tab;
-  followSearchQuery.value = '';
   showFollowModal.value = true;
 }
-
-function toggleFollowUser(user) {
-  user.isFollowing = !user.isFollowing;
-}
-
-const filteredFollowList = computed(() => {
-  const currentList = followModalTab.value === 'followers' ? followersList.value : followingList.value;
-  const q = followSearchQuery.value.trim().toLowerCase();
-  if (!q) return currentList;
-  return currentList.filter(
-    (u) =>
-      u.name.toLowerCase().includes(q) ||
-      u.handle.toLowerCase().includes(q) ||
-      (u.bio && u.bio.toLowerCase().includes(q)),
-  );
-});
 
 // Get clean handle from route params
 const cleanHandle = computed(() => String(route.params.handle || '').replace(/^@/, ''));
@@ -1849,303 +1727,6 @@ function handleBottomNavChange(tabKey) {
   transform: translate(-50%, 10px);
 }
 
-/* MODAL FOLLOW / FOLLOWER BACKDROP & CARD */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1400;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  animation: modalFadeIn 0.18s ease;
-}
-
-@keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-card {
-  background: var(--shell-card);
-  border: 1px solid var(--shell-border);
-  border-radius: 20px;
-  width: 100%;
-  animation: modalScaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes modalScaleUp {
-  from { transform: scale(0.96); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.follow-modal-card {
-  max-width: 500px;
-  width: 95%;
-  max-height: 82vh;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  overflow: hidden;
-  background: var(--shell-card);
-  border: 1px solid var(--shell-border);
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-}
-
-.follow-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--shell-border);
-  background: var(--shell-card);
-}
-
-.follow-tabs-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.follow-tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--shell-text-muted);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.follow-tab-btn:hover {
-  color: var(--shell-text);
-  background: var(--shell-chip);
-}
-
-.follow-tab-btn.active {
-  background: var(--shell-chip);
-  color: var(--shell-text);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-
-.follow-tab-count {
-  font-size: 11px;
-  font-weight: 900;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 1px 7px;
-  border-radius: 10px;
-}
-
-.follow-search-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 12px 16px 8px;
-  padding: 8px 12px;
-  background: var(--shell-chip);
-  border: 1px solid var(--shell-border);
-  border-radius: 12px;
-}
-
-.follow-search-icon {
-  color: var(--shell-text-muted);
-  flex-shrink: 0;
-}
-
-.follow-search-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  font-family: inherit;
-  font-size: 12.5px;
-  color: var(--shell-text);
-}
-
-.follow-search-input::placeholder {
-  color: var(--shell-text-muted);
-}
-
-.btn-clear-search {
-  background: transparent;
-  border: none;
-  color: var(--shell-text-muted);
-  cursor: pointer;
-  padding: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.follow-list-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 12px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 52vh;
-}
-
-.follow-user-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  transition: background 0.15s ease;
-}
-
-.follow-user-row:hover {
-  background: var(--shell-chip);
-}
-
-.follow-user-avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.follow-user-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1.5px solid var(--shell-border);
-}
-
-.follow-verified-dot {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 15px;
-  height: 15px;
-  background: #3b82f6;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 900;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid var(--shell-card);
-}
-
-.follow-user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.follow-user-name-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.follow-user-name {
-  font-size: 13.5px;
-  font-weight: 800;
-  color: var(--shell-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.verified-tag {
-  font-size: 9.5px;
-  font-weight: 900;
-  background: rgba(59, 130, 246, 0.18);
-  color: #60a5fa;
-  padding: 1px 6px;
-  border-radius: 6px;
-}
-
-.follow-user-handle {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--shell-text-muted);
-}
-
-.follow-user-bio {
-  font-size: 11px;
-  color: var(--shell-text-muted);
-  margin: 3px 0 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-follow-toggle {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 800;
-  cursor: pointer;
-  background: var(--shell-sub-accent, #2563eb);
-  color: #fff;
-  border: 1px solid transparent;
-  transition: all 0.18s ease;
-}
-
-.btn-follow-toggle:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
-}
-
-.btn-follow-toggle.btn-following {
-  background: var(--shell-chip);
-  color: var(--shell-text);
-  border-color: var(--shell-border);
-}
-
-.btn-follow-toggle.btn-following:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.follow-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 16px;
-  text-align: center;
-  color: var(--shell-text-muted);
-}
-
-.btn-close-modal {
-  background: transparent;
-  border: none;
-  color: var(--shell-text-muted);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.btn-close-modal:hover {
-  background: var(--shell-chip);
-  color: var(--shell-text);
-}
-
 @media (max-width: 640px) {
   .public-main-stage {
     padding: 10px 10px 32px;
@@ -2258,23 +1839,6 @@ function handleBottomNavChange(tabKey) {
   .about-meta-grid {
     grid-template-columns: 1fr;
     gap: 8px;
-  }
-
-  .follow-modal-card {
-    max-width: 440px;
-    width: 94%;
-    max-height: 82vh;
-    border-radius: 20px;
-    margin: auto;
-  }
-
-  .follow-modal-header {
-    padding: 10px 14px;
-  }
-
-  .follow-tab-btn {
-    padding: 6px 10px;
-    font-size: 12px;
   }
 }
 </style>
