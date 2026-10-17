@@ -404,10 +404,6 @@
                   {{ baseData.verified ? 'Resmi Terverifikasi' : 'Belum Terverifikasi' }}
                 </span>
               </div>
-              <div class="meta-item">
-                <span class="meta-lbl">Didirikan</span>
-                <span class="meta-val">{{ baseData.established }}</span>
-              </div>
             </div>
 
             <div class="about-bio-box mt-4">
