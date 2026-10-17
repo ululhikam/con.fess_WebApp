@@ -955,6 +955,20 @@ async function loadConnections() {
 }
 
 async function toggleConnection(conn) {
+  // Putuskan koneksi = access token dihapus dari server → konfirmasi dulu.
+  if (conn.connected) {
+    const confirmed = await confirmDialog({
+      title: `Putuskan Koneksi ${platformLabel(conn.id)}?`,
+      message:
+        conn.id === 'instagram'
+          ? `Akun ${conn.account_handle || 'Instagram'} akan diputus dan access token dihapus dari server. Auto-post berhenti sampai kamu menghubungkan ulang.`
+          : `Integrasi ${platformLabel(conn.id)} akan dinonaktifkan.`,
+      variant: 'warning',
+      confirmLabel: 'Putuskan',
+    });
+    if (!confirmed) return;
+  }
+
   connectionBusy.value = conn.id;
   connectionNotice.value = '';
   try {
