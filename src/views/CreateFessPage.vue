@@ -143,14 +143,14 @@
       <aside class="preview-panel" :class="{ 'has-content': hasContent }">
         <div class="preview-header">
           <div>
-            <h2 class="preview-title">Pratinjau Kartu</h2>
+            <h2 class="preview-title">Pratinjau Postingan</h2>
             <p class="preview-subtitle">{{ activeTemplate.label }} · {{ activeAspect.label }}</p>
           </div>
           <button
             type="button"
             class="btn-export"
             :disabled="!hasContent || exporting"
-            :title="hasContent ? 'Simpan kartu sebagai gambar PNG' : 'Tulis fess dulu'"
+            :title="hasContent ? 'Simpan kartu halaman 1 sebagai gambar PNG' : 'Tulis fess dulu'"
             @click="exportCard"
           >
             <Loader2 v-if="exporting" :size="15" class="spin" />
@@ -160,7 +160,7 @@
         </div>
 
         <div class="preview-content">
-          <PostPreview
+          <PostPreviewCarousel
             ref="previewRef"
             :content="form.content"
             :media="form.media"
@@ -177,7 +177,7 @@
           />
           <p v-if="form.media.length > 1" class="preview-hint">
             <GripVertical :size="13" />
-            <span>Geser pegangan di sudut media untuk mengatur urutannya (depan → belakang).</span>
+            <span>Geser pegangan di slide media untuk mengatur urutannya (depan → belakang).</span>
           </p>
           <p v-if="exportError" class="preview-error" role="alert">
             <AlertCircle :size="14" /> {{ exportError }}
@@ -247,7 +247,7 @@ import BaseSelector from '../components/compose/BaseSelector.vue';
 import EditorArea from '../components/compose/EditorArea.vue';
 import MediaUploader from '../components/compose/MediaUploader.vue';
 import ToolbarButton from '../components/compose/ToolbarButton.vue';
-import PostPreview from '../components/compose/PostPreview.vue';
+import PostPreviewCarousel from '../components/compose/PostPreviewCarousel.vue';
 import TopicModal from '../components/compose/TopicModal.vue';
 import ScheduleModal from '../components/compose/ScheduleModal.vue';
 import SongModal from '../components/compose/SongModal.vue';
@@ -505,10 +505,14 @@ function onMediaChange(media) {
   form.value.media = media;
 }
 
-/** Terapkan urutan media baru dari pratinjau (geser depan/tengah/belakang). */
+/**
+ * Terapkan urutan media baru dari pratinjau (geser depan/tengah/belakang).
+ * Daftar dari carousel boleh berupa subset (mis. video non-MP4 yang tidak
+ * ikut diposting ke IG tidak punya slide) — sisanya tetap di akhir.
+ */
 function onReorderMedia(orderedIds) {
   const list = form.value.media || [];
-  if (!Array.isArray(orderedIds) || orderedIds.length !== list.length) return;
+  if (!Array.isArray(orderedIds) || !orderedIds.length) return;
   const byId = new Map(list.map((m) => [m.id, m]));
   const next = [];
   for (const id of orderedIds) {

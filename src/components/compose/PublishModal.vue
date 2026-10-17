@@ -17,8 +17,9 @@
         </header>
 
         <div class="modal-body">
-          <!-- Preview Card -->
-          <PostPreview
+          <!-- Preview carousel: kartu fess (1..N halaman) lalu media — sama
+               dengan urutan carousel yang diposting ke Instagram -->
+          <PostPreviewCarousel
             :content="form.content"
             :media="form.media"
             :base-handle="form.baseHandle"
@@ -26,6 +27,7 @@
             :song="form.song"
             :template="form.template"
             :author="author"
+            :quoted-fess="form.quotedFess"
             :is-preview="true"
           />
 
@@ -97,7 +99,7 @@
 <script setup>
 import { computed } from 'vue';
 import { X, Calendar, Loader2, AlertCircle } from 'lucide-vue-next';
-import PostPreview from './PostPreview.vue';
+import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
 
 const props = defineProps({

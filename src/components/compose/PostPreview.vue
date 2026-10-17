@@ -27,63 +27,33 @@
         </span>
       </div>
 
-      <!-- Body -->
-      <p v-if="displayContent" class="post-card__body">{{ displayContent }}</p>
-      <p v-else class="post-card__body post-card__body--empty">Tulis fessmu…</p>
-
-      <!-- Quoted Fess Preview -->
-      <div v-if="quotedFess" class="post-card__quoted">
-        <div class="quoted-meta">
-          <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
-          <span>• {{ quotedFess.time || 'Fess' }}</span>
-        </div>
-        <p class="quoted-text">{{ quotedFess.content }}</p>
-      </div>
-
-      <!-- Media (di pratinjau, media bisa digeser untuk mengatur urutan) -->
-      <div
-        v-if="mediaItems.length"
-        class="post-card__media"
-        :class="[
-          mediaItems.length === 1 ? 'is-single' : 'is-grid',
-          { 'is-reorderable': reorderEnabled },
-        ]"
-      >
+      <!-- Isi fess + kotak kutipan (satu blok agar kutipan menempel di bawah teks) -->
+      <div ref="flowEl" class="post-card__flow">
+        <!--
+          Mode paginasi: satu span per baris hasil mesin paginasi backend. Baris
+          dirender nowrap supaya pemenggalan baris & halaman identik dengan PNG
+          yang diposting ke Instagram (tidak membungkus ulang di browser).
+        -->
         <div
-          v-for="(item, index) in mediaItems"
-          :key="item.id"
-          class="post-card__media-item"
-          :class="{ 'is-drag-source': dragIndex === index }"
-          :data-media-index="index"
+          v-if="pageLines"
+          class="post-card__body post-card__body--paged"
+          :style="pagedBodyStyle"
         >
-          <img
-            v-if="item.type === 'image'"
-            :src="item.url || item.preview"
-            :alt="item.name || 'Media fess'"
-            loading="lazy"
-          />
-          <video
-            v-else
-            :src="item.url || item.preview"
-            :poster="item.preview"
-            muted
-            playsinline
-            controls
-          />
+          <span v-if="showPlaceholder" class="post-card__placeholder">Tulis fessmu…</span>
+          <span v-for="(line, i) in pageLines" :key="i" class="post-card__line">{{
+            line || '\u00A0'
+          }}</span>
+        </div>
+        <p v-else-if="displayContent" class="post-card__body">{{ displayContent }}</p>
+        <p v-else class="post-card__body post-card__body--empty">Tulis fessmu…</p>
 
-          <!-- Pegangan geser pengatur urutan (tidak ikut ter-ekspor ke PNG) -->
-          <button
-            v-if="reorderEnabled"
-            type="button"
-            class="media-reorder-handle"
-            :title="`Geser untuk memindahkan media ${index + 1}`"
-            aria-label="Geser untuk mengubah urutan media"
-            @pointerdown.stop.prevent="startReorder($event, index)"
-            @click.stop
-          >
-            <GripVertical :size="14" />
-          </button>
-          <span v-if="reorderEnabled" class="media-order-badge">{{ index + 1 }}</span>
+        <!-- Quoted Fess Preview -->
+        <div v-if="quotedFess" ref="quoteEl" class="post-card__quoted">
+          <div class="quoted-meta">
+            <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
+            <span>• {{ quotedFess.time || 'Fess' }}</span>
+          </div>
+          <p class="quoted-text">{{ quotedFess.content }}</p>
         </div>
       </div>
 
@@ -93,7 +63,10 @@
         <span class="post-card__stat"
           ><MessageCircle :size="14" /> {{ formatCompact(comments) }}</span
         >
-        <span class="post-card__stat post-card__stat--time">{{ timeAgo }}</span>
+        <span class="post-card__stat post-card__stat--time">
+          <template v-if="pageTotal > 1">{{ pageIndex + 1 }}/{{ pageTotal }}</template>
+          <template v-else>{{ timeAgo }}</template>
+        </span>
       </footer>
     </div>
   </article>
@@ -103,21 +76,30 @@
 /**
  * PostPreview renders the *exportable* post card.
  *
- * The card is a fixed-aspect canvas (1:1 / 4:5 / 9:16) painted with the
- * template background. Everything drawn on it is self-contained — colours come
- * from the template's `ink`, never from app theme variables — so the node can
- * be rasterised to a PNG and posted to Instagram without losing styling.
+ * The card is a fixed-aspect canvas (1:1 / 4:5) painted with the template
+ * background. Everything drawn on it is self-contained — colours come from the
+ * template's `ink`, never from app theme variables — so the node can be
+ * rasterised to a PNG and posted to Instagram without losing styling.
+ *
+ * Isi fess dirender per baris (`pageLines`) hasil `paginateCardContent()` —
+ * cermin mesin paginasi backend — sehingga pembagian halaman kartu di pratinjau
+ * sama dengan carousel yang benar-benar diposting. Media user TIDAK ikut ke
+ * dalam kartu: di Instagram media menjadi slide carousel tersendiri.
+ *
+ * Karena pratinjau lebih kecil dari kanvas 1080 px backend, ukuran font teks
+ * diskalakan proporsional (`pageFont` × lebar kartu / 1080) lalu dirapatkan
+ * sedikit bila perlu agar semua baris halaman muat tanpa terpotong.
  */
-import { ref, computed, nextTick, onBeforeUnmount } from 'vue';
-import { Heart, MessageCircle, Music, GripVertical } from 'lucide-vue-next';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { Heart, MessageCircle, Music } from 'lucide-vue-next';
 import { formatCompact } from '../../utils/format';
 import { getTemplateByKey, getTemplateAspectRatio } from '../../config/templates';
+import { CARD_CANVAS_WIDTH } from '../../utils/cardPagination';
 import { useTopics } from '../../composables/useTopics';
 import { useBases } from '../../composables/useBases';
 
 const props = defineProps({
   content: { type: String, default: '' },
-  media: { type: Array, default: () => [] },
   baseHandle: { type: String, default: '@anonfess' },
   topic: { type: String, default: '' },
   song: { type: Object, default: null },
@@ -127,11 +109,14 @@ const props = defineProps({
   isPreview: { type: Boolean, default: true },
   /** True while html-to-image is rasterising — freezes animations/jitter. */
   exporting: { type: Boolean, default: false },
-  /** Aktifkan pengaturan urutan media via geser (khusus tampilan pratinjau). */
-  reorderable: { type: Boolean, default: false },
+  /** Baris teks halaman ini (hasil paginasi backend). null = mode lama (tanpa paginasi). */
+  pageLines: { type: Array, default: null },
+  /** Ukuran font kanvas backend halaman ini: { size, lineHeight } (skala 1080 px). */
+  pageFont: { type: Object, default: null },
+  /** Indeks halaman (0-based) & total halaman carousel — untuk penomoran footer. */
+  pageIndex: { type: Number, default: 0 },
+  pageTotal: { type: Number, default: 1 },
 });
-
-const emit = defineEmits(['reorder-media']);
 
 /** Root node, exposed so the parent can hand it to html-to-image. */
 const cardEl = ref(null);
@@ -171,88 +156,120 @@ const textureStyle = computed(() =>
   templateDef.value.texture ? { backgroundImage: templateDef.value.texture } : null,
 );
 
+/** Fallback mode lama (tanpa paginasi): potong isi agar kartu tidak meluber. */
 const displayContent = computed(() => {
   if (props.isPreview && props.content.length > 420) return props.content.slice(0, 420) + '…';
   return props.content;
 });
 
-/* ---- Pengaturan urutan media via geser (khusus pratinjau) ---------------- */
-
-const reorderEnabled = computed(
-  () => props.reorderable && props.isPreview && !props.exporting && (props.media?.length || 0) > 1
+const showPlaceholder = computed(
+  () =>
+    Array.isArray(props.pageLines) &&
+    props.pageLines.length === 0 &&
+    !String(props.content || '').trim() &&
+    !props.quotedFess,
 );
 
-// Urutan lokal (daftar id) selama user menggeser; null = ikut urutan prop.
-const dragIds = ref(null);
-const dragIndex = ref(-1);
+/* ---- Skala teks pratinjau → menyesuaikan ruang yang tersedia ------------- */
 
-/** Daftar media yang dirender — mengikuti urutan geser saat sedang aktif. */
-const mediaItems = computed(() => {
-  const list = props.media || [];
-  if (!dragIds.value) return list;
-  const byId = new Map(list.map((m) => [m.id, m]));
-  const ordered = [];
-  for (const id of dragIds.value) {
-    const item = byId.get(id);
-    if (item) ordered.push(item);
+const flowEl = ref(null);
+const quoteEl = ref(null);
+
+const cardWidth = ref(0);
+const flowHeight = ref(0);
+const quoteHeight = ref(0);
+const flowGap = ref(0);
+
+let sizeObserver = null;
+
+function measureGeometry() {
+  const card = cardEl.value;
+  if (card) cardWidth.value = card.getBoundingClientRect().width || 0;
+
+  const flow = flowEl.value;
+  if (flow) {
+    flowHeight.value = flow.getBoundingClientRect().height || 0;
+    const styles = typeof getComputedStyle === 'function' ? getComputedStyle(flow) : null;
+    const gap = styles ? parseFloat(styles.rowGap) : NaN;
+    flowGap.value = Number.isFinite(gap) ? gap : 0;
   }
-  for (const item of list) {
-    if (!ordered.includes(item)) ordered.push(item);
+
+  const quote = quoteEl.value;
+  quoteHeight.value = quote ? quote.getBoundingClientRect().height || 0 : 0;
+}
+
+function observeElement(el, prev) {
+  if (!sizeObserver) return;
+  if (prev) sizeObserver.unobserve(prev);
+  if (el) sizeObserver.observe(el);
+}
+
+onMounted(() => {
+  measureGeometry();
+  if (typeof ResizeObserver !== 'undefined') {
+    sizeObserver = new ResizeObserver(() => measureGeometry());
+    if (cardEl.value) sizeObserver.observe(cardEl.value);
+    if (flowEl.value) sizeObserver.observe(flowEl.value);
+    if (quoteEl.value) sizeObserver.observe(quoteEl.value);
   }
-  return ordered;
 });
 
-function startReorder(event, index) {
-  if (!reorderEnabled.value || dragIndex.value !== -1) return;
-  dragIndex.value = index;
-  dragIds.value = mediaItems.value.map((m) => m.id);
-  window.addEventListener('pointermove', onReorderMove, { passive: false });
-  window.addEventListener('pointerup', finishReorder);
-  window.addEventListener('pointercancel', finishReorder);
-}
+watch(
+  flowEl,
+  (el, prev) => {
+    observeElement(el, prev);
+    measureGeometry();
+  },
+  { flush: 'post' },
+);
 
-/** Tukar posisi item yang digeser dengan tile yang berada di bawah pointer. */
-function onReorderMove(event) {
-  if (dragIndex.value < 0) return;
-  event.preventDefault();
-  const el = document.elementFromPoint(event.clientX, event.clientY);
-  const tile = el && typeof el.closest === 'function' ? el.closest('[data-media-index]') : null;
-  if (!tile) return;
-  const index = Number(tile.getAttribute('data-media-index'));
-  if (Number.isNaN(index) || index === dragIndex.value) return;
-  moveMedia(dragIndex.value, index);
-  dragIndex.value = index;
-}
-
-function moveMedia(from, to) {
-  const ids = (dragIds.value || []).slice();
-  if (from < 0 || from >= ids.length || to < 0 || to >= ids.length) return;
-  const [moved] = ids.splice(from, 1);
-  ids.splice(to, 0, moved);
-  dragIds.value = ids;
-}
-
-function finishReorder() {
-  window.removeEventListener('pointermove', onReorderMove);
-  window.removeEventListener('pointerup', finishReorder);
-  window.removeEventListener('pointercancel', finishReorder);
-  const ids = dragIds.value;
-  dragIndex.value = -1;
-  if (ids && ids.length) {
-    emit('reorder-media', ids);
-    // Lepaskan urutan lokal setelah parent menyinkronkan prop-nya.
-    nextTick(() => {
-      if (dragIndex.value === -1) dragIds.value = null;
-    });
-  } else {
-    dragIds.value = null;
-  }
-}
+watch(
+  quoteEl,
+  (el, prev) => {
+    observeElement(el, prev);
+    measureGeometry();
+  },
+  { flush: 'post' },
+);
 
 onBeforeUnmount(() => {
-  window.removeEventListener('pointermove', onReorderMove);
-  window.removeEventListener('pointerup', finishReorder);
-  window.removeEventListener('pointercancel', finishReorder);
+  sizeObserver?.disconnect();
+  sizeObserver = null;
+});
+
+/** Skala kanvas: lebar kartu di layar ÷ lebar kanvas backend (1080 px). */
+const cardScale = computed(() => (cardWidth.value > 0 ? cardWidth.value / CARD_CANVAS_WIDTH : 0));
+
+const pageLineCount = computed(() => (Array.isArray(props.pageLines) ? props.pageLines.length : 0));
+
+/**
+ * Faktor pemadatan bila (baris × tinggi baris) melebihi ruang tersedia di
+ * dalam kartu — mis. halaman pertama yang menyisakan tempat untuk kotak
+ * kutipan. Tujuannya: seluruh baris selalu terlihat utuh.
+ */
+const bodyFitScale = computed(() => {
+  const font = props.pageFont;
+  const scale = cardScale.value;
+  if (!font || !scale || !pageLineCount.value) return 1;
+
+  const needed = pageLineCount.value * font.lineHeight * scale;
+  if (!needed) return 1;
+
+  const reserved = quoteHeight.value ? quoteHeight.value + flowGap.value : 0;
+  const available = flowHeight.value - reserved;
+  if (available <= 0) return 1;
+
+  return Math.max(0.45, Math.min(1, (available - 1) / needed));
+});
+
+const pagedBodyStyle = computed(() => {
+  const font = props.pageFont;
+  const scale = cardScale.value * bodyFitScale.value;
+  if (!font || !scale) return {};
+  return {
+    fontSize: `${(font.size * scale).toFixed(2)}px`,
+    lineHeight: `${(font.lineHeight * scale).toFixed(2)}px`,
+  };
 });
 
 // Static demo counters — the real values arrive from the API layer.
@@ -321,9 +338,6 @@ const timeAgo = 'baru saja';
 .ink-light .post-card__chip {
   background: rgba(255, 255, 255, 0.18);
 }
-.ink-light .post-card__media-item {
-  border: 1px solid rgba(255, 255, 255, 0.28);
-}
 
 .ink-dark {
   color: #1c1917;
@@ -347,9 +361,6 @@ const timeAgo = 'baru saja';
 .ink-dark .post-card__brand,
 .ink-dark .post-card__chip {
   background: rgba(28, 25, 23, 0.1);
-}
-.ink-dark .post-card__media-item {
-  border: 1px solid rgba(28, 25, 23, 0.2);
 }
 
 /* ---- header ---- */
@@ -422,7 +433,15 @@ const timeAgo = 'baru saja';
   color: #0b0d14;
 }
 
-/* ---- body ---- */
+/* ---- isi fess + kutipan ---- */
+.post-card__flow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2.4vw, 16px);
+}
+
 .post-card__body {
   margin: 0;
   flex: 1;
@@ -435,12 +454,29 @@ const timeAgo = 'baru saja';
   overflow-wrap: anywhere;
 }
 
+/* Mode paginasi: tinggi mengikuti jumlah baris (bukan mengisi ruang),
+   supaya kotak kutipan menempel persis di bawah baris terakhir. */
+.post-card__body--paged {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.post-card__line {
+  display: block;
+  white-space: nowrap;
+}
+
+.post-card__placeholder {
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.82;
+}
+
 .post-card__body--empty {
   font-style: italic;
   font-weight: 400;
 }
 
-/* ---- quoted fess ---- */
 .post-card__quoted {
   margin: 6px 0 10px;
   border-radius: 10px;
@@ -468,103 +504,6 @@ const timeAgo = 'baru saja';
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-/* ---- media ---- */
-.post-card__media {
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 12px;
-}
-
-.post-card__media.is-single {
-  max-height: 46%;
-}
-
-.post-card__media.is-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.post-card__media-item {
-  position: relative;
-  overflow: hidden;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-  aspect-ratio: 1;
-}
-
-.post-card__media.is-single .post-card__media-item {
-  aspect-ratio: 16 / 10;
-}
-
-.post-card__media-item img,
-.post-card__media-item video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* ---- reorder media (hanya tampil di pratinjau, tidak ikut ter-ekspor) ---- */
-.post-card__media.is-reorderable .post-card__media-item {
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.post-card__media-item.is-drag-source {
-  z-index: 2;
-  transform: scale(0.95);
-  box-shadow:
-    0 0 0 2px #00e0a4,
-    0 12px 24px rgba(0, 0, 0, 0.4);
-}
-
-.media-reorder-handle {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  background: rgba(10, 12, 20, 0.62);
-  color: #ffffff;
-  cursor: grab;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.media-reorder-handle:active {
-  cursor: grabbing;
-  background: rgba(10, 12, 20, 0.82);
-}
-
-.media-order-badge {
-  position: absolute;
-  left: 6px;
-  bottom: 6px;
-  z-index: 3;
-  min-width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: rgba(10, 12, 20, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 800;
 }
 
 /* ---- footer ---- */
