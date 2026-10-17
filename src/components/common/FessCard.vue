@@ -545,6 +545,7 @@ import ReportFessModal from './ReportFessModal.vue';
 import MediaViewer from './MediaViewer.vue';
 import { api } from '../../api';
 import { mapFessComment } from '../../utils/fessMapper';
+import { getTemplateByKey } from '../../config/templates';
 import { useAuthStore } from '../../stores/authStore';
 
 const props = defineProps({
@@ -1199,7 +1200,9 @@ async function openInstagramStoryAutoPost() {
   try {
     const res = await api.postFessToInstagram(props.post.id, {
       template: props.post.template || 'default',
-      aspect: props.post.aspect || 'portrait',
+      // Aspek mengikuti template (persegi tetap persegi) — konsisten dengan
+      // pratinjau komposer dan auto-post saat fess diterbitkan.
+      aspect: props.post.aspect || getTemplateByKey(props.post.template || 'default').aspect,
     });
     igPostData.value = res?.data || res;
     if (igPostData.value?.meta_published) {
