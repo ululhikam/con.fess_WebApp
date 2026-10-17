@@ -8,19 +8,28 @@
       <p>© 2026 Fess n Curious - Automatic Social Media Confession Platform.</p>
     </div>
 
-    <nav class="footer-links" aria-label="Tautan footer">
-      <router-link to="/login">Masuk</router-link>
-      <a href="#fitur">Fitur</a>
-      <a href="#cara-kerja">Cara Kerja</a>
-      <a href="#komunitas">Komunitas</a>
-      <a href="#faq">FAQ</a>
-    </nav>
+    <div class="footer-right">
+      <nav class="footer-links" aria-label="Tautan footer">
+        <router-link to="/login">Masuk</router-link>
+        <a href="#fitur">Fitur</a>
+        <a href="#cara-kerja">Cara Kerja</a>
+        <a href="#komunitas">Komunitas</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <nav class="footer-legal" aria-label="Tautan legal">
+        <router-link to="/privacy">Kebijakan Privasi</router-link>
+        <router-link to="/terms">Ketentuan Layanan</router-link>
+        <router-link to="/data-deletion">Penghapusan Data</router-link>
+      </nav>
+    </div>
   </footer>
 </template>
 
 <script setup>
 /**
- * SiteFooter — page footer: brand, copyright and quick anchor links.
+ * SiteFooter — page footer: brand, copyright, quick anchor links, dan
+ * navigasi halaman legal publik (Kebijakan Privasi / Ketentuan / Penghapusan Data).
  */
 </script>
 
@@ -75,5 +84,55 @@
 
 .footer-links a:hover {
   color: var(--brand-blue);
+}
+
+/* ---- Baris legal: Kebijakan Privasi / Ketentuan / Penghapusan Data ---- */
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.footer-legal a {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.footer-legal a:hover {
+  color: var(--brand-blue);
+  border-color: var(--brand-blue);
+}
+
+@media (max-width: 720px) {
+  .lp-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .footer-right {
+    align-items: flex-start;
+  }
+
+  .footer-legal {
+    justify-content: flex-start;
+  }
 }
 </style>
