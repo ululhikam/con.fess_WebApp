@@ -40,9 +40,11 @@
           :style="pagedBodyStyle"
         >
           <span v-if="showPlaceholder" class="post-card__placeholder">Tulis fessmu…</span>
-          <span v-for="(line, i) in pageLines" :key="i" class="post-card__line">{{
-            line || '\u00A0'
-          }}</span>
+          <template v-else>
+            <span v-for="(line, i) in pageLines" :key="i" class="post-card__line">{{
+              line || '\u00A0'
+            }}</span>
+          </template>
         </div>
         <p v-else-if="displayContent" class="post-card__body">{{ displayContent }}</p>
         <p v-else class="post-card__body post-card__body--empty">Tulis fessmu…</p>
@@ -165,7 +167,6 @@ const displayContent = computed(() => {
 const showPlaceholder = computed(
   () =>
     Array.isArray(props.pageLines) &&
-    props.pageLines.length === 0 &&
     !String(props.content || '').trim() &&
     !props.quotedFess,
 );
