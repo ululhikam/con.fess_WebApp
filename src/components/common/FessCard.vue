@@ -389,7 +389,7 @@
           class="ig-story-modal-backdrop"
           role="dialog"
           aria-modal="true"
-          aria-label="Instagram Story Auto-Post"
+          aria-label="Instagram Feed Auto-Post"
           @click.self="showInstagramModal = false"
         >
           <div class="ig-story-modal-box" @click.stop>
@@ -448,7 +448,7 @@
                   <img
                     v-if="igPostData?.imageUrl || igPostData?.image_url"
                     :src="igPostData.imageUrl || igPostData.image_url"
-                    alt="Card Fess Story"
+                    alt="Card Fess Feed"
                     class="ig-story-rendered-img"
                   />
                   <div v-else class="ig-story-fallback-card">
@@ -1229,7 +1229,7 @@ async function openInstagramStoryAutoPost() {
     }
   } catch (err) {
     console.error('Gagal memposting fess ke Instagram:', err);
-    triggerToast('Gagal memproses card story. Silakan coba lagi.');
+    triggerToast('Gagal memproses card Instagram. Silakan coba lagi.');
   } finally {
     igPostLoading.value = false;
   }

@@ -63,6 +63,16 @@
                 <div class="text-xs text-muted">
                   {{ conn.connected && conn.account_handle ? 'Akun: ' + conn.account_handle : 'Belum terhubung' }}
                 </div>
+                <div
+                  v-if="connectionTokenInfo(conn).text"
+                  class="text-xs mt-1 connection-token-info"
+                  :class="{
+                    'is-warn': connectionTokenInfo(conn).warn,
+                    'is-danger': connectionTokenInfo(conn).danger,
+                  }"
+                >
+                  {{ connectionTokenInfo(conn).text }}
+                </div>
               </div>
               <span
                 class="status-online-pill"
@@ -835,6 +845,7 @@ import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
+import { confirmDialog } from '../../composables/useAppDialog';
 
 const props = defineProps({
   modelValue: { type: String, default: null },
@@ -890,6 +901,41 @@ function platformLabel(id) {
   return 'Telegram';
 }
 
+/** Info masa berlaku token Instagram (dari metadata koneksi) untuk kartu koneksi. */
+function connectionTokenInfo(conn) {
+  if (conn.id !== 'instagram' || !conn.connected || !conn.token_expires_at) {
+    return { text: '', warn: false, danger: false };
+  }
+  const expiresAt = new Date(conn.token_expires_at);
+  if (Number.isNaN(expiresAt.getTime())) return { text: '', warn: false, danger: false };
+
+  const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000);
+  if (daysLeft <= 0) {
+    return {
+      text: 'Token Instagram kedaluwarsa — hubungkan ulang via Meta OAuth.',
+      warn: false,
+      danger: true,
+    };
+  }
+  if (daysLeft <= 7) {
+    return {
+      text: `Token Instagram segera kedaluwarsa (${daysLeft} hari lagi) — segera hubungkan ulang.`,
+      warn: true,
+      danger: false,
+    };
+  }
+  const formatted = expiresAt.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  return {
+    text: `Token Instagram aktif hingga ${formatted} (auto-refresh harian aktif).`,
+    warn: false,
+    danger: false,
+  };
+}
+
 async function loadConnections() {
   connectionsLoading.value = true;
   connectionsError.value = null;
@@ -927,7 +973,21 @@ async function toggleConnection(conn) {
   }
 }
 
-function connectInstagramOAuth() {
+async function connectInstagramOAuth() {
+  // Konfirmasi izin sebelum redirect — transparansi scope (syarat Meta App Review).
+  const confirmed = await confirmDialog({
+    title: 'Hubungkan Instagram ke Fess n Curious?',
+    message: 'Kamu akan diarahkan ke Instagram untuk memberi izin resmi (Meta OAuth).',
+    detail:
+      'Fess n Curious hanya meminta: (1) info dasar akun profesional base — username & ID, ' +
+      '(2) izin publikasi konten yang kamu setujui ke Feed/Carousel (gambar) atau Reels (video) ' +
+      'akun base. Token disimpan aman di server dan bisa diputus kapan saja lewat tombol "Putuskan Koneksi".',
+    variant: 'info',
+    confirmLabel: 'Lanjut ke Instagram',
+    cancelLabel: 'Batal',
+  });
+  if (!confirmed) return;
+
   const token = localStorage.getItem('fess_token') || '';
   const base = baseHandle.value || '';
   window.location.href = `/api/auth/instagram?token=${encodeURIComponent(token)}&base=${encodeURIComponent(base)}`;
@@ -1184,8 +1244,8 @@ watch(
 const openFaqIndex = ref(0);
 const ADMIN_FAQS = [
   {
-    q: 'Bagaimana cara kerja auto-post ke Instagram Story?',
-    a: 'Setiap confession yang Anda setujui akan dikonversi menjadi gambar canvas resolusi tinggi (1080x1920) dengan format font elegan, lalu diposting otomatis ke Story akun Instagram base Anda via Meta Graph API.',
+    q: 'Bagaimana cara kerja auto-post ke Instagram?',
+    a: 'Setiap confession yang Anda setujui akan dikonversi menjadi kartu canvas resolusi tinggi (Feed 1:1 / 4:5) lalu diposting otomatis ke Instagram base Anda via Meta Graph API — carousel bila ada media tambahan, dan Reels untuk video. Kuota Instagram dibatasi 100 publikasi per 24 jam dan dipantau otomatis oleh sistem.',
   },
   {
     q: 'Berapa lama proses pencairan saldo treasury ke rekening bank?',
@@ -1318,6 +1378,18 @@ watch(
   background: rgba(107, 114, 128, 0.15);
   color: #9ca3af;
   border-color: #6b7280;
+}
+
+.connection-token-info {
+  line-height: 1.45;
+}
+
+.connection-token-info.is-warn {
+  color: var(--warning-text, #d97706);
+}
+
+.connection-token-info.is-danger {
+  color: var(--danger-text, #dc2626);
 }
 
 .toggle-row {

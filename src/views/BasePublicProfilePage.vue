@@ -166,12 +166,12 @@
                   <ExternalLink :size="11" class="medsos-ext-icon" />
                 </a>
 
-                <div class="medsos-item-chip auto-sync-chip" title="Integrasi Auto-Post Story Aktif">
+                <div class="medsos-item-chip auto-sync-chip" title="Integrasi Auto-Post Instagram Aktif">
                   <span class="pulse-radar-wrap">
                     <span class="radar-wave"></span>
                     <span class="radar-dot"></span>
                   </span>
-                  <span>Auto-Post Story Aktif</span>
+                  <span>Auto-Post Feed Aktif</span>
                 </div>
               </div>
             </div>

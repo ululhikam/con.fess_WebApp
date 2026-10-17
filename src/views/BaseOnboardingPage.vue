@@ -158,7 +158,7 @@
                 <span v-else class="onb-badge onb-badge-idle">Opsional</span>
               </div>
               <p class="onb-ig-app-desc">
-                Publikasikan confession yang disetujui secara otomatis ke Instagram Story &amp; Feed base.
+                Publikasikan confession yang disetujui secara otomatis ke Instagram Feed &amp; Reels base.
               </p>
             </div>
           </div>
@@ -306,6 +306,7 @@ import {
 import { useAuthStore } from '../stores/authStore';
 import { api, instagramAuthUrl } from '../api';
 import { useBases } from '../composables/useBases';
+import { confirmDialog } from '../composables/useAppDialog';
 
 const STEPS = [
   { step: 1, label: 'Identitas' },
@@ -443,8 +444,23 @@ function restoreDraft() {
   }
 }
 
-function handleInstagramOAuth() {
+async function handleInstagramOAuth() {
   errorMessage.value = '';
+
+  // Konfirmasi izin sebelum redirect — transparansi scope (syarat Meta App Review).
+  const confirmed = await confirmDialog({
+    title: 'Hubungkan Instagram ke Fess n Curious?',
+    message: 'Kamu akan diarahkan ke Instagram untuk memberi izin resmi (Meta OAuth).',
+    detail:
+      'Fess n Curious hanya meminta: (1) info dasar akun profesional base — username & ID, ' +
+      '(2) izin publikasi konten yang kamu setujui ke Feed/Carousel (gambar) atau Reels (video) ' +
+      'akun base. Token disimpan aman di server dan bisa diputus kapan saja lewat tombol "Putuskan".',
+    variant: 'info',
+    confirmLabel: 'Lanjut ke Instagram',
+    cancelLabel: 'Batal',
+  });
+  if (!confirmed) return;
+
   isConnectingIg.value = true;
   saveDraft();
 

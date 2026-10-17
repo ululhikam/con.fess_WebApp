@@ -146,7 +146,7 @@
       <div class="step-hero mb-4">
         <h2 class="step-title">2. Tautkan Akun Instagram</h2>
         <p class="step-desc">
-          Hubungkan akun Instagram komunitasmu untuk otomatis menerbitkan confession yang disetujui langsung ke Instagram Story atau Feed.
+          Hubungkan akun Instagram komunitasmu untuk otomatis menerbitkan confession yang disetujui langsung ke Instagram Feed (visual card &amp; carousel) atau Reels (video).
         </p>
       </div>
 

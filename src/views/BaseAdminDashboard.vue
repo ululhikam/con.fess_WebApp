@@ -503,7 +503,7 @@ onMounted(() => {
     const igUser = route.query.ig_user ? String(route.query.ig_user) : '';
     alertDialog({
       title: 'Instagram Terhubung',
-      message: `Akun Instagram ${igUser} berhasil dihubungkan via Meta OAuth! Fitur auto-post canvas confession story siap digunakan.`,
+      message: `Akun Instagram ${igUser} berhasil dihubungkan via Meta OAuth! Fitur auto-post canvas confession (Feed/Reels) siap digunakan.`,
     });
     const nextQ = { ...route.query };
     delete nextQ.ig_connected;
