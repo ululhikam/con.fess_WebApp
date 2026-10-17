@@ -72,17 +72,21 @@
 
 .footer-links {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
 }
 
-.footer-links a {
+.footer-links a,
+.footer-legal a {
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 700;
   font-size: 13px;
+  transition: color 0.15s ease;
 }
 
-.footer-links a:hover {
+.footer-links a:hover,
+.footer-legal a:hover {
   color: var(--brand-blue);
 }
 
@@ -91,48 +95,39 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 12px;
 }
 
 .footer-legal {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 20px;
 }
 
-.footer-legal a {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.footer-legal a:hover {
-  color: var(--brand-blue);
-  border-color: var(--brand-blue);
-}
-
+/* ---- Mobile: footer menumpuk & center supaya rapi ---- */
 @media (max-width: 720px) {
   .lp-footer {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
   }
 
   .footer-right {
-    align-items: flex-start;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .footer-links,
+  .footer-legal {
+    justify-content: center;
+    gap: 10px 18px;
   }
 
   .footer-legal {
-    justify-content: flex-start;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-subtle);
   }
 }
 </style>
