@@ -840,7 +840,7 @@ import {
   X,
 } from 'lucide-vue-next';
 
-import { api } from '../../api';
+import { api, instagramAuthUrl } from '../../api';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import { useAuthStore } from '../../stores/authStore';
@@ -1004,7 +1004,10 @@ async function connectInstagramOAuth() {
 
   const token = localStorage.getItem('fess_token') || '';
   const base = baseHandle.value || '';
-  window.location.href = `/api/auth/instagram?token=${encodeURIComponent(token)}&base=${encodeURIComponent(base)}`;
+  // Redirect OAuth wajib URL ABSOLUT ke backend — URL relatif "/api/..." akan
+  // jatuh ke rewrite SPA di domain frontend (halaman 404), karena browser
+  // redirect tidak melewati proxy XHR/Vite.
+  window.location.href = instagramAuthUrl({ token, base, origin: 'connections' });
 }
 
 /* 2. Keuangan — real state (GET /admin/treasury + POST /admin/treasury/payout) */
