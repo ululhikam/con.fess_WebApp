@@ -59,16 +59,10 @@
         </div>
       </div>
 
-      <!-- Footer -->
+      <!-- Footer (sama dengan kartu IG: branding + nomor halaman / alamat situs) -->
       <footer class="post-card__footer">
-        <span class="post-card__stat"><Heart :size="14" /> {{ formatCompact(likes) }}</span>
-        <span class="post-card__stat"
-          ><MessageCircle :size="14" /> {{ formatCompact(comments) }}</span
-        >
-        <span class="post-card__stat post-card__stat--time">
-          <template v-if="pageTotal > 1">{{ pageIndex + 1 }}/{{ pageTotal }}</template>
-          <template v-else>{{ timeAgo }}</template>
-        </span>
+        <span class="post-card__platform">Instagram Feed · {{ baseHandle }}</span>
+        <span class="post-card__footer-right">{{ footerRight }}</span>
       </footer>
     </div>
   </article>
@@ -93,8 +87,7 @@
  * sedikit bila perlu agar semua baris halaman muat tanpa terpotong.
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
-import { Heart, MessageCircle, Music } from 'lucide-vue-next';
-import { formatCompact } from '../../utils/format';
+import { Music } from 'lucide-vue-next';
 import { getTemplateByKey, getTemplateAspectRatio } from '../../config/templates';
 import { CARD_CANVAS_WIDTH } from '../../utils/cardPagination';
 import { useTopics } from '../../composables/useTopics';
@@ -273,10 +266,10 @@ const pagedBodyStyle = computed(() => {
   };
 });
 
-// Static demo counters — the real values arrive from the API layer.
-const likes = 0;
-const comments = 0;
-const timeAgo = 'baru saja';
+/** Teks kanan footer — nomor halaman saat carousel, alamat situs saat 1 halaman. */
+const footerRight = computed(() =>
+  props.pageTotal > 1 ? `${props.pageIndex + 1}/${props.pageTotal}` : 'fessncurious.vercel.app',
+);
 </script>
 
 <style scoped>
@@ -322,12 +315,12 @@ const timeAgo = 'baru saja';
 .ink-light .post-card__body,
 .ink-light .post-card__handle,
 .ink-light .post-card__name,
-.ink-light .post-card__stat,
+.ink-light .post-card__footer-right,
 .ink-light .post-card__chip {
   color: #ffffff;
 }
 .ink-light .post-card__name,
-.ink-light .post-card__stat,
+.ink-light .post-card__footer-right,
 .ink-light .post-card__body--empty {
   opacity: 0.82;
 }
@@ -346,12 +339,12 @@ const timeAgo = 'baru saja';
 .ink-dark .post-card__body,
 .ink-dark .post-card__handle,
 .ink-dark .post-card__name,
-.ink-dark .post-card__stat,
+.ink-dark .post-card__footer-right,
 .ink-dark .post-card__chip {
   color: #1c1917;
 }
 .ink-dark .post-card__name,
-.ink-dark .post-card__stat,
+.ink-dark .post-card__footer-right,
 .ink-dark .post-card__body--empty {
   opacity: 0.7;
 }
@@ -507,26 +500,26 @@ const timeAgo = 'baru saja';
   overflow: hidden;
 }
 
-/* ---- footer ---- */
+/* ---- footer (mirror kartu IG: branding + nomor halaman / alamat situs) ---- */
 .post-card__footer {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: auto;
   flex-shrink: 0;
   padding-top: 4px;
 }
 
-.post-card__stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+.post-card__platform {
   font-size: clamp(11px, 2.9vw, 13px);
-  font-weight: 600;
+  font-weight: 800;
 }
 
-.post-card__stat--time {
-  margin-left: auto;
+.post-card__footer-right {
+  font-size: clamp(10.5px, 2.7vw, 12.5px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- export state ---- */
