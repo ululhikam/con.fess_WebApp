@@ -149,8 +149,9 @@
         class="quoted-fess-box"
         role="button"
         tabindex="0"
-        title="Klik untuk kutip fess ini"
-        @click.stop="quoteTargetFess(post.quotedFess)"
+        title="Buka fess ini"
+        @click.stop="openQuotedFess(post.quotedFess)"
+        @keydown.enter.stop="openQuotedFess(post.quotedFess)"
       >
         <div class="quoted-fess-header">
           <div class="quoted-avatar" :style="{ background: post.quotedFess.avatarBg || '#0038FF' }">
@@ -159,7 +160,7 @@
           </div>
           <span class="quoted-handle">{{ post.quotedFess.handle || post.quotedFess.senderHandle }}</span>
           <span class="quoted-time">• {{ post.quotedFess.time || 'Waktu lalu' }}</span>
-          <span class="badge-quote-pill">Kutip</span>
+          <span class="badge-quote-pill">Lihat</span>
         </div>
         <p class="quoted-content">{{ post.quotedFess.content }}</p>
       </div>
@@ -559,6 +560,11 @@ const props = defineProps({
   },
   /** Daftar "Fess Saya": badge status milik sendiri selalu terlihat. */
   showOwnStatus: {
+    type: Boolean,
+    default: false,
+  },
+  /** Halaman detail fess (/fess/:id): buka thread komentar otomatis. */
+  commentsOpen: {
     type: Boolean,
     default: false,
   },
@@ -1091,6 +1097,8 @@ onMounted(() => {
   carouselVisibilityHandler = () => syncCarouselVideos();
   document.addEventListener('visibilitychange', carouselVisibilityHandler);
   nextTick(() => syncCarouselVideos());
+  // Halaman detail fess: thread komentar langsung terbuka tanpa klik.
+  if (showComments.value) loadComments();
 });
 
 onBeforeUnmount(() => {
@@ -1286,12 +1294,19 @@ function quoteThisFess() {
   saveAndNavigateQuote(props.post);
 }
 
-function quoteTargetFess(target) {
-  saveAndNavigateQuote(target);
+/**
+ * Buka fess yang dikutip di halaman detailnya (/fess/:id) — sama seperti
+ * tautan "Salin Tautan". Untuk mengutip fess itu, tombol Kutip tersedia di
+ * halaman detailnya.
+ */
+function openQuotedFess(target) {
+  if (!target?.id) return;
+  showShareMenu.value = false;
+  router.push(`/fess/${target.id}`);
 }
 
 /* 4. COMMENTS STATE — comments are loaded live from the API */
-const showComments = ref(false);
+const showComments = ref(props.commentsOpen);
 const commentsCount = ref(props.post.commentsCount ?? props.post.comments?.length ?? 0);
 const replyTarget = ref(null);
 const newCommentText = ref('');

@@ -92,6 +92,18 @@ const routes = [
     },
   },
   {
+    /** Tautan tetap (permalink) sebuah fess — dipakai tombol Salin Tautan,
+     *  tautan yang dibagikan, dan klik kotak fess kutipan di kartu feed. */
+    path: '/fess/:id',
+    name: 'FessDetail',
+    component: () => import('../views/FessDetailPage.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: ['User', 'Base Admin', 'Super Admin'],
+      title: 'Detail Fess',
+    },
+  },
+  {
     path: '/base-admin',
     name: 'BaseAdmin',
     component: () => import('../views/BaseAdminDashboard.vue'),
