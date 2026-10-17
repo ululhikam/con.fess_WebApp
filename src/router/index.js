@@ -119,6 +119,26 @@ const routes = [
     component: () => import('../views/SuperAdminDashboard.vue'),
     meta: { requiresAuth: true, roles: ['Super Admin'], title: 'Super Admin' },
   },
+  // Halaman legal publik (tanpa login) — dipakai juga sebagai URL kebijakan
+  // Meta App Review (Instagram Platform).
+  {
+    path: '/privacy',
+    name: 'PrivacyPolicy',
+    component: () => import('../views/LegalPage.vue'),
+    meta: { title: 'Kebijakan Privasi', legal: 'privacy' },
+  },
+  {
+    path: '/terms',
+    name: 'TermsOfService',
+    component: () => import('../views/LegalPage.vue'),
+    meta: { title: 'Ketentuan Layanan', legal: 'terms' },
+  },
+  {
+    path: '/data-deletion',
+    name: 'DataDeletion',
+    component: () => import('../views/LegalPage.vue'),
+    meta: { title: 'Penghapusan Data', legal: 'data-deletion' },
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
