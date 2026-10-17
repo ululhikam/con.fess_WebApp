@@ -48,7 +48,6 @@
             v-else
             :src="slide.item.url || slide.item.preview"
             :poster="slide.item.preview"
-            muted
             playsinline
             controls
             preload="metadata"

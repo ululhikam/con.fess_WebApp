@@ -66,7 +66,6 @@
             <video
               :src="file.preview || file.url"
               :poster="file.thumbnail"
-              muted
               playsinline
               controls
               class="preview-video-tag"

@@ -41,12 +41,12 @@
               <video
                 v-else-if="activeItem"
                 :key="`vid-${activeIndex}`"
+                ref="viewerVideoRef"
                 :src="activeItem.url"
                 :poster="activeItem.thumbnail || undefined"
                 class="mv-video"
                 controls
                 autoplay
-                muted
                 playsinline
                 @click.stop="onMediaClick"
               />
@@ -107,7 +107,7 @@
  *   tutup, cubit (pinch) = zoom; cubit mengecil < 0.75 = menutup (menyatu balik).
  * - Ketuk media = tampil/sembunyikan panel; ketuk latar = tutup; ESC = tutup.
  */
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { X, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -125,6 +125,32 @@ const emit = defineEmits(['close']);
 
 const activeIndex = ref(Math.min(Math.max(0, props.initialIndex), Math.max(0, props.items.length - 1)));
 const activeItem = computed(() => props.items[activeIndex.value] || null);
+
+/* ── Audio video viewer ──────────────────────────────────────────────────── */
+const viewerVideoRef = ref(null);
+
+/**
+ * Putar video viewer DENGAN suara. Viewer selalu dibuka lewat ketukan
+ * (user gesture) sehingga audio diizinkan browser; bila tetap ditolak
+ * (kebijakan autoplay), fallback ke putar tanpa suara — tombol unmute
+ * tetap tersedia di kontrol native video.
+ */
+async function startViewerVideo() {
+  const el = viewerVideoRef.value;
+  if (!el || activeItem.value?.type !== 'video') return;
+  try {
+    el.muted = false;
+    el.volume = 1;
+    await el.play();
+  } catch {
+    try {
+      el.muted = true;
+      await el.play();
+    } catch {
+      /* biarkan kontrol native menangani pemutaran */
+    }
+  }
+}
 
 /* ── Animasi menyatu (merge) ─────────────────────────────────────────────── */
 const flightRef = ref(null);
@@ -145,6 +171,9 @@ function rectsTransform(originRect, targetRect) {
 onMounted(async () => {
   window.addEventListener('keydown', onKeydown);
   document.body.style.overflow = 'hidden';
+
+  // Media pertama adalah video → mulai putar dengan suara.
+  nextTick(() => startViewerVideo());
 
   await nextTick();
   const el = flightRef.value;
@@ -199,6 +228,12 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
   document.body.style.overflow = '';
+});
+
+// Saat bergeser ke slide video lain, elemen video yang baru ikut diputar bersuara.
+watch(activeIndex, async () => {
+  await nextTick();
+  startViewerVideo();
 });
 
 /* ── Gesture state ───────────────────────────────────────────────────────── */
