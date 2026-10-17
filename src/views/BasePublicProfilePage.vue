@@ -173,11 +173,6 @@
                   </span>
                   <span>Auto-Post Story Aktif</span>
                 </div>
-
-                <div class="medsos-item-chip est-chip" title="Tahun berdiri base">
-                  <Award :size="13" class="award-icon" />
-                  <span>Est. {{ baseData.established }}</span>
-                </div>
               </div>
             </div>
 
@@ -483,7 +478,6 @@ import {
   Inbox,
   Copy,
   ExternalLink,
-  Award,
   MessageSquare,
 } from 'lucide-vue-next';
 
@@ -1237,14 +1231,6 @@ function handleBottomNavChange(tabKey) {
 @keyframes radarPing {
   0% { transform: scale(0.8); opacity: 0.9; }
   100% { transform: scale(2.2); opacity: 0; }
-}
-
-.est-chip {
-  background: var(--shell-chip);
-}
-
-.award-icon {
-  color: #f59e0b;
 }
 
 /* 3 BENTO METRIC TILES */
