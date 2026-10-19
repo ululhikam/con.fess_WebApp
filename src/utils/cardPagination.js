@@ -205,15 +205,28 @@ function measureQuoteHeight(quote, width) {
  *          pages[i] = daftar baris teks yang sudah dibungkus (tanpa newline);
  *          fontSize/lineHeight memakai skala kanvas backend (1080 px).
  */
-export function paginateCardContent({ content = '', aspectKey = 'portrait', quote = null } = {}) {
+export function paginateCardContent({ content = '', aspectKey = 'portrait', quote = null, safeArea = null } = {}) {
   const geometry = cardAspectGeometry(aspectKey);
   const W = geometry.width;
   const H = geometry.height;
   const cardW = W - PAD * 2;
   const cardH = H - PAD * 2;
-  const contentWidth = cardW - CONTENT_INSET;
-  const footerTop = PAD + cardH - 72;
-  const restContentY = PAD + 195;
+
+  const parsePct = (val, base) => {
+    if (!val) return 0;
+    if (typeof val === 'string' && val.endsWith('%')) return Math.round((parseFloat(val) / 100) * base);
+    return parseInt(val, 10) || 0;
+  };
+
+  const hasSafe = !!safeArea;
+  const padLeft = hasSafe ? parsePct(safeArea.left, W) : PAD + 58;
+  const padRight = hasSafe ? parsePct(safeArea.right, W) : PAD + 58;
+  const padTop = hasSafe ? parsePct(safeArea.top, H) : PAD + 195;
+  const padBottom = hasSafe ? parsePct(safeArea.bottom, H) : PAD + 72;
+
+  const contentWidth = hasSafe ? W - padLeft - padRight : cardW - CONTENT_INSET;
+  const footerTop = hasSafe ? H - padBottom : PAD + cardH - 72;
+  const restContentY = hasSafe ? padTop + 10 : PAD + 195;
 
   const quoteHeight = quote ? measureQuoteHeight(quote, contentWidth) : 0;
   // Batas atas area kutipan — teks fess halaman 1 berhenti di atasnya.

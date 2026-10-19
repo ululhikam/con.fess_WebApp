@@ -3,57 +3,59 @@
     ref="cardEl"
     class="post-card"
     :class="[`ink-${templateDef.ink}`, { 'is-exporting': exporting }]"
-    :style="cardStyle"
+    :style="wrapperStyle"
   >
     <div v-if="!templateDef.bgImage" class="post-card__texture" aria-hidden="true" :style="textureStyle" />
 
     <!-- THEMED TEMPLATE INNER (Spotify, Typewriter, Journal, Locker, Clay) -->
+    <!-- Outer wrapper is a flex-column: [watermark-top?] [card-image+overlay] [watermark-bottom?] -->
     <div
       v-if="templateDef.bgImage"
-      class="post-card__themed-inner"
-      :class="`theme-${templateDef.theme || 'custom'}`"
-      :style="themedInnerStyle"
+      class="post-card__themed-wrap"
     >
-      <!-- Top watermark if designated -->
-      <div v-if="templateDef.watermarkPos === 'top'" class="themed-watermark themed-watermark--top">
-        <span class="themed-watermark__text">
-          {{ templateDef.watermarkLabel }}{{ baseHandle }}
-        </span>
+      <!-- Top watermark OUTSIDE the card border -->
+      <div v-if="templateDef.watermarkPos === 'top'" class="themed-watermark themed-watermark--top" :class="`theme-${templateDef.theme}`">
+        <span class="themed-watermark__text">{{ templateDef.watermarkLabel }}{{ baseHandle }}</span>
         <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
       </div>
 
-      <!-- Main content flow inside safeArea -->
-      <div ref="flowEl" class="themed-flow" :style="{ fontFamily: templateDef.fontFamily || 'inherit' }">
-        <div
-          v-if="pageLines"
-          class="themed-body themed-body--paged"
-          :style="pagedBodyStyle"
-        >
-          <span v-if="showPlaceholder" class="themed-placeholder">Tulis fessmu…</span>
-          <template v-else>
-            <span v-for="(line, i) in pageLines" :key="i" class="themed-line">{{
-              line || '\u00A0'
-            }}</span>
-          </template>
-        </div>
-        <p v-else-if="displayContent" class="themed-body">{{ displayContent }}</p>
-        <p v-else class="themed-body themed-body--empty">Tulis fessmu…</p>
-
-        <!-- Quoted Fess Preview -->
-        <div v-if="quotedFess" ref="quoteEl" class="themed-quoted">
-          <div class="quoted-meta">
-            <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
-            <span>• {{ quotedFess.time || 'Fess' }}</span>
+      <!-- Card image + text overlay -->
+      <div
+        ref="themedCardEl"
+        class="post-card__themed-inner"
+        :class="`theme-${templateDef.theme || 'custom'}`"
+        :style="cardStyle"
+      >
+        <!-- Main content flow inside safeArea -->
+        <div ref="flowEl" class="themed-flow" :style="{ fontFamily: templateDef.fontFamily || 'inherit', ...safeAreaPadding }">
+          <div
+            v-if="pageLines"
+            class="themed-body themed-body--paged"
+            :style="pagedBodyStyle"
+          >
+            <span v-if="showPlaceholder" class="themed-placeholder">Tulis fessmu…</span>
+            <template v-else>
+              <span v-for="(line, i) in pageLines" :key="i" class="themed-line">{{ line || '\u00A0' }}</span>
+            </template>
           </div>
-          <p class="quoted-text">{{ quotedFess.content }}</p>
+          <p v-else-if="displayContent" class="themed-body">{{ displayContent }}</p>
+          <p v-else class="themed-body themed-body--empty">Tulis fessmu…</p>
+
+          <!-- Quoted Fess Preview -->
+          <div v-if="quotedFess" ref="quoteEl" class="themed-quoted">
+            <div class="quoted-meta">
+              <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
+              <span>• {{ quotedFess.time || 'Fess' }}</span>
+            </div>
+            <p class="quoted-text">{{ quotedFess.content }}</p>
+          </div>
         </div>
       </div>
+      <!-- End card image + text overlay -->
 
-      <!-- Bottom watermark if designated -->
-      <div v-if="templateDef.watermarkPos === 'bottom'" class="themed-watermark themed-watermark--bottom">
-        <span class="themed-watermark__text">
-          {{ templateDef.watermarkLabel }}{{ baseHandle }}
-        </span>
+      <!-- Bottom watermark OUTSIDE the card border -->
+      <div v-if="templateDef.watermarkPos === 'bottom'" class="themed-watermark themed-watermark--bottom" :class="`theme-${templateDef.theme}`">
+        <span class="themed-watermark__text">{{ templateDef.watermarkLabel }}{{ baseHandle }}</span>
         <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
       </div>
     </div>
@@ -187,23 +189,33 @@ const topicLabel = computed(() => {
   return getTopicById(props.topic)?.label || props.topic;
 });
 
-/** Canvas geometry: aspect-ratio + the template's own paint. */
-const cardStyle = computed(() => {
+/** Outer article style — for themed templates, no background here (it's on the inner card div). */
+const wrapperStyle = computed(() => {
   const t = templateDef.value;
+  if (t.bgImage) {
+    return { '--card-accent': t.accent };
+  }
   return {
     aspectRatio: getTemplateAspectRatio(t),
-    background: t.bgImage ? `url("${t.bgImage}") center center / cover no-repeat` : t.background,
+    background: t.background,
     '--card-accent': t.accent,
   };
 });
 
-const textureStyle = computed(() =>
-  !templateDef.value.bgImage && templateDef.value.texture
-    ? { backgroundImage: templateDef.value.texture }
-    : null,
-);
+/** Inner card div style for themed templates: holds the SVG bg image + aspect ratio. */
+const cardStyle = computed(() => {
+  const t = templateDef.value;
+  if (t.bgImage) {
+    return {
+      aspectRatio: getTemplateAspectRatio(t),
+      background: `url("${t.bgImage}") center center / cover no-repeat`,
+    };
+  }
+  return {};
+});
 
-const themedInnerStyle = computed(() => {
+/** Expose safe-area as padding on the text overlay div (themed templates only). */
+const safeAreaPadding = computed(() => {
   const sa = templateDef.value?.safeArea;
   if (!sa) return {};
   return {
@@ -213,6 +225,12 @@ const themedInnerStyle = computed(() => {
     paddingRight: sa.right,
   };
 });
+
+const textureStyle = computed(() =>
+  !templateDef.value.bgImage && templateDef.value.texture
+    ? { backgroundImage: templateDef.value.texture }
+    : null,
+);
 
 /** Fallback mode lama (tanpa paginasi): potong isi agar kartu tidak meluber. */
 const displayContent = computed(() => {
@@ -231,6 +249,7 @@ const showPlaceholder = computed(
 
 const flowEl = ref(null);
 const quoteEl = ref(null);
+const themedCardEl = ref(null);
 
 const cardWidth = ref(0);
 const flowHeight = ref(0);
@@ -240,8 +259,9 @@ const flowGap = ref(0);
 let sizeObserver = null;
 
 function measureGeometry() {
-  const card = cardEl.value;
-  if (card) cardWidth.value = card.getBoundingClientRect().width || 0;
+  // For themed templates the aspect-ratio is on themedCardEl, not the article.
+  const measuredCard = themedCardEl.value || cardEl.value;
+  if (measuredCard) cardWidth.value = measuredCard.getBoundingClientRect().width || 0;
 
   const flow = flowEl.value;
   if (flow) {
@@ -265,11 +285,21 @@ onMounted(() => {
   measureGeometry();
   if (typeof ResizeObserver !== 'undefined') {
     sizeObserver = new ResizeObserver(() => measureGeometry());
-    if (cardEl.value) sizeObserver.observe(cardEl.value);
+    if (themedCardEl.value) sizeObserver.observe(themedCardEl.value);
+    else if (cardEl.value) sizeObserver.observe(cardEl.value);
     if (flowEl.value) sizeObserver.observe(flowEl.value);
     if (quoteEl.value) sizeObserver.observe(quoteEl.value);
   }
 });
+
+watch(
+  themedCardEl,
+  (el, prev) => {
+    observeElement(el, prev);
+    measureGeometry();
+  },
+  { flush: 'post' },
+);
 
 watch(
   flowEl,
@@ -591,44 +621,80 @@ const footerRight = computed(() =>
 }
 
 /* ---- Themed Templates (Spotify, Typewriter, Journal, Locker, Clay) ---- */
-.post-card__themed-inner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-  box-sizing: border-box;
+
+/*
+ * Layout for themed templates:
+ *
+ *  .post-card (article, no overflow hidden, no border-radius)
+ *    └─ .post-card__themed-wrap (flex column)
+ *         ├─ .themed-watermark--top   (OUTSIDE card, above image)
+ *         ├─ .post-card__themed-inner (the actual card: has aspect-ratio + bg-image + border-radius)
+ *         │    └─ .themed-flow (position:absolute overlay, padded by safeArea)
+ *         │         └─ .themed-body / .themed-body--paged
+ *         └─ .themed-watermark--bottom (OUTSIDE card, below image)
+ *
+ * This ensures text never overflows the card border, and watermarks sit
+ * outside the card image entirely.
+ */
+
+/* Override: themed templates need no box-shadow/overflow on the article wrapper */
+.post-card:has(.post-card__themed-wrap) {
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent !important;
 }
 
-.themed-flow {
+.post-card__themed-wrap {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  flex: 1;
-  min-height: 0;
+  width: 100%;
+}
+
+/* The card itself — holds the SVG background image, has its own border-radius + shadow */
+.post-card__themed-inner {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  flex-shrink: 0;
+}
+
+/* Text overlay: fills the card exactly, padded by safeArea (injected via :style) */
+.themed-flow {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   overflow: hidden;
 }
 
 .themed-body {
   margin: 0;
-  font-size: clamp(14px, 3.6vw, 20px);
-  line-height: 1.5;
+  font-size: clamp(13px, 3.4vw, 19px);
+  line-height: 1.55;
   font-weight: 600;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
 
 .themed-body--paged {
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
 }
 
+/* Lines now wrap properly — no overflow outside the card border */
 .themed-line {
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .themed-placeholder {
@@ -636,22 +702,24 @@ const footerRight = computed(() =>
   font-style: italic;
 }
 
+/* Watermarks sit OUTSIDE the card image — above or below */
 .themed-watermark {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  font-size: clamp(10px, 2.3vw, 13px);
+  font-size: clamp(10px, 2.2vw, 12.5px);
   font-weight: 700;
   letter-spacing: 0.4px;
+  padding: 6px 4px;
 }
 
 .themed-watermark--top {
-  margin-bottom: 8px;
+  order: -1;
 }
 
 .themed-watermark--bottom {
-  margin-top: 8px;
+  order: 1;
 }
 
 .themed-quoted {
@@ -660,17 +728,18 @@ const footerRight = computed(() =>
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.06);
   font-size: clamp(11px, 2.6vw, 13px);
+  flex-shrink: 0;
 }
 
-/* Theme specific overrides */
+/* ---- Theme-specific text & watermark colours ---- */
+
 .theme-spotify .themed-body {
   color: #18181b;
   text-align: left;
 }
-.theme-spotify .themed-watermark {
+.themed-watermark.theme-spotify {
   color: #52525b;
-  font-size: clamp(9.5px, 2.2vw, 12px);
-  margin-left: 28px;
+  font-size: clamp(9.5px, 2.1vw, 11.5px);
 }
 
 .theme-typewriter .themed-body {
@@ -678,7 +747,7 @@ const footerRight = computed(() =>
   text-align: left;
   letter-spacing: 0.2px;
 }
-.theme-typewriter .themed-watermark {
+.themed-watermark.theme-typewriter {
   color: #57534e;
   border-bottom: 1px dashed rgba(87, 83, 78, 0.4);
   padding-bottom: 4px;
@@ -689,7 +758,7 @@ const footerRight = computed(() =>
   color: #1f2937;
   text-align: left;
 }
-.theme-journal .themed-watermark {
+.themed-watermark.theme-journal {
   color: #4b5563;
   justify-content: flex-end;
   font-style: italic;
@@ -701,13 +770,10 @@ const footerRight = computed(() =>
   text-align: left;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
-.theme-locker .themed-watermark {
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 3px 8px;
-  border-radius: 4px;
+.themed-watermark.theme-locker {
+  color: #e2e8f0;
   letter-spacing: 0.8px;
-  display: inline-flex;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .theme-clay .themed-body {
@@ -715,7 +781,7 @@ const footerRight = computed(() =>
   font-weight: 700;
   text-align: center;
 }
-.theme-clay .themed-watermark {
+.themed-watermark.theme-clay {
   color: #718096;
   justify-content: center;
 }
