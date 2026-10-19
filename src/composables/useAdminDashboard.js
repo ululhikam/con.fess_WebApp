@@ -211,7 +211,21 @@ export function useFessModeration(options = {}) {
     }
   }
 
-  const CANVAS_TEMPLATES = ['default', 'midnight', 'sunset', 'forest', 'noir', 'paper', 'ocean', 'violet'];
+  const CANVAS_TEMPLATES = [
+    'spotify',
+    'typewriter',
+    'journal',
+    'locker',
+    'clay',
+    'default',
+    'midnight',
+    'sunset',
+    'forest',
+    'noir',
+    'paper',
+    'ocean',
+    'violet',
+  ];
 
   /** POST /admin/canvas/export — render the fess card to PNG. */
   async function exportCanvas(fess) {
