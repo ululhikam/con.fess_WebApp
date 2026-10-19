@@ -33,24 +33,24 @@
               <!-- Real background thumbnail -->
               <span
                 class="template-thumb"
-                :class="`ink-${t.ink}`"
+                :class="[`ink-${t.ink}`, { 'has-bg-img': !!t.bgImage }]"
                 :style="{
                   aspectRatio: getTemplateAspectRatio(t),
-                  // shorthand (not backgroundImage): the value layers a
-                  // repeating texture over the gradient via `url(...) repeat`.
                   background: getTemplateBackground(t),
                 }"
               >
-                <span class="template-thumb__head">
-                  <span class="template-thumb__dot" />
-                  <span class="template-thumb__line is-short" />
-                </span>
-                <span class="template-thumb__body">
-                  <span class="template-thumb__line" />
-                  <span class="template-thumb__line" />
-                  <span class="template-thumb__line is-short" />
-                </span>
-                <span class="template-thumb__foot" />
+                <template v-if="!t.bgImage">
+                  <span class="template-thumb__head">
+                    <span class="template-thumb__dot" />
+                    <span class="template-thumb__line is-short" />
+                  </span>
+                  <span class="template-thumb__body">
+                    <span class="template-thumb__line" />
+                    <span class="template-thumb__line" />
+                    <span class="template-thumb__line is-short" />
+                  </span>
+                  <span class="template-thumb__foot" />
+                </template>
               </span>
 
               <span class="template-card__info">

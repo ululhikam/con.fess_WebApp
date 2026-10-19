@@ -5,9 +5,61 @@
     :class="[`ink-${templateDef.ink}`, { 'is-exporting': exporting }]"
     :style="cardStyle"
   >
-    <div class="post-card__texture" aria-hidden="true" :style="textureStyle" />
+    <div v-if="!templateDef.bgImage" class="post-card__texture" aria-hidden="true" :style="textureStyle" />
 
-    <div class="post-card__inner">
+    <!-- THEMED TEMPLATE INNER (Spotify, Typewriter, Journal, Locker, Clay) -->
+    <div
+      v-if="templateDef.bgImage"
+      class="post-card__themed-inner"
+      :class="`theme-${templateDef.theme || 'custom'}`"
+      :style="themedInnerStyle"
+    >
+      <!-- Top watermark if designated -->
+      <div v-if="templateDef.watermarkPos === 'top'" class="themed-watermark themed-watermark--top">
+        <span class="themed-watermark__text">
+          {{ templateDef.watermarkLabel }}{{ baseHandle }}
+        </span>
+        <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
+      </div>
+
+      <!-- Main content flow inside safeArea -->
+      <div ref="flowEl" class="themed-flow" :style="{ fontFamily: templateDef.fontFamily || 'inherit' }">
+        <div
+          v-if="pageLines"
+          class="themed-body themed-body--paged"
+          :style="pagedBodyStyle"
+        >
+          <span v-if="showPlaceholder" class="themed-placeholder">Tulis fessmu…</span>
+          <template v-else>
+            <span v-for="(line, i) in pageLines" :key="i" class="themed-line">{{
+              line || '\u00A0'
+            }}</span>
+          </template>
+        </div>
+        <p v-else-if="displayContent" class="themed-body">{{ displayContent }}</p>
+        <p v-else class="themed-body themed-body--empty">Tulis fessmu…</p>
+
+        <!-- Quoted Fess Preview -->
+        <div v-if="quotedFess" ref="quoteEl" class="themed-quoted">
+          <div class="quoted-meta">
+            <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
+            <span>• {{ quotedFess.time || 'Fess' }}</span>
+          </div>
+          <p class="quoted-text">{{ quotedFess.content }}</p>
+        </div>
+      </div>
+
+      <!-- Bottom watermark if designated -->
+      <div v-if="templateDef.watermarkPos === 'bottom'" class="themed-watermark themed-watermark--bottom">
+        <span class="themed-watermark__text">
+          {{ templateDef.watermarkLabel }}{{ baseHandle }}
+        </span>
+        <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
+      </div>
+    </div>
+
+    <!-- STANDARD INNER (for Gradient/Texture Cards) -->
+    <div v-else class="post-card__inner">
       <!-- Header -->
       <header class="post-card__header">
         <span class="post-card__avatar" aria-hidden="true">{{ baseAvatar }}</span>
@@ -29,11 +81,6 @@
 
       <!-- Isi fess + kotak kutipan (satu blok agar kutipan menempel di bawah teks) -->
       <div ref="flowEl" class="post-card__flow">
-        <!--
-          Mode paginasi: satu span per baris hasil mesin paginasi backend. Baris
-          dirender nowrap supaya pemenggalan baris & halaman identik dengan PNG
-          yang diposting ke Instagram (tidak membungkus ulang di browser).
-        -->
         <div
           v-if="pageLines"
           class="post-card__body post-card__body--paged"
@@ -59,7 +106,7 @@
         </div>
       </div>
 
-      <!-- Footer (sama dengan kartu IG: branding + nomor halaman / alamat situs) -->
+      <!-- Footer -->
       <footer class="post-card__footer">
         <span class="post-card__platform">Instagram Feed · {{ baseHandle }}</span>
         <span class="post-card__footer-right">{{ footerRight }}</span>
@@ -141,15 +188,31 @@ const topicLabel = computed(() => {
 });
 
 /** Canvas geometry: aspect-ratio + the template's own paint. */
-const cardStyle = computed(() => ({
-  aspectRatio: getTemplateAspectRatio(templateDef.value),
-  background: templateDef.value.background,
-  '--card-accent': templateDef.value.accent,
-}));
+const cardStyle = computed(() => {
+  const t = templateDef.value;
+  return {
+    aspectRatio: getTemplateAspectRatio(t),
+    background: t.bgImage ? `url("${t.bgImage}") center center / cover no-repeat` : t.background,
+    '--card-accent': t.accent,
+  };
+});
 
 const textureStyle = computed(() =>
-  templateDef.value.texture ? { backgroundImage: templateDef.value.texture } : null,
+  !templateDef.value.bgImage && templateDef.value.texture
+    ? { backgroundImage: templateDef.value.texture }
+    : null,
 );
+
+const themedInnerStyle = computed(() => {
+  const sa = templateDef.value?.safeArea;
+  if (!sa) return {};
+  return {
+    paddingTop: sa.top,
+    paddingBottom: sa.bottom,
+    paddingLeft: sa.left,
+    paddingRight: sa.right,
+  };
+});
 
 /** Fallback mode lama (tanpa paginasi): potong isi agar kartu tidak meluber. */
 const displayContent = computed(() => {
@@ -525,5 +588,135 @@ const footerRight = computed(() =>
 /* ---- export state ---- */
 .is-exporting .post-card__texture {
   opacity: 1;
+}
+
+/* ---- Themed Templates (Spotify, Typewriter, Journal, Locker, Clay) ---- */
+.post-card__themed-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.themed-flow {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.themed-body {
+  margin: 0;
+  font-size: clamp(14px, 3.6vw, 20px);
+  line-height: 1.5;
+  font-weight: 600;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.themed-body--paged {
+  display: flex;
+  flex-direction: column;
+}
+
+.themed-line {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.themed-placeholder {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.themed-watermark {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-size: clamp(10px, 2.3vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.themed-watermark--top {
+  margin-bottom: 8px;
+}
+
+.themed-watermark--bottom {
+  margin-top: 8px;
+}
+
+.themed-quoted {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: clamp(11px, 2.6vw, 13px);
+}
+
+/* Theme specific overrides */
+.theme-spotify .themed-body {
+  color: #18181b;
+  text-align: left;
+}
+.theme-spotify .themed-watermark {
+  color: #52525b;
+  font-size: clamp(9.5px, 2.2vw, 12px);
+  margin-left: 28px;
+}
+
+.theme-typewriter .themed-body {
+  color: #272320;
+  text-align: left;
+  letter-spacing: 0.2px;
+}
+.theme-typewriter .themed-watermark {
+  color: #57534e;
+  border-bottom: 1px dashed rgba(87, 83, 78, 0.4);
+  padding-bottom: 4px;
+  letter-spacing: 0.8px;
+}
+
+.theme-journal .themed-body {
+  color: #1f2937;
+  text-align: left;
+}
+.theme-journal .themed-watermark {
+  color: #4b5563;
+  justify-content: flex-end;
+  font-style: italic;
+}
+
+.theme-locker .themed-body {
+  color: #ffffff;
+  font-weight: 800;
+  text-align: left;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.theme-locker .themed-watermark {
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.8px;
+  display: inline-flex;
+}
+
+.theme-clay .themed-body {
+  color: #2d3748;
+  font-weight: 700;
+  text-align: center;
+}
+.theme-clay .themed-watermark {
+  color: #718096;
+  justify-content: center;
 }
 </style>

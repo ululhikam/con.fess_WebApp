@@ -27,6 +27,7 @@ const QUOTE = { pad: 18, headerH: 48, font: 25, lineHeight: 34 };
 const GEOMETRY = {
   square: { width: 1080, height: 1080, tiers: [38, 33, 28, 24] },
   portrait: { width: 1080, height: 1350, tiers: [42, 36, 30, 26] },
+  story: { width: 1080, height: 1920, tiers: [44, 38, 32, 28] },
 };
 
 const FONT_STACK = `Poppins, "Noto Sans", Arial, sans-serif`;

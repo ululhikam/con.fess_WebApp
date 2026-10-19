@@ -57,9 +57,85 @@ const rings = (w = 90, stroke = 'rgba(255,255,255,0.12)') =>
 export const ASPECTS = {
   square: { key: 'square', value: '1 / 1', label: 'Feed Persegi 1:1', exportWidth: 1080 },
   portrait: { key: 'portrait', value: '4 / 5', label: 'Feed Potret 4:5', exportWidth: 1080 },
+  story: { key: 'story', value: '9 / 16', label: 'Story / Reel 9:16', exportWidth: 1080 },
 };
 
 export const TEMPLATES = [
+  {
+    key: 'spotify',
+    label: 'Spotify Minimalist',
+    description: 'Feed 4:5 kartu putih dengan headphone, logo Spotify & doodle aesthetic.',
+    aspect: 'portrait',
+    ink: 'dark',
+    bgImage: '/templates/spotify.svg',
+    background: '#f4f4f5',
+    accent: '#1db954',
+    theme: 'spotify',
+    safeArea: { top: '22%', bottom: '22%', left: '17%', right: '17%' },
+    watermarkPos: 'bottom',
+    watermarkLabel: 'Confession • ',
+    fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+  },
+  {
+    key: 'typewriter',
+    label: 'Mesin Tik Retro',
+    description: 'Feed 4:5 mesin tik pastel dengan kertas gulung vintage & font ketik klasik.',
+    aspect: 'portrait',
+    ink: 'dark',
+    bgImage: '/templates/typewriter.svg',
+    background: '#f5f0e8',
+    accent: '#76a3c2',
+    theme: 'typewriter',
+    safeArea: { top: '18%', bottom: '38%', left: '20%', right: '20%' },
+    watermarkPos: 'top',
+    watermarkLabel: 'CONFIDENTIAL MEMO // ',
+    fontFamily: "'Courier Prime', 'Courier New', monospace",
+  },
+  {
+    key: 'journal',
+    label: 'Denim Scrapbook',
+    description: 'Feed 4:5 buku diary estetik dengan klip binder kuningan & bintang denim.',
+    aspect: 'portrait',
+    ink: 'dark',
+    bgImage: '/templates/journal.svg',
+    background: '#ffffff',
+    accent: '#3b6594',
+    theme: 'journal',
+    safeArea: { top: '18%', bottom: '18%', left: '17%', right: '17%' },
+    watermarkPos: 'bottom',
+    watermarkLabel: '✦ Dear Diary • ',
+    fontFamily: "'Poppins', sans-serif",
+  },
+  {
+    key: 'locker',
+    label: 'Locker Telepon',
+    description: 'Feed 4:5 poster merah di loker sekolah dengan gagang telepon retro.',
+    aspect: 'portrait',
+    ink: 'light',
+    bgImage: '/templates/locker.svg',
+    background: '#474b54',
+    accent: '#ef233c',
+    theme: 'locker',
+    safeArea: { top: '23%', bottom: '23%', left: '28%', right: '14%' },
+    watermarkPos: 'top',
+    watermarkLabel: '⚠ ANONYMOUS CALL // ',
+    fontFamily: "'Inter', sans-serif",
+  },
+  {
+    key: 'clay',
+    label: '3D Clay Quote',
+    description: 'Feed 4:5 tile clay 3D mengambang dengan tanda petik kuning yang imut.',
+    aspect: 'portrait',
+    ink: 'dark',
+    bgImage: '/templates/clay.svg',
+    background: '#fdfbf7',
+    accent: '#f59e0b',
+    theme: 'clay',
+    safeArea: { top: '24%', bottom: '24%', left: '18%', right: '18%' },
+    watermarkPos: 'bottom',
+    watermarkLabel: '💬 ',
+    fontFamily: "'Plus Jakarta Sans', 'Poppins', sans-serif",
+  },
   {
     key: 'default',
     label: 'Standar',
@@ -162,9 +238,12 @@ export function getTemplateByKey(key) {
   return TEMPLATES.find((t) => t.key === key) || TEMPLATES[0];
 }
 
-/** Resolve the CSS `background` shorthand (texture layered over gradient). */
+/** Resolve the CSS `background` shorthand (texture layered over gradient, or image). */
 export function getTemplateBackground(template) {
   const t = template || getTemplateByKey('default');
+  if (t.bgImage) {
+    return `url("${t.bgImage}") center center / cover no-repeat`;
+  }
   return t.texture ? `${t.texture} repeat, ${t.background}` : t.background;
 }
 
