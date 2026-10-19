@@ -117,6 +117,8 @@ export const TEMPLATES = [
     texture: techGrid(32, 'rgba(0,255,102,0.18)'),
     accent: '#00ff66',
     category: 'tech',
+    strip: '[HUD // ENCRYPTED 256-BIT]',
+    subline: 'TERMINAL BROADCAST',
   },
 
   // ── 2. POP: Neo-Brutalisme ──────────────────────────────────────────────
@@ -130,6 +132,8 @@ export const TEMPLATES = [
     texture: boldHalftone(24, 2.4, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
     category: 'pop',
+    strip: '★ RAW CONFESSION ★',
+    subline: 'POPARTS EDITION',
   },
 
   // ── 3. ROCK: Rock Grunge ────────────────────────────────────────────────
@@ -143,6 +147,8 @@ export const TEMPLATES = [
     texture: rockSlashes(20, 'rgba(255,0,60,0.22)'),
     accent: '#ff003c',
     category: 'rock',
+    strip: '/// ROCK ARCHIVE // SIDE A ///',
+    subline: 'UNFILTERED SOUNDS',
   },
 
   // ── 4. TECH: Terminal Hacker ────────────────────────────────────────────
@@ -156,6 +162,8 @@ export const TEMPLATES = [
     texture: scanlines(6, 'rgba(0,240,255,0.18)'),
     accent: '#00f0ff',
     category: 'tech',
+    strip: '● ● ● bash - session_01',
+    subline: 'SYSTEM OUTPUT // 200 OK',
   },
 
   // ── 5. POP: Bubblegum Y2K ───────────────────────────────────────────────
@@ -169,6 +177,8 @@ export const TEMPLATES = [
     texture: popConfetti(40, 'rgba(255,255,255,0.24)'),
     accent: '#ffffff',
     category: 'pop',
+    strip: '✦ SWEET CONFESSION ✦',
+    subline: 'Y2K RETRO ARCHIVE',
   },
 
   // ── 6. MODERN: Swiss Minimalist ─────────────────────────────────────────
@@ -182,6 +192,8 @@ export const TEMPLATES = [
     texture: swissGrid(28, 'rgba(0,0,0,0.08)'),
     accent: '#e63946',
     category: 'modern',
+    strip: '№ 01 / ZÜRICH EDITORIAL',
+    subline: 'ARCHITECTURAL GRID',
   },
 
   // ── 7. MODERN/TECH: Acid Techno ─────────────────────────────────────────
@@ -195,6 +207,8 @@ export const TEMPLATES = [
     texture: acidWaves(36, 'rgba(204,255,0,0.22)'),
     accent: '#ccff00',
     category: 'modern',
+    strip: '[145 BPM // RAW FREQUENCY]',
+    subline: 'UNDERGROUND SOUND',
   },
 
   // ── 8. MODERN: Monochrome Bold ──────────────────────────────────────────
@@ -208,6 +222,8 @@ export const TEMPLATES = [
     texture: crosshairs(30, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
     category: 'modern',
+    strip: '“CONFESSION” — SPEC 2026',
+    subline: 'STREETWEAR ARCHIVE',
   },
 
   // ── 9. ROCK: Indie Cassette ─────────────────────────────────────────────
@@ -221,6 +237,8 @@ export const TEMPLATES = [
     texture: tapeHatch(16, 'rgba(253,240,213,0.18)'),
     accent: '#fdf0d5',
     category: 'rock',
+    strip: '[ CASSETTE SIDE A // 45 RPM ]',
+    subline: 'ANALOG MASTER TAPE',
   },
 
   // ── 10. TECH: Blueprint Schematic ───────────────────────────────────────
@@ -234,6 +252,8 @@ export const TEMPLATES = [
     texture: blueprintGrid(40, 'rgba(72,202,228,0.22)'),
     accent: '#48cae4',
     category: 'tech',
+    strip: 'DWG NO: FNC-2026 // REV A',
+    subline: 'SCALE: 1:1 SCHEMATIC',
   },
 
   // ── Standar Fallback ────────────────────────────────────────────────────
@@ -247,6 +267,8 @@ export const TEMPLATES = [
     texture: dots(28, 1.6, 'rgba(255,255,255,0.16)'),
     accent: '#ffffff',
     category: 'standard',
+    strip: 'FESS N CURIOUS',
+    subline: 'INSTAGRAM FEED',
   },
 ];
 
