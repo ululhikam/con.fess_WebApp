@@ -266,7 +266,7 @@ const cardScale = computed(() => (cardWidth.value > 0 ? cardWidth.value / CARD_C
  */
 const panelStyle = computed(() => {
   const panel = templateDef.value.panel;
-  if (!panel) return null;
+  if (!panel || templateDef.value.fullBleed) return null;
   const scale = cardScale.value;
   const style = {
     background: panel.bg,
