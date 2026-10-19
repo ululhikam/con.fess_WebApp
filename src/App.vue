@@ -36,10 +36,12 @@
 </template>
 
 <script setup>
-import { ref, onErrorCaptured, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onErrorCaptured, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AppStateView from './components/ui/AppStateView.vue';
 import AppDialogHost from './components/ui/AppDialogHost.vue';
+import { useBases } from './composables/useBases';
+
 
 const router = useRouter();
 const isNavigating = ref(false);
@@ -68,6 +70,17 @@ onErrorCaptured((err) => {
 function reload() {
   window.location.reload();
 }
+
+onMounted(() => {
+  /**
+   * Warm caches as early as possible so every page finds data already loaded.
+   * Both fetches are silent (no loading spinner) and errors are swallowed —
+   * pages handle their own loading/error states.
+   */
+  const { ensureLoaded } = useBases();
+  ensureLoaded().catch(() => {});
+});
+
 
 onBeforeUnmount(() => {
   stopBefore();

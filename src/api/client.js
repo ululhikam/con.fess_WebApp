@@ -73,6 +73,8 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
       body: data !== undefined ? JSON.stringify(data) : undefined,
       signal,
       credentials: 'include',
+      // Reuse TCP/TLS connections across sequential requests (GET only)
+      keepalive: method.toUpperCase() === 'GET',
     });
 
     if (!res.ok) {

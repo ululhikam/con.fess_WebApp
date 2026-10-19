@@ -12,6 +12,9 @@
  * backend canvas renderer (POST /admin/canvas/export accepts the same keys) —
  * not API data. `ink` decides text colour — never rely on the app theme here,
  * because the exported PNG has no `data-theme` attribute.
+ *
+ * Per-template `textStyle` and `labelStyle` allow fine-grained visual tuning
+ * per template without polluting shared CSS with specificity wars.
  */
 
 /** Encode a raw SVG string as a CSS `url()` we can layer over a gradient. */
@@ -55,87 +58,180 @@ const rings = (w = 90, stroke = 'rgba(255,255,255,0.12)') =>
   );
 
 export const ASPECTS = {
-  square: { key: 'square', value: '1 / 1', label: 'Feed Persegi 1:1', exportWidth: 1080 },
-  portrait: { key: 'portrait', value: '4 / 5', label: 'Feed Potret 4:5', exportWidth: 1080 },
-  story: { key: 'story', value: '9 / 16', label: 'Story / Reel 9:16', exportWidth: 1080 },
+  square:   { key: 'square',   value: '1 / 1',  label: 'Feed Persegi 1:1',   exportWidth: 1080 },
+  portrait: { key: 'portrait', value: '4 / 5',  label: 'Feed Potret 4:5',    exportWidth: 1080 },
+  story:    { key: 'story',    value: '9 / 16', label: 'Story / Reel 9:16',  exportWidth: 1080 },
 };
 
+/**
+ * textStyle  — CSS properties applied to .themed-body (main confession text)
+ * labelStyle — CSS properties applied to .themed-watermark (watermark/label outside card)
+ *
+ * Fine-tune each template individually: font-size, color, text-align,
+ * letter-spacing, line-height, font-weight, etc.
+ */
 export const TEMPLATES = [
+  // ─────────────────────────────────────────────────────── Themed (SVG bg)
   {
     key: 'spotify',
     label: 'Spotify Minimalist',
-    description: 'Feed 4:5 kartu putih dengan headphone, logo Spotify & doodle aesthetic.',
+    description: 'Kartu putih dengan headphone, logo Spotify & doodle aesthetic.',
     aspect: 'portrait',
     ink: 'dark',
     bgImage: '/templates/spotify.svg',
     background: '#f4f4f5',
     accent: '#1db954',
     theme: 'spotify',
+    // White card: x=120-960, y=160-1190 out of 1080×1350
     safeArea: { top: '18%', bottom: '10%', left: '16%', right: '16%' },
     watermarkPos: 'bottom',
     watermarkLabel: 'Confession • ',
     fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    textStyle: {
+      color: '#18181b',
+      fontSize: 'clamp(13px, 3.2vw, 18px)',
+      fontWeight: '600',
+      lineHeight: '1.6',
+      textAlign: 'left',
+      letterSpacing: '0',
+    },
+    labelStyle: {
+      color: '#52525b',
+      fontSize: 'clamp(9px, 2vw, 11px)',
+      fontWeight: '600',
+      letterSpacing: '0.2px',
+    },
   },
   {
     key: 'typewriter',
     label: 'Mesin Tik Retro',
-    description: 'Feed 4:5 mesin tik pastel dengan kertas gulung vintage & font ketik klasik.',
+    description: 'Mesin tik pastel dengan kertas gulung vintage & font ketik klasik.',
     aspect: 'portrait',
     ink: 'dark',
     bgImage: '/templates/typewriter.svg',
     background: '#f5f0e8',
     accent: '#76a3c2',
     theme: 'typewriter',
-    safeArea: { top: '12%', bottom: '38%', left: '19%', right: '19%' },
+    // Paper area: y=110-950 out of 1350; typewriter starts ~y=890
+    safeArea: { top: '11%', bottom: '38%', left: '20%', right: '20%' },
     watermarkPos: 'top',
     watermarkLabel: 'CONFIDENTIAL MEMO // ',
     fontFamily: "'Courier Prime', 'Courier New', monospace",
+    textStyle: {
+      color: '#272320',
+      fontSize: 'clamp(12px, 3vw, 17px)',
+      fontWeight: '400',
+      lineHeight: '1.75',
+      textAlign: 'left',
+      letterSpacing: '0.5px',
+    },
+    labelStyle: {
+      color: '#78716c',
+      fontSize: 'clamp(9px, 1.9vw, 11px)',
+      fontWeight: '700',
+      letterSpacing: '1.2px',
+      textTransform: 'uppercase',
+      borderBottom: '1px dashed rgba(120,113,108,0.5)',
+      paddingBottom: '4px',
+    },
   },
   {
     key: 'journal',
     label: 'Denim Scrapbook',
-    description: 'Feed 4:5 buku diary estetik dengan klip binder kuningan & bintang denim.',
+    description: 'Buku diary estetik dengan klip binder kuningan & bintang denim.',
     aspect: 'portrait',
     ink: 'dark',
     bgImage: '/templates/journal.svg',
     background: '#ffffff',
     accent: '#3b6594',
     theme: 'journal',
-    safeArea: { top: '16%', bottom: '10%', left: '16%', right: '16%' },
+    safeArea: { top: '16%', bottom: '10%', left: '18%', right: '18%' },
     watermarkPos: 'bottom',
     watermarkLabel: '✦ Dear Diary • ',
     fontFamily: "'Poppins', sans-serif",
+    textStyle: {
+      color: '#1f2937',
+      fontSize: 'clamp(13px, 3.2vw, 18px)',
+      fontWeight: '500',
+      lineHeight: '1.65',
+      textAlign: 'left',
+      letterSpacing: '0',
+    },
+    labelStyle: {
+      color: '#4b5563',
+      fontSize: 'clamp(9px, 2vw, 11px)',
+      fontWeight: '600',
+      fontStyle: 'italic',
+      letterSpacing: '0.3px',
+      justifyContent: 'flex-end',
+    },
   },
   {
     key: 'locker',
     label: 'Locker Telepon',
-    description: 'Feed 4:5 poster merah di loker sekolah dengan gagang telepon retro.',
+    description: 'Poster merah di loker sekolah dengan gagang telepon retro.',
     aspect: 'portrait',
     ink: 'light',
     bgImage: '/templates/locker.svg',
     background: '#474b54',
     accent: '#ef233c',
     theme: 'locker',
+    // Red poster: x=250-960, y=220-1130 out of 1080×1350
     safeArea: { top: '22%', bottom: '18%', left: '28%', right: '10%' },
     watermarkPos: 'top',
     watermarkLabel: '⚠ ANONYMOUS CALL // ',
     fontFamily: "'Inter', sans-serif",
+    textStyle: {
+      color: '#ffffff',
+      fontSize: 'clamp(13px, 3.3vw, 18px)',
+      fontWeight: '800',
+      lineHeight: '1.45',
+      textAlign: 'left',
+      letterSpacing: '0.2px',
+      textShadow: '0 1px 4px rgba(0,0,0,0.35)',
+    },
+    labelStyle: {
+      color: '#e2e8f0',
+      fontSize: 'clamp(9px, 1.9vw, 11px)',
+      fontWeight: '700',
+      letterSpacing: '1px',
+      textShadow: '0 1px 3px rgba(0,0,0,0.45)',
+      textTransform: 'uppercase',
+    },
   },
   {
     key: 'clay',
     label: '3D Clay Quote',
-    description: 'Feed 4:5 tile clay 3D mengambang dengan tanda petik kuning yang imut.',
+    description: 'Tile clay 3D mengambang dengan tanda petik kuning yang imut.',
     aspect: 'portrait',
     ink: 'dark',
     bgImage: '/templates/clay.svg',
     background: '#fdfbf7',
     accent: '#f59e0b',
     theme: 'clay',
-    safeArea: { top: '20%', bottom: '10%', left: '17%', right: '17%' },
+    // White tile: x=140-940, y=190-1160 out of 1080×1350
+    safeArea: { top: '20%', bottom: '10%', left: '18%', right: '18%' },
     watermarkPos: 'bottom',
     watermarkLabel: '💬 ',
     fontFamily: "'Plus Jakarta Sans', 'Poppins', sans-serif",
+    textStyle: {
+      color: '#2d3748',
+      fontSize: 'clamp(14px, 3.4vw, 19px)',
+      fontWeight: '700',
+      lineHeight: '1.55',
+      textAlign: 'center',
+      letterSpacing: '0',
+    },
+    labelStyle: {
+      color: '#718096',
+      fontSize: 'clamp(9px, 2vw, 11px)',
+      fontWeight: '600',
+      letterSpacing: '0.3px',
+      justifyContent: 'center',
+    },
   },
+
+  // ─────────────────────────────────────────────────── Gradient / Solid bg
   {
     key: 'default',
     label: 'Standar',

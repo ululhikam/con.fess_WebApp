@@ -13,11 +13,11 @@ import { ref, computed } from 'vue';
 import { api } from '../api';
 import { mapFessToPost } from '../utils/fessMapper';
 
-/** Rows per page — the rest stream in via the infinite-scroll sentinel. */
-const PAGE_SIZE = 20;
+/** Rows per page — smaller first load = faster time-to-interactive. */
+const PAGE_SIZE = 15;
 
-/** Timeline dianggap segar 60 dtk; setelah itu di-refresh senyap saat dipakai. */
-const FEED_CACHE_TTL = 60_000;
+/** Timeline dianggap segar 120 dtk; setelah itu di-refresh senyap saat dipakai. */
+const FEED_CACHE_TTL = 120_000;
 
 const posts = ref([]);
 const loading = ref(false);

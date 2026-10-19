@@ -16,8 +16,8 @@ const loaded = ref(false);
 let inflight = null;
 let lastFetchedAt = 0;
 
-/** Data direktori dianggap segar selama 90 detik (stale-while-revalidate). */
-const BASE_CACHE_TTL = 90_000;
+/** Data direktori dianggap segar selama 180 detik / 3 menit (stale-while-revalidate). */
+const BASE_CACHE_TTL = 180_000;
 
 /** Normalize an API Base payload into the UI base model. */
 export function mapBase(raw) {

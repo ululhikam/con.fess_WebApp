@@ -13,8 +13,8 @@
       v-if="templateDef.bgImage"
       class="post-card__themed-wrap"
     >
-      <!-- Top watermark OUTSIDE the card border -->
-      <div v-if="templateDef.watermarkPos === 'top'" class="themed-watermark themed-watermark--top" :class="`theme-${templateDef.theme}`">
+      <!-- Top watermark OUTSIDE the card border —— styled per-template via watermarkStyle -->
+      <div v-if="templateDef.watermarkPos === 'top'" class="themed-watermark themed-watermark--top" :style="watermarkStyle">
         <span class="themed-watermark__text">{{ templateDef.watermarkLabel }}{{ baseHandle }}</span>
         <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
       </div>
@@ -26,20 +26,20 @@
         :class="`theme-${templateDef.theme || 'custom'}`"
         :style="cardStyle"
       >
-        <!-- Main content flow inside safeArea -->
-        <div ref="flowEl" class="themed-flow" :style="{ fontFamily: templateDef.fontFamily || 'inherit', ...safeAreaPadding }">
+        <!-- Main content flow inside safeArea — font/color driven by per-template textBodyStyle -->
+        <div ref="flowEl" class="themed-flow" :style="safeAreaPadding">
           <div
             v-if="pageLines"
             class="themed-body themed-body--paged"
-            :style="pagedBodyStyle"
+            :style="{ ...textBodyStyle, ...pagedBodyStyle }"
           >
             <span v-if="showPlaceholder" class="themed-placeholder">Tulis fessmu…</span>
             <template v-else>
               <span v-for="(line, i) in pageLines" :key="i" class="themed-line">{{ line || '\u00A0' }}</span>
             </template>
           </div>
-          <p v-else-if="displayContent" class="themed-body">{{ displayContent }}</p>
-          <p v-else class="themed-body themed-body--empty">Tulis fessmu…</p>
+          <p v-else-if="displayContent" class="themed-body" :style="textBodyStyle">{{ displayContent }}</p>
+          <p v-else class="themed-body themed-body--empty" :style="textBodyStyle">Tulis fessmu…</p>
 
           <!-- Quoted Fess Preview -->
           <div v-if="quotedFess" ref="quoteEl" class="themed-quoted">
@@ -53,8 +53,8 @@
       </div>
       <!-- End card image + text overlay -->
 
-      <!-- Bottom watermark OUTSIDE the card border -->
-      <div v-if="templateDef.watermarkPos === 'bottom'" class="themed-watermark themed-watermark--bottom" :class="`theme-${templateDef.theme}`">
+      <!-- Bottom watermark OUTSIDE the card border —— styled per-template via watermarkStyle -->
+      <div v-if="templateDef.watermarkPos === 'bottom'" class="themed-watermark themed-watermark--bottom" :style="watermarkStyle">
         <span class="themed-watermark__text">{{ templateDef.watermarkLabel }}{{ baseHandle }}</span>
         <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
       </div>
@@ -231,6 +231,27 @@ const textureStyle = computed(() =>
     ? { backgroundImage: templateDef.value.texture }
     : null,
 );
+
+/**
+ * Per-template inline text style (themed templates only).
+ * Merges fontFamily from template config with the textStyle object.
+ * Falls back to safe defaults if the template has no textStyle.
+ */
+const textBodyStyle = computed(() => {
+  const t = templateDef.value;
+  if (!t.bgImage) return {};
+  return {
+    fontFamily: t.fontFamily || 'inherit',
+    ...(t.textStyle || {}),
+  };
+});
+
+/** Per-template inline watermark/label style (outside-card labels). */
+const watermarkStyle = computed(() => {
+  const t = templateDef.value;
+  if (!t.bgImage) return {};
+  return t.labelStyle || {};
+});
 
 /** Fallback mode lama (tanpa paginasi): potong isi agar kartu tidak meluber. */
 const displayContent = computed(() => {
@@ -706,10 +727,12 @@ const footerRight = computed(() =>
 .themed-watermark {
   display: flex;
   align-items: center;
+  /* justify-content overridden per-template via inline labelStyle.justifyContent */
   justify-content: space-between;
   flex-shrink: 0;
+  /* font-size / font-weight / color / letter-spacing set per-template via inline watermarkStyle */
   font-size: clamp(10px, 2.2vw, 12.5px);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.4px;
   padding: 6px 4px;
 }
@@ -731,58 +754,11 @@ const footerRight = computed(() =>
   flex-shrink: 0;
 }
 
-/* ---- Theme-specific text & watermark colours ---- */
-
-.theme-spotify .themed-body {
-  color: #18181b;
-  text-align: left;
-}
-.themed-watermark.theme-spotify {
-  color: #52525b;
-  font-size: clamp(9.5px, 2.1vw, 11.5px);
-}
-
-.theme-typewriter .themed-body {
-  color: #272320;
-  text-align: left;
-  letter-spacing: 0.2px;
-}
-.themed-watermark.theme-typewriter {
-  color: #57534e;
-  border-bottom: 1px dashed rgba(87, 83, 78, 0.4);
-  padding-bottom: 4px;
-  letter-spacing: 0.8px;
-}
-
-.theme-journal .themed-body {
-  color: #1f2937;
-  text-align: left;
-}
-.themed-watermark.theme-journal {
-  color: #4b5563;
-  justify-content: flex-end;
-  font-style: italic;
-}
-
-.theme-locker .themed-body {
-  color: #ffffff;
-  font-weight: 800;
-  text-align: left;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-.themed-watermark.theme-locker {
-  color: #e2e8f0;
-  letter-spacing: 0.8px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
-.theme-clay .themed-body {
-  color: #2d3748;
-  font-weight: 700;
-  text-align: center;
-}
-.themed-watermark.theme-clay {
-  color: #718096;
-  justify-content: center;
-}
+/*
+ * NOTE: All per-theme colour/typography overrides (.theme-spotify, .theme-typewriter,
+ * .theme-journal, .theme-locker, .theme-clay) have been removed.
+ * Styling is now driven entirely by per-template `textStyle` and `labelStyle`
+ * objects in src/config/templates.js, applied as inline styles.
+ * To adjust a template's look, edit its textStyle/labelStyle in templates.js.
+ */
 </style>
