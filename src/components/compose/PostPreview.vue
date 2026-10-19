@@ -2,66 +2,12 @@
   <article
     ref="cardEl"
     class="post-card"
-    :class="[`ink-${templateDef.ink}`, { 'is-exporting': exporting }]"
+    :class="[`ink-${templateDef.ink}`, `tpl-${templateDef.key}`, { 'is-exporting': exporting }]"
     :style="wrapperStyle"
   >
-    <div v-if="!templateDef.bgImage" class="post-card__texture" aria-hidden="true" :style="textureStyle" />
+    <div v-if="templateDef.texture" class="post-card__texture" aria-hidden="true" :style="textureStyle" />
 
-    <!-- THEMED TEMPLATE INNER (Spotify, Typewriter, Journal, Locker, Clay) -->
-    <!-- Outer wrapper is a flex-column: [watermark-top?] [card-image+overlay] [watermark-bottom?] -->
-    <div
-      v-if="templateDef.bgImage"
-      class="post-card__themed-wrap"
-    >
-      <!-- Top watermark OUTSIDE the card border —— styled per-template via watermarkStyle -->
-      <div v-if="templateDef.watermarkPos === 'top'" class="themed-watermark themed-watermark--top" :style="watermarkStyle">
-        <span class="themed-watermark__text">{{ templateDef.watermarkLabel }}{{ baseHandle }}</span>
-        <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
-      </div>
-
-      <!-- Card image + text overlay -->
-      <div
-        ref="themedCardEl"
-        class="post-card__themed-inner"
-        :class="`theme-${templateDef.theme || 'custom'}`"
-        :style="cardStyle"
-      >
-        <!-- Main content flow inside safeArea — font/color driven by per-template textBodyStyle -->
-        <div ref="flowEl" class="themed-flow" :style="safeAreaPadding">
-          <div
-            v-if="pageLines"
-            class="themed-body themed-body--paged"
-            :style="{ ...textBodyStyle, ...pagedBodyStyle }"
-          >
-            <span v-if="showPlaceholder" class="themed-placeholder">Tulis fessmu…</span>
-            <template v-else>
-              <span v-for="(line, i) in pageLines" :key="i" class="themed-line">{{ line || '\u00A0' }}</span>
-            </template>
-          </div>
-          <p v-else-if="displayContent" class="themed-body" :style="textBodyStyle">{{ displayContent }}</p>
-          <p v-else class="themed-body themed-body--empty" :style="textBodyStyle">Tulis fessmu…</p>
-
-          <!-- Quoted Fess Preview -->
-          <div v-if="quotedFess" ref="quoteEl" class="themed-quoted">
-            <div class="quoted-meta">
-              <strong>{{ quotedFess.handle || quotedFess.senderHandle }}</strong>
-              <span>• {{ quotedFess.time || 'Fess' }}</span>
-            </div>
-            <p class="quoted-text">{{ quotedFess.content }}</p>
-          </div>
-        </div>
-      </div>
-      <!-- End card image + text overlay -->
-
-      <!-- Bottom watermark OUTSIDE the card border —— styled per-template via watermarkStyle -->
-      <div v-if="templateDef.watermarkPos === 'bottom'" class="themed-watermark themed-watermark--bottom" :style="watermarkStyle">
-        <span class="themed-watermark__text">{{ templateDef.watermarkLabel }}{{ baseHandle }}</span>
-        <span v-if="pageTotal > 1" class="themed-watermark__page">{{ footerRight }}</span>
-      </div>
-    </div>
-
-    <!-- STANDARD INNER (for Gradient/Texture Cards) -->
-    <div v-else class="post-card__inner">
+    <div class="post-card__inner">
       <!-- Header -->
       <header class="post-card__header">
         <span class="post-card__avatar" aria-hidden="true">{{ baseAvatar }}</span>
@@ -130,10 +76,6 @@
  * cermin mesin paginasi backend — sehingga pembagian halaman kartu di pratinjau
  * sama dengan carousel yang benar-benar diposting. Media user TIDAK ikut ke
  * dalam kartu: di Instagram media menjadi slide carousel tersendiri.
- *
- * Karena pratinjau lebih kecil dari kanvas 1080 px backend, ukuran font teks
- * diskalakan proporsional (`pageFont` × lebar kartu / 1080) lalu dirapatkan
- * sedikit bila perlu agar semua baris halaman muat tanpa terpotong.
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { Music } from 'lucide-vue-next';
@@ -189,69 +131,15 @@ const topicLabel = computed(() => {
   return getTopicById(props.topic)?.label || props.topic;
 });
 
-/** Outer article style — for themed templates, no background here (it's on the inner card div). */
-const wrapperStyle = computed(() => {
-  const t = templateDef.value;
-  if (t.bgImage) {
-    return { '--card-accent': t.accent };
-  }
-  return {
-    aspectRatio: getTemplateAspectRatio(t),
-    background: t.background,
-    '--card-accent': t.accent,
-  };
-});
-
-/** Inner card div style for themed templates: holds the SVG bg image + aspect ratio. */
-const cardStyle = computed(() => {
-  const t = templateDef.value;
-  if (t.bgImage) {
-    return {
-      aspectRatio: getTemplateAspectRatio(t),
-      background: `url("${t.bgImage}") center center / cover no-repeat`,
-    };
-  }
-  return {};
-});
-
-/** Expose safe-area as padding on the text overlay div (themed templates only). */
-const safeAreaPadding = computed(() => {
-  const sa = templateDef.value?.safeArea;
-  if (!sa) return {};
-  return {
-    paddingTop: sa.top,
-    paddingBottom: sa.bottom,
-    paddingLeft: sa.left,
-    paddingRight: sa.right,
-  };
-});
+const wrapperStyle = computed(() => ({
+  aspectRatio: getTemplateAspectRatio(templateDef.value),
+  background: templateDef.value.background,
+  '--card-accent': templateDef.value.accent,
+}));
 
 const textureStyle = computed(() =>
-  !templateDef.value.bgImage && templateDef.value.texture
-    ? { backgroundImage: templateDef.value.texture }
-    : null,
+  templateDef.value.texture ? { backgroundImage: templateDef.value.texture } : null,
 );
-
-/**
- * Per-template inline text style (themed templates only).
- * Merges fontFamily from template config with the textStyle object.
- * Falls back to safe defaults if the template has no textStyle.
- */
-const textBodyStyle = computed(() => {
-  const t = templateDef.value;
-  if (!t.bgImage) return {};
-  return {
-    fontFamily: t.fontFamily || 'inherit',
-    ...(t.textStyle || {}),
-  };
-});
-
-/** Per-template inline watermark/label style (outside-card labels). */
-const watermarkStyle = computed(() => {
-  const t = templateDef.value;
-  if (!t.bgImage) return {};
-  return t.labelStyle || {};
-});
 
 /** Fallback mode lama (tanpa paginasi): potong isi agar kartu tidak meluber. */
 const displayContent = computed(() => {
@@ -270,7 +158,6 @@ const showPlaceholder = computed(
 
 const flowEl = ref(null);
 const quoteEl = ref(null);
-const themedCardEl = ref(null);
 
 const cardWidth = ref(0);
 const flowHeight = ref(0);
@@ -280,9 +167,7 @@ const flowGap = ref(0);
 let sizeObserver = null;
 
 function measureGeometry() {
-  // For themed templates the aspect-ratio is on themedCardEl, not the article.
-  const measuredCard = themedCardEl.value || cardEl.value;
-  if (measuredCard) cardWidth.value = measuredCard.getBoundingClientRect().width || 0;
+  if (cardEl.value) cardWidth.value = cardEl.value.getBoundingClientRect().width || 0;
 
   const flow = flowEl.value;
   if (flow) {
@@ -306,15 +191,14 @@ onMounted(() => {
   measureGeometry();
   if (typeof ResizeObserver !== 'undefined') {
     sizeObserver = new ResizeObserver(() => measureGeometry());
-    if (themedCardEl.value) sizeObserver.observe(themedCardEl.value);
-    else if (cardEl.value) sizeObserver.observe(cardEl.value);
+    if (cardEl.value) sizeObserver.observe(cardEl.value);
     if (flowEl.value) sizeObserver.observe(flowEl.value);
     if (quoteEl.value) sizeObserver.observe(quoteEl.value);
   }
 });
 
 watch(
-  themedCardEl,
+  cardEl,
   (el, prev) => {
     observeElement(el, prev);
     measureGeometry();
@@ -641,124 +525,140 @@ const footerRight = computed(() =>
   opacity: 1;
 }
 
-/* ---- Themed Templates (Spotify, Typewriter, Journal, Locker, Clay) ---- */
+/* ── Theme Specific Visual Styles (Non-Gradient, Flat & Punchy) ───────── */
 
-/*
- * Layout for themed templates:
- *
- *  .post-card (article, no overflow hidden, no border-radius)
- *    └─ .post-card__themed-wrap (flex column)
- *         ├─ .themed-watermark--top   (OUTSIDE card, above image)
- *         ├─ .post-card__themed-inner (the actual card: has aspect-ratio + bg-image + border-radius)
- *         │    └─ .themed-flow (position:absolute overlay, padded by safeArea)
- *         │         └─ .themed-body / .themed-body--paged
- *         └─ .themed-watermark--bottom (OUTSIDE card, below image)
- *
- * This ensures text never overflows the card border, and watermarks sit
- * outside the card image entirely.
- */
-
-/* Override: themed templates need no box-shadow/overflow on the article wrapper */
-.post-card:has(.post-card__themed-wrap) {
-  overflow: visible;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent !important;
+/* Neo-Brutalism (Bold Pop) */
+.tpl-neobrutalism {
+  border: 3px solid #000000;
+  border-radius: 14px;
+  box-shadow: 6px 6px 0px #000000 !important;
+}
+.tpl-neobrutalism .post-card__avatar {
+  background: #000000;
+  color: #ffe600;
+  border-radius: 6px;
+}
+.tpl-neobrutalism .post-card__brand {
+  background: #000000;
+  color: #ffe600;
+  border-radius: 6px;
+}
+.tpl-neobrutalism .post-card__chip {
+  background: #000000;
+  color: #ffe600;
 }
 
-.post-card__themed-wrap {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+/* Cyberpunk (Tech Matrix) */
+.tpl-cyberpunk {
+  border: 1.5px solid rgba(0, 255, 102, 0.4);
+  box-shadow: 0 0 24px rgba(0, 255, 102, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+.tpl-cyberpunk .post-card__avatar {
+  background: rgba(0, 255, 102, 0.18);
+  border: 1.5px solid #00ff66;
+  color: #00ff66;
+}
+.tpl-cyberpunk .post-card__brand {
+  border: 1px solid #00ff66;
+  color: #00ff66;
+  background: rgba(0, 255, 102, 0.12);
 }
 
-/* The card itself — holds the SVG background image, has its own border-radius + shadow */
-.post-card__themed-inner {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 16px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
-  flex-shrink: 0;
+/* Terminal Dev (Tech Console) */
+.tpl-terminal {
+  border: 1.5px solid rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+.tpl-terminal .post-card__avatar {
+  background: rgba(0, 240, 255, 0.16);
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+}
+.tpl-terminal .post-card__brand {
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  background: rgba(0, 240, 255, 0.12);
 }
 
-/* Text overlay: fills the card exactly, padded by safeArea (injected via :style) */
-.themed-flow {
-  position: absolute;
-  inset: 0;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  overflow: hidden;
+/* Rock Grunge (Alternative Metal) */
+.tpl-rock {
+  border: 1.5px solid rgba(255, 0, 60, 0.45);
+  box-shadow: 0 0 25px rgba(255, 0, 60, 0.18), 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+.tpl-rock .post-card__avatar {
+  background: #ff003c;
+  color: #ffffff;
+}
+.tpl-rock .post-card__brand {
+  background: #ff003c;
+  color: #ffffff;
 }
 
-.themed-body {
-  margin: 0;
-  font-size: clamp(13px, 3.4vw, 19px);
-  line-height: 1.55;
-  font-weight: 600;
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: break-word;
-  overflow: hidden;
+/* Acid Techno (Rave Modern) */
+.tpl-acid {
+  border: 1.5px solid rgba(204, 255, 0, 0.4);
+  box-shadow: 0 0 25px rgba(204, 255, 0, 0.18), 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+.tpl-acid .post-card__avatar {
+  background: rgba(204, 255, 0, 0.2);
+  border: 1.5px solid #ccff00;
+  color: #ccff00;
+}
+.tpl-acid .post-card__brand {
+  border: 1px solid #ccff00;
+  color: #ccff00;
+  background: rgba(204, 255, 0, 0.12);
 }
 
-.themed-body--paged {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
+/* Monochrome Streetwear */
+.tpl-monochrome {
+  border: 2px solid #000000;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+.tpl-monochrome .post-card__avatar {
+  background: #000000;
+  color: #ffffff;
+}
+.tpl-monochrome .post-card__brand {
+  background: #000000;
+  color: #ffffff;
 }
 
-/* Lines now wrap properly — no overflow outside the card border */
-.themed-line {
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
+/* Blueprint Engineering */
+.tpl-blueprint {
+  border: 1.5px solid rgba(72, 202, 228, 0.45);
+  box-shadow: 0 0 20px rgba(72, 202, 228, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
+}
+.tpl-blueprint .post-card__avatar {
+  background: rgba(72, 202, 228, 0.2);
+  border: 1px solid #48cae4;
+  color: #48cae4;
+}
+.tpl-blueprint .post-card__brand {
+  border: 1px solid #48cae4;
+  color: #48cae4;
+  background: rgba(72, 202, 228, 0.12);
 }
 
-.themed-placeholder {
-  opacity: 0.5;
-  font-style: italic;
+/* Bubblegum Y2K Pop */
+.tpl-bubblegum {
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 16px 36px rgba(255, 75, 139, 0.35);
 }
 
-/* Watermarks sit OUTSIDE the card image — above or below */
-.themed-watermark {
-  display: flex;
-  align-items: center;
-  /* justify-content overridden per-template via inline labelStyle.justifyContent */
-  justify-content: space-between;
-  flex-shrink: 0;
-  /* font-size / font-weight / color / letter-spacing set per-template via inline watermarkStyle */
-  font-size: clamp(10px, 2.2vw, 12.5px);
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  padding: 6px 4px;
+/* Swiss Modern Minimalist */
+.tpl-swiss {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.tpl-swiss .post-card__brand {
+  background: #e63946;
+  color: #ffffff;
 }
 
-.themed-watermark--top {
-  order: -1;
+/* Indie Rock Cassette */
+.tpl-indie {
+  border: 1.5px solid rgba(253, 240, 213, 0.35);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
 }
-
-.themed-watermark--bottom {
-  order: 1;
-}
-
-.themed-quoted {
-  margin-top: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.06);
-  font-size: clamp(11px, 2.6vw, 13px);
-  flex-shrink: 0;
-}
-
-/*
- * NOTE: All per-theme colour/typography overrides (.theme-spotify, .theme-typewriter,
- * .theme-journal, .theme-locker, .theme-clay) have been removed.
- * Styling is now driven entirely by per-template `textStyle` and `labelStyle`
- * objects in src/config/templates.js, applied as inline styles.
- * To adjust a template's look, edit its textStyle/labelStyle in templates.js.
- */
 </style>

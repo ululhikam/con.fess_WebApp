@@ -153,7 +153,6 @@ const pagination = computed(() => {
     content: String(props.content || ''),
     aspectKey: aspectKey.value,
     quote: props.quotedFess || null,
-    safeArea: templateDef.value?.safeArea || null,
   });
 });
 

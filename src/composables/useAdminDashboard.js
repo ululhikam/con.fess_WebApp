@@ -212,11 +212,16 @@ export function useFessModeration(options = {}) {
   }
 
   const CANVAS_TEMPLATES = [
-    'spotify',
-    'typewriter',
-    'journal',
-    'locker',
-    'clay',
+    'cyberpunk',
+    'neobrutalism',
+    'rock',
+    'terminal',
+    'bubblegum',
+    'swiss',
+    'acid',
+    'monochrome',
+    'indie',
+    'blueprint',
     'default',
     'midnight',
     'sunset',
