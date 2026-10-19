@@ -7,6 +7,10 @@
   >
     <div v-if="templateDef.texture" class="post-card__texture" aria-hidden="true" :style="textureStyle" />
 
+    <!-- Panel kartu — meniru rect panel yang digambar renderer SVG backend
+         (warna/border/radius dari `panel` di config template) -->
+    <div v-if="panelStyle" class="post-card__panel" aria-hidden="true" :style="panelStyle" />
+
     <div class="post-card__inner">
       <!-- Theme banner strip -->
       <div v-if="templateDef.strip" class="post-card__theme-strip">
@@ -241,6 +245,26 @@ onBeforeUnmount(() => {
 /** Skala kanvas: lebar kartu di layar ÷ lebar kanvas backend (1080 px). */
 const cardScale = computed(() => (cardWidth.value > 0 ? cardWidth.value / CARD_CANVAS_WIDTH : 0));
 
+/**
+ * Panel kartu — mirror `cardBg`/`cardBorder`/`cardRadius` milik renderer SVG
+ * backend supaya pratinjau persis seperti PNG yang diposting. Ukuran (inset,
+ * border, radius) diskalakan dari kanvas 1080 px memakai `cardScale`.
+ */
+const panelStyle = computed(() => {
+  const panel = templateDef.value.panel;
+  if (!panel) return null;
+  const scale = cardScale.value;
+  const style = {
+    background: panel.bg,
+    border: `${(scale > 0 ? Math.max(1, panel.width * scale) : panel.width).toFixed(2)}px solid ${panel.border}`,
+  };
+  if (scale > 0) {
+    style.inset = `${(56 * scale).toFixed(2)}px`;
+    style.borderRadius = `${(panel.radius * scale).toFixed(2)}px`;
+  }
+  return style;
+});
+
 const pageLineCount = computed(() => (Array.isArray(props.pageLines) ? props.pageLines.length : 0));
 
 /**
@@ -304,9 +328,18 @@ const footerRight = computed(() =>
   opacity: 0.9;
 }
 
+/* Panel kartu (inset ~56/1080) — diisi inline style dari config template. */
+.post-card__panel {
+  position: absolute;
+  inset: 5.2%;
+  z-index: 1;
+  border-radius: 14px;
+  pointer-events: none;
+}
+
 .post-card__inner {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: clamp(10px, 2.4vw, 16px);
@@ -584,10 +617,8 @@ const footerRight = computed(() =>
 /* ── Theme Specific Visual Styles (Non-Gradient, Flat & Punchy) ───────── */
 
 /* Neo-Brutalism (Bold Pop) */
-.tpl-neobrutalism {
-  border: 3.5px solid #000000;
-  border-radius: 14px;
-  box-shadow: 7px 7px 0px #000000 !important;
+.tpl-neobrutalism .post-card__panel {
+  box-shadow: 7px 7px 0px #000000;
 }
 .tpl-neobrutalism .post-card__theme-strip {
   background: #000000;
@@ -612,8 +643,7 @@ const footerRight = computed(() =>
 }
 
 /* Cyberpunk (Tech Matrix) */
-.tpl-cyberpunk {
-  border: 1.5px solid rgba(0, 255, 102, 0.45);
+.tpl-cyberpunk .post-card__panel {
   box-shadow: 0 0 24px rgba(0, 255, 102, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-cyberpunk .post-card__theme-strip {
@@ -633,8 +663,7 @@ const footerRight = computed(() =>
 }
 
 /* Terminal Dev (Tech Console) */
-.tpl-terminal {
-  border: 1.5px solid rgba(0, 240, 255, 0.35);
+.tpl-terminal .post-card__panel {
   box-shadow: 0 0 20px rgba(0, 240, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-terminal .post-card__theme-strip {
@@ -654,8 +683,7 @@ const footerRight = computed(() =>
 }
 
 /* Rock Grunge (Alternative Metal) */
-.tpl-rock {
-  border: 1.5px solid rgba(255, 0, 60, 0.45);
+.tpl-rock .post-card__panel {
   box-shadow: 0 0 25px rgba(255, 0, 60, 0.18), 0 18px 40px rgba(0, 0, 0, 0.7);
 }
 .tpl-rock .post-card__theme-strip {
@@ -673,8 +701,7 @@ const footerRight = computed(() =>
 }
 
 /* Acid Techno (Rave Modern) */
-.tpl-acid {
-  border: 1.5px solid rgba(204, 255, 0, 0.4);
+.tpl-acid .post-card__panel {
   box-shadow: 0 0 25px rgba(204, 255, 0, 0.18), 0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-acid .post-card__theme-strip {
@@ -694,8 +721,7 @@ const footerRight = computed(() =>
 }
 
 /* Monochrome Streetwear */
-.tpl-monochrome {
-  border: 2px solid #000000;
+.tpl-monochrome .post-card__panel {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
 }
 .tpl-monochrome .post-card__theme-strip {
@@ -713,8 +739,7 @@ const footerRight = computed(() =>
 }
 
 /* Blueprint Engineering */
-.tpl-blueprint {
-  border: 1.5px solid rgba(72, 202, 228, 0.45);
+.tpl-blueprint .post-card__panel {
   box-shadow: 0 0 20px rgba(72, 202, 228, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-blueprint .post-card__theme-strip {
@@ -734,8 +759,7 @@ const footerRight = computed(() =>
 }
 
 /* Bubblegum Y2K Pop */
-.tpl-bubblegum {
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
+.tpl-bubblegum .post-card__panel {
   box-shadow: 0 16px 36px rgba(255, 75, 139, 0.35);
 }
 .tpl-bubblegum .post-card__theme-strip {
@@ -746,8 +770,7 @@ const footerRight = computed(() =>
 }
 
 /* Swiss Modern Minimalist */
-.tpl-swiss {
-  border: 1px solid rgba(0, 0, 0, 0.12);
+.tpl-swiss .post-card__panel {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 .tpl-swiss .post-card__theme-strip {
@@ -762,8 +785,7 @@ const footerRight = computed(() =>
 }
 
 /* Indie Rock Cassette */
-.tpl-indie {
-  border: 1.5px solid rgba(253, 240, 213, 0.35);
+.tpl-indie .post-card__panel {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
 }
 .tpl-indie .post-card__theme-strip {

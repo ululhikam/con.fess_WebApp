@@ -105,7 +105,7 @@ import {
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  template: { type: String, default: 'cyberpunk' },
+  template: { type: String, default: 'default' },
 });
 
 const emit = defineEmits(['update:show', 'update:template']);

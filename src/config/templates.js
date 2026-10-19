@@ -3,11 +3,15 @@
  *
  * Canvas template configuration for the post composer.
  *
- * Every template is a *canvas*: a bold flat/solid background paired with
- * bespoke geometric SVG textures (no gradients) for a crisp, punchy, modern look.
- * Ratios: 1:1 (square), 4:5 (portrait), and 9:16 (story).
+ * Dua generasi template hidup berdampingan di sini:
+ *  - "modern" (10): latar solid + tekstur geometris SVG, dengan banner strip &
+ *    subline — dirender identik oleh backend canvas.
+ *  - "legacy" (8): template gradasi orisinal — dipertahankan supaya fess lama
+ *    tetap tampil persis seperti sebelumnya.
  *
- * Features themes: Modern, Pop, Rock, Tech, Minimalist, Indie, Blueprint, etc.
+ * Field `panel` menyalin panel kartu yang digambar renderer SVG backend
+ * (buildSvgPages) — warna, border, lebar border, dan radius — supaya pratinjau
+ * di composer sama dengan PNG yang diposting ke Instagram.
  */
 
 /** Encode a raw SVG string as a CSS `url()` we can layer over a solid background. */
@@ -92,17 +96,50 @@ const blueprintGrid = (w = 40, stroke = 'rgba(72,202,228,0.22)') =>
       `<path d='M${w / 2} 0v${w} M0 ${w / 2}h${w}' fill='none' stroke='${stroke}' stroke-dasharray='2,2' stroke-width='0.8'/></svg>`,
   );
 
-/** Soft classic dot grid (Standard fallback) */
+/* ── Texture Helpers (Legacy Gradient Templates) ───────────────────────── */
+
+/** Repeating dot grid — the most common texture on share cards. */
 const dots = (w = 28, r = 1.6, fill = 'rgba(255,255,255,0.16)') =>
   svgUrl(
     `<svg ${xmlns} width='${w}' height='${w}'>` +
       `<circle cx='${w / 4}' cy='${w / 4}' r='${r}' fill='${fill}'/></svg>`,
   );
 
+/** Fine diagonal hatch, reads as "paper"/"risograph". */
+const hatch = (w = 18, stroke = 'rgba(255,255,255,0.10)') =>
+  svgUrl(
+    `<svg ${xmlns} width='${w}' height='${w}'>` +
+      `<path d='M-${w},0 l${w * 2},${w * 2} M0,-${w} l${w * 2},${w * 2} ` +
+      `M${w},${w * 2} l${w * 2},${w * 2}' stroke='${stroke}' stroke-width='2'/></svg>`,
+  );
+
+/** Soft scattered speckle, used on the warmer templates. */
+const speckle = (w = 60, fill = 'rgba(255,255,255,0.20)') =>
+  svgUrl(
+    `<svg ${xmlns} width='${w}' height='${w}'>` +
+      `<circle cx='7' cy='11' r='1.5' fill='${fill}'/>` +
+      `<circle cx='31' cy='6' r='1.1' fill='${fill}'/>` +
+      `<circle cx='46' cy='24' r='1.7' fill='${fill}'/>` +
+      `<circle cx='19' cy='38' r='1.2' fill='${fill}'/>` +
+      `<circle cx='52' cy='49' r='1.4' fill='${fill}'/>` +
+      `<circle cx='34' cy='53' r='1' fill='${fill}'/></svg>`,
+  );
+
+/** Thin concentric rings, gives the "announcement"/"quote" templates depth. */
+const rings = (w = 90, stroke = 'rgba(255,255,255,0.12)') =>
+  svgUrl(
+    `<svg ${xmlns} width='${w}' height='${w}'>` +
+      `<circle cx='${w / 2}' cy='${w / 2}' r='18' fill='none' stroke='${stroke}'/>` +
+      `<circle cx='${w / 2}' cy='${w / 2}' r='34' fill='none' stroke='${stroke}'/></svg>`,
+  );
+
+/** Panel kartu — mirror `buildSvgPages` backend (cardBg/cardBorder/radius). */
+const panel = (bg, border, width = 2, radius = 36) => ({ bg, border, width, radius });
+
 export const ASPECTS = {
-  square:   { key: 'square',   value: '1 / 1',  label: 'Feed Persegi 1:1',   exportWidth: 1080 },
-  portrait: { key: 'portrait', value: '4 / 5',  label: 'Feed Potret 4:5',    exportWidth: 1080 },
-  story:    { key: 'story',    value: '9 / 16', label: 'Story / Reel 9:16',  exportWidth: 1080 },
+  square: { key: 'square', value: '1 / 1', label: 'Feed Persegi 1:1', exportWidth: 1080 },
+  portrait: { key: 'portrait', value: '4 / 5', label: 'Feed Potret 4:5', exportWidth: 1080 },
+  story: { key: 'story', value: '9 / 16', label: 'Story / Reel 9:16', exportWidth: 1080 },
 };
 
 export const TEMPLATES = [
@@ -119,6 +156,7 @@ export const TEMPLATES = [
     category: 'tech',
     strip: '[HUD // ENCRYPTED 256-BIT]',
     subline: 'TERMINAL BROADCAST',
+    panel: panel('rgba(13, 20, 32, 0.94)', 'rgba(0, 255, 102, 0.4)'),
   },
 
   // ── 2. POP: Neo-Brutalisme ──────────────────────────────────────────────
@@ -132,8 +170,9 @@ export const TEMPLATES = [
     texture: boldHalftone(24, 2.4, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
     category: 'pop',
-    strip: '★ RAW CONFESSION ★',
+    strip: '* RAW CONFESSION *',
     subline: 'POPARTS EDITION',
+    panel: panel('#ffffff', '#000000', 4, 24),
   },
 
   // ── 3. ROCK: Rock Grunge ────────────────────────────────────────────────
@@ -149,6 +188,7 @@ export const TEMPLATES = [
     category: 'rock',
     strip: '/// ROCK ARCHIVE // SIDE A ///',
     subline: 'UNFILTERED SOUNDS',
+    panel: panel('rgba(22, 22, 22, 0.96)', 'rgba(255, 0, 60, 0.35)'),
   },
 
   // ── 4. TECH: Terminal Hacker ────────────────────────────────────────────
@@ -162,8 +202,9 @@ export const TEMPLATES = [
     texture: scanlines(6, 'rgba(0,240,255,0.18)'),
     accent: '#00f0ff',
     category: 'tech',
-    strip: '● ● ● bash - session_01',
+    strip: 'o o o bash - session_01',
     subline: 'SYSTEM OUTPUT // 200 OK',
+    panel: panel('rgba(10, 16, 24, 0.94)', 'rgba(0, 240, 255, 0.35)'),
   },
 
   // ── 5. POP: Bubblegum Y2K ───────────────────────────────────────────────
@@ -177,8 +218,9 @@ export const TEMPLATES = [
     texture: popConfetti(40, 'rgba(255,255,255,0.24)'),
     accent: '#ffffff',
     category: 'pop',
-    strip: '✦ SWEET CONFESSION ✦',
+    strip: '+ SWEET CONFESSION +',
     subline: 'Y2K RETRO ARCHIVE',
+    panel: panel('rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.4)'),
   },
 
   // ── 6. MODERN: Swiss Minimalist ─────────────────────────────────────────
@@ -192,8 +234,9 @@ export const TEMPLATES = [
     texture: swissGrid(28, 'rgba(0,0,0,0.08)'),
     accent: '#e63946',
     category: 'modern',
-    strip: '№ 01 / ZÜRICH EDITORIAL',
+    strip: 'No. 01 / ZURICH EDITORIAL',
     subline: 'ARCHITECTURAL GRID',
+    panel: panel('#ffffff', 'rgba(0, 0, 0, 0.12)'),
   },
 
   // ── 7. MODERN/TECH: Acid Techno ─────────────────────────────────────────
@@ -209,6 +252,7 @@ export const TEMPLATES = [
     category: 'modern',
     strip: '[145 BPM // RAW FREQUENCY]',
     subline: 'UNDERGROUND SOUND',
+    panel: panel('rgba(28, 12, 44, 0.94)', 'rgba(204, 255, 0, 0.4)'),
   },
 
   // ── 8. MODERN: Monochrome Bold ──────────────────────────────────────────
@@ -222,8 +266,9 @@ export const TEMPLATES = [
     texture: crosshairs(30, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
     category: 'modern',
-    strip: '“CONFESSION” — SPEC 2026',
+    strip: '"CONFESSION" - SPEC 2026',
     subline: 'STREETWEAR ARCHIVE',
+    panel: panel('#ffffff', 'rgba(0, 0, 0, 0.35)', 3),
   },
 
   // ── 9. ROCK: Indie Cassette ─────────────────────────────────────────────
@@ -239,6 +284,7 @@ export const TEMPLATES = [
     category: 'rock',
     strip: '[ CASSETTE SIDE A // 45 RPM ]',
     subline: 'ANALOG MASTER TAPE',
+    panel: panel('rgba(56, 18, 10, 0.65)', 'rgba(253, 240, 213, 0.35)'),
   },
 
   // ── 10. TECH: Blueprint Schematic ───────────────────────────────────────
@@ -254,37 +300,141 @@ export const TEMPLATES = [
     category: 'tech',
     strip: 'DWG NO: FNC-2026 // REV A',
     subline: 'SCALE: 1:1 SCHEMATIC',
+    panel: panel('rgba(12, 42, 78, 0.90)', 'rgba(72, 202, 228, 0.45)'),
+  },
+
+  // ── 11. LEGACY: Tengah Malam ────────────────────────────────────────────
+  {
+    key: 'midnight',
+    label: 'Tengah Malam',
+    description: 'Biru tua pekat bertekstur bintang — cocok untuk curhat malam.',
+    aspect: 'portrait',
+    ink: 'light',
+    background: 'radial-gradient(120% 90% at 20% 0%, #16204d 0%, #0a0e22 45%, #05060f 100%)',
+    texture: dots(34, 1.2, 'rgba(255,255,255,0.30)'),
+    accent: '#7dd3fc',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
+  },
+
+  // ── 12. LEGACY: Senja ───────────────────────────────────────────────────
+  {
+    key: 'sunset',
+    label: 'Senja',
+    description: 'Oranye ke merah muda, hangat dan ramah di feed.',
+    aspect: 'portrait',
+    ink: 'light',
+    background: 'linear-gradient(160deg, #ff7a18 0%, #ff3d6e 52%, #a01fff 100%)',
+    texture: hatch(18, 'rgba(255,255,255,0.12)'),
+    accent: '#fff4e8',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
+  },
+
+  // ── 13. LEGACY: Rimba ───────────────────────────────────────────────────
+  {
+    key: 'forest',
+    label: 'Rimba',
+    description: 'Hijau teal yang menenangkan, pas untuk opini santai.',
+    aspect: 'square',
+    ink: 'light',
+    background: 'linear-gradient(140deg, #0f766e 0%, #059669 55%, #34d399 100%)',
+    texture: speckle(60, 'rgba(255,255,255,0.22)'),
+    accent: '#ecfdf5',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
+  },
+
+  // ── 14. LEGACY: Noir ────────────────────────────────────────────────────
+  {
+    key: 'noir',
+    label: 'Noir',
+    description: 'Hitam pekat bergrid neon — gelap, tajam, misterius.',
+    aspect: 'square',
+    ink: 'light',
+    background: 'linear-gradient(180deg, #0b0d14 0%, #12141f 60%, #0b0d14 100%)',
+    texture: svgUrl(
+      `<svg ${xmlns} width='40' height='40'>` +
+        `<path d='M40 0H0v40' fill='none' stroke='rgba(0,56,255,0.35)' stroke-width='1'/></svg>`,
+    ),
+    accent: '#0038ff',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
+  },
+
+  // ── 15. LEGACY: Kertas ──────────────────────────────────────────────────
+  {
+    key: 'paper',
+    label: 'Kertas',
+    description: 'Krem bersih bertekstur arsir — teks gelap, enak dibaca.',
+    aspect: 'portrait',
+    ink: 'dark',
+    background: 'linear-gradient(150deg, #fdf6ec 0%, #f6ead6 60%, #efe0c6 100%)',
+    texture: hatch(16, 'rgba(60,40,20,0.10)'),
+    accent: '#b45309',
+    panel: panel('rgba(255, 255, 255, 0.88)', 'rgba(0, 0, 0, 0.12)'),
+  },
+
+  // ── 16. LEGACY: Samudra ─────────────────────────────────────────────────
+  {
+    key: 'ocean',
+    label: 'Samudra',
+    description: 'Cyan ke biru tua, segar seperti biru laut.',
+    aspect: 'portrait',
+    ink: 'light',
+    background: 'linear-gradient(200deg, #22d3ee 0%, #0ea5e9 48%, #1e3a8a 100%)',
+    texture: svgUrl(
+      `<svg ${xmlns} width='64' height='24'>` +
+        `<path d='M0 12q8-8 16 0t16 0 16 0 16 0' fill='none' ` +
+        `stroke='rgba(255,255,255,0.28)' stroke-width='2'/></svg>`,
+    ),
+    accent: '#ecfeff',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
+  },
+
+  // ── 17. LEGACY: Violet ──────────────────────────────────────────────────
+  {
+    key: 'violet',
+    label: 'Violet',
+    description: 'Format feed potret 4:5, gradien ungu–pink cerah di feed Instagram.',
+    aspect: 'portrait',
+    ink: 'light',
+    background: 'linear-gradient(180deg, #7000ff 0%, #c026d3 45%, #f472b6 100%)',
+    texture: rings(90, 'rgba(255,255,255,0.16)'),
+    accent: '#fdf4ff',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
   },
 
   // ── Standar Fallback ────────────────────────────────────────────────────
   {
     key: 'default',
-    label: 'Standar Fess',
-    description: 'Biru royal solid khas Fess n Curious bertekstur titik halus.',
+    label: 'Standar',
+    description: 'Gradien biru–ungu khas Fess n Curious, siap pakai di feed.',
     aspect: 'portrait',
     ink: 'light',
-    background: '#0038ff',
+    background: 'linear-gradient(135deg, #0038ff 0%, #4b1fff 55%, #7000ff 100%)',
     texture: dots(28, 1.6, 'rgba(255,255,255,0.16)'),
     accent: '#ffffff',
     category: 'standard',
-    strip: 'FESS N CURIOUS',
-    subline: 'INSTAGRAM FEED',
+    panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
   },
 ];
 
-/** Look up one template by its key, falling back to the first modern template. */
+const DEFAULT_KEY = 'default';
+
+/** Look up one template by its key, falling back to the brand default. */
 export function getTemplateByKey(key) {
-  return TEMPLATES.find((t) => t.key === key) || TEMPLATES[0];
+  return (
+    TEMPLATES.find((t) => t.key === key) ||
+    TEMPLATES.find((t) => t.key === DEFAULT_KEY) ||
+    TEMPLATES[0]
+  );
 }
 
-/** Resolve the CSS `background` shorthand (texture layered over solid background). */
+/** Resolve the CSS `background` shorthand (texture layered over base background). */
 export function getTemplateBackground(template) {
-  const t = template || getTemplateByKey('cyberpunk');
+  const t = template || getTemplateByKey(DEFAULT_KEY);
   return t.texture ? `${t.texture} repeat, ${t.background}` : t.background;
 }
 
 /** Resolve the CSS `aspect-ratio` value for a template. */
 export function getTemplateAspectRatio(template) {
-  const t = template || getTemplateByKey('cyberpunk');
+  const t = template || getTemplateByKey(DEFAULT_KEY);
   return (ASPECTS[t.aspect] || ASPECTS.portrait).value;
 }
