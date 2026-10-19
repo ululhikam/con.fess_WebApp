@@ -81,7 +81,17 @@
     </div>
 
     <!-- STATE: loading / error data base -->
-    <div v-if="loading" class="state-banner mb-3">Memuat data base…</div>
+    <div
+      v-if="loading"
+      class="profile-loading-skeleton mb-3"
+      role="status"
+      aria-label="Memuat profil base"
+      aria-busy="true"
+    >
+      <span class="sk-block sk-block--name" />
+      <span class="sk-block sk-block--line" />
+      <span class="sk-block sk-block--line is-short" />
+    </div>
     <div v-else-if="error" class="state-banner state-banner-error mb-3">
       <span>Gagal memuat data base.</span>
       <button type="button" class="btn-banner-retry" @click="loadProfile">Coba lagi</button>
@@ -89,22 +99,40 @@
 
     <!-- QUICK STATUS STRIP MODERASI BASE (angka real dari GET /admin/stats) -->
     <div class="quick-status-grid mb-3">
-      <div class="quick-status-card">
-        <span class="status-num">{{ pendingCount }}</span>
-        <span class="status-lbl">Antrean Moderasi</span>
-      </div>
-      <div class="quick-status-card">
-        <span class="status-num">{{ approvedTotal }}</span>
-        <span class="status-lbl">Fess Terbit</span>
-      </div>
-      <div class="quick-status-card">
-        <span class="status-num">{{ rejectedTotal }}</span>
-        <span class="status-lbl">Ditolak</span>
-      </div>
-      <div class="quick-status-card">
-        <span class="status-num">{{ followersCount.toLocaleString('id-ID') }}</span>
-        <span class="status-lbl">Follower</span>
-      </div>
+      <template v-if="loading">
+        <div
+          v-for="n in 4"
+          :key="`status-skeleton-${n}`"
+          class="quick-status-card quick-status-card--skeleton"
+          aria-hidden="true"
+        >
+          <span class="sk-block sk-block--num" />
+          <span class="sk-block sk-block--label" />
+        </div>
+      </template>
+      <template v-else>
+        <div class="quick-status-card">
+          <span class="status-num">{{ pendingCount }}</span>
+          <span class="status-lbl">Antrean Moderasi</span>
+        </div>
+        <div class="quick-status-card">
+          <span class="status-num">{{ approvedTotal }}</span>
+          <span class="status-lbl">Fess Terbit</span>
+        </div>
+        <div class="quick-status-card">
+          <span class="status-num">{{ rejectedTotal }}</span>
+          <span class="status-lbl">Ditolak</span>
+        </div>
+        <button
+          type="button"
+          class="quick-status-card quick-status-card--btn"
+          title="Lihat fess yang dilaporkan"
+          @click="openReportedFesses"
+        >
+          <span class="status-num">{{ reportedCount }}</span>
+          <span class="status-lbl">Fess Dilaporkan</span>
+        </button>
+      </template>
     </div>
 
     <!-- FILTER / SUB-TABS KONTEN FESS USER -->
@@ -144,16 +172,41 @@
         <Clock :size="16" />
         <span>Antrean ({{ pendingCount }})</span>
       </button>
+
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="fessFilter === 'reported'"
+        class="feed-tab-btn"
+        :class="{ active: fessFilter === 'reported' }"
+        @click="fessFilter = 'reported'"
+      >
+        <Flag :size="16" />
+        <span>Dilaporkan ({{ reportedCount }})</span>
+      </button>
     </div>
 
     <!-- KONTEN FESS BASE (real dari GET /bases/:handle/fesses) -->
     <div class="ig-fess-content-area">
-      <div v-if="actionNotice" class="alert-success-banner mb-3">
-        <CheckCircle2 :size="15" />
-        <span>{{ actionNotice }}</span>
+      <div v-if="loading" class="fess-cards-stream" aria-hidden="true">
+        <div
+          v-for="n in 2"
+          :key="`fess-skeleton-${n}`"
+          class="skeleton-fess-card"
+        >
+          <span class="sk-block sk-block--meta" />
+          <span class="sk-block sk-block--line" />
+          <span class="sk-block sk-block--line" />
+          <span class="sk-block sk-block--line is-short" />
+        </div>
       </div>
-      <div v-if="actionError" class="state-banner state-banner-error mb-3">{{ actionError }}</div>
-      <div v-if="fesses.length" class="fess-cards-stream">
+      <template v-else>
+        <div v-if="actionNotice" class="alert-success-banner mb-3">
+          <CheckCircle2 :size="15" />
+          <span>{{ actionNotice }}</span>
+        </div>
+        <div v-if="actionError" class="state-banner state-banner-error mb-3">{{ actionError }}</div>
+        <div v-if="fesses.length" class="fess-cards-stream">
         <AdminFessCard
           v-for="item in fesses"
           :key="item.id"
@@ -179,9 +232,22 @@
 
       <div v-else class="empty-fess-box">
         <MessageSquare :size="36" class="text-muted mb-2" />
-        <p class="font-bold">Belum ada confession dalam kategori ini.</p>
-        <p class="text-xs text-muted">Confession baru yang dikirim user ke base ini akan muncul di sini.</p>
+        <p class="font-bold">
+          {{
+            fessFilter === 'reported'
+              ? 'Belum ada fess yang dilaporkan.'
+              : 'Belum ada confession dalam kategori ini.'
+          }}
+        </p>
+        <p class="text-xs text-muted">
+          {{
+            fessFilter === 'reported'
+              ? 'Fess yang dilaporkan anggota akan muncul di sini untuk ditinjau.'
+              : 'Confession baru yang dikirim user ke base ini akan muncul di sini.'
+          }}
+        </p>
       </div>
+      </template>
     </div>
 
     <!-- HAMBURGER DRAWER (KANAN ATAS) -->
@@ -541,6 +607,7 @@ import {
   MessageSquare,
   Upload,
   Zap,
+  Flag,
 } from 'lucide-vue-next';
 
 import { useAuthStore } from '../../stores/authStore';
@@ -618,7 +685,13 @@ async function loadMyFollowingCount() {
 const pendingCount = computed(() => stats.value?.pending ?? 0);
 const approvedTotal = computed(() => stats.value?.published ?? 0);
 const rejectedTotal = computed(() => stats.value?.rejected ?? 0);
+const reportedCount = computed(() => stats.value?.reported ?? 0);
 const totalFesses = computed(() => stats.value?.total_fesses ?? fessCount.value);
+
+/** Kotak "Fess Dilaporkan" → langsung buka tab filter laporan. */
+function openReportedFesses() {
+  fessFilter.value = 'reported';
+}
 
 /** GET /bases/:handle/fesses — status difilter di server + pagination (lazy load). */
 const FESS_PAGE_SIZE = 20;
@@ -637,12 +710,15 @@ function mapBaseFess(f) {
 }
 
 function fessParams(page) {
-  const status = fessFilter.value === 'semua' ? undefined : fessFilter.value;
+  const isReported = fessFilter.value === 'reported';
+  const status =
+    fessFilter.value === 'semua' || isReported ? undefined : fessFilter.value;
   return {
     page,
     limit: FESS_PAGE_SIZE,
     sort: 'newest',
     ...(status ? { status } : {}),
+    ...(isReported ? { reported: 'true' } : {}),
   };
 }
 
@@ -1108,6 +1184,93 @@ async function handleAdminLogout() {
   color: var(--shell-text-muted);
   margin-top: 2px;
   white-space: nowrap;
+}
+
+.quick-status-card--btn {
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.quick-status-card--btn:hover {
+  border-color: var(--brand-blue, #0038ff);
+  transform: translateY(-1px);
+}
+
+/* ---- skeleton loading (tab akun) ---- */
+@keyframes sk-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.sk-block {
+  display: block;
+  border-radius: 6px;
+  background: var(--shell-border);
+  animation: sk-pulse 1.3s ease-in-out infinite;
+}
+
+.profile-loading-skeleton {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.sk-block--name {
+  width: 140px;
+  height: 14px;
+  margin-bottom: 10px;
+}
+
+.sk-block--line {
+  width: 100%;
+  max-width: 360px;
+  height: 10px;
+  margin-bottom: 7px;
+}
+
+.sk-block--line.is-short {
+  width: 55%;
+  margin-bottom: 0;
+}
+
+.sk-block--num {
+  width: 30px;
+  height: 17px;
+  margin-bottom: 6px;
+}
+
+.sk-block--label {
+  width: 76%;
+  height: 9px;
+}
+
+.quick-status-card--skeleton {
+  gap: 0;
+  animation: sk-pulse 1.3s ease-in-out infinite;
+}
+
+.skeleton-fess-card {
+  background: var(--shell-card);
+  border: 1px solid var(--shell-border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sk-block--meta {
+  width: 38%;
+  height: 10px;
 }
 
 /* Feed tabs */

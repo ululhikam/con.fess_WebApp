@@ -36,7 +36,7 @@
         <div
           v-if="pageLines"
           class="post-card__body post-card__body--paged"
-          :style="pagedBodyStyle"
+          :style="[bodyTypographyStyle, pagedBodyStyle]"
         >
           <span v-if="showPlaceholder" class="post-card__placeholder">Tulis fessmu…</span>
           <template v-else>
@@ -45,8 +45,12 @@
             }}</span>
           </template>
         </div>
-        <p v-else-if="displayContent" class="post-card__body">{{ displayContent }}</p>
-        <p v-else class="post-card__body post-card__body--empty">Tulis fessmu…</p>
+        <p v-else-if="displayContent" class="post-card__body" :style="bodyTypographyStyle">
+          {{ displayContent }}
+        </p>
+        <p v-else class="post-card__body post-card__body--empty" :style="bodyTypographyStyle">
+          Tulis fessmu…
+        </p>
 
         <!-- Quoted Fess Preview -->
         <div v-if="quotedFess" ref="quoteEl" class="post-card__quoted">
@@ -83,7 +87,12 @@
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { Music } from 'lucide-vue-next';
-import { getTemplateByKey, getTemplateAspectRatio } from '../../config/templates';
+import {
+  getTemplateByKey,
+  getTemplateAspectRatio,
+  getTemplateTypography,
+  FONT_STACKS,
+} from '../../config/templates';
 import { CARD_CANVAS_WIDTH } from '../../utils/cardPagination';
 import { useTopics } from '../../composables/useTopics';
 import { useBases } from '../../composables/useBases';
@@ -113,6 +122,20 @@ const cardEl = ref(null);
 defineExpose({ cardEl });
 
 const templateDef = computed(() => getTemplateByKey(props.template));
+const typography = computed(() => getTemplateTypography(templateDef.value));
+
+/** Gaya teks isi fess — mirror `typography` di config template/backend. */
+const bodyTypographyStyle = computed(() => {
+  const t = typography.value;
+  return {
+    fontFamily: FONT_STACKS[t.family] || FONT_STACKS.sans,
+    fontWeight: String(t.weight),
+    textTransform: t.uppercase ? 'uppercase' : 'none',
+    textAlign: t.align,
+    letterSpacing: `${t.letterSpacing}em`,
+    lineHeight: t.lineHeight,
+  };
+});
 
 const { getTopicById } = useTopics();
 const { bases } = useBases();
@@ -249,9 +272,15 @@ const panelStyle = computed(() => {
     background: panel.bg,
     border: `${(scale > 0 ? Math.max(1, panel.width * scale) : panel.width).toFixed(2)}px solid ${panel.border}`,
   };
+  if (panel.dash) style.borderStyle = 'dashed';
   if (scale > 0) {
     style.inset = `${(56 * scale).toFixed(2)}px`;
     style.borderRadius = `${(panel.radius * scale).toFixed(2)}px`;
+  }
+  if (panel.shadow === 'hard') {
+    style.boxShadow = `${(Math.max(1, 10 * scale)).toFixed(2)}px ${(Math.max(1, 10 * scale)).toFixed(2)}px 0 #000000`;
+  } else if (panel.shadow === 'none') {
+    style.boxShadow = 'none';
   }
   return style;
 });

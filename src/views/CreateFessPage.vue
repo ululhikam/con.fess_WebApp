@@ -122,7 +122,7 @@
             @click="showTemplateModal = true"
           >
             <span class="toolbar-badge">
-              {{ isRandomTemplate ? 'Acak' : getTemplateLabel(form.template) }}
+              {{ isRandomTemplate ? 'Otomatis' : getTemplateLabel(form.template) }}
             </span>
           </ToolbarButton>
 
@@ -148,7 +148,6 @@
       v-model:show="showTemplateModal"
       :template="form.template"
       @update:template="onTemplatePick"
-      @randomize="onTemplateRandomize"
     />
     <QuoteModal
       v-model:show="showQuoteModal"
@@ -374,11 +373,6 @@ const getTemplateLabel = (key) => {
 function onTemplatePick(key) {
   form.value.template = key;
   isRandomTemplate.value = false;
-}
-
-function onTemplateRandomize(key) {
-  form.value.template = key;
-  isRandomTemplate.value = true;
 }
 
 const formatScheduleDate = (dateStr) => {

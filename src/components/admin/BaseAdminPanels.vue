@@ -380,7 +380,7 @@
           </div>
 
           <p class="text-xs text-muted mt-4">
-            Angka dihitung langsung dari database (GET /admin/stats, scoped ke base yang kamu kelola).
+            Angka diperbarui otomatis dari aktivitas komunitas base yang kamu kelola.
           </p>
         </template>
       </template>

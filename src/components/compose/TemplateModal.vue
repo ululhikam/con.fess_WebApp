@@ -11,7 +11,8 @@
           <div>
             <h2 id="template-modal-title" class="modal-title">Pilih Template Card</h2>
             <p class="modal-subtitle">
-              Pilih desain card untuk Instagram Feed — atau gunakan Acak.
+              Template dipilih acak otomatis saat kamu menulis. Pilih satu kalau ingin desain
+              tertentu.
             </p>
           </div>
           <button type="button" class="modal-close" @click="close" aria-label="Tutup">
@@ -20,17 +21,6 @@
         </header>
 
         <div class="modal-body">
-          <button type="button" class="template-random-cta" @click="selectRandom">
-            <span class="template-random-cta__icon">
-              <Shuffle :size="18" />
-            </span>
-            <span class="template-random-cta__text">
-              <strong>Acak template</strong>
-              <span>Biarkan sistem memilih desain acak jika kamu tidak memilih.</span>
-            </span>
-            <span class="template-random-cta__badge">Random</span>
-          </button>
-
           <div class="template-grid">
             <button
               v-for="t in TEMPLATES"
@@ -60,6 +50,7 @@
                   <span class="template-thumb__line is-short" />
                 </span>
                 <span class="template-thumb__foot" />
+                <span class="template-thumb__type" :style="typeSampleStyle(t)">Aa</span>
               </span>
 
               <span class="template-card__info">
@@ -88,29 +79,36 @@
 </template>
 
 <script setup>
-import { X, Check, Shuffle } from 'lucide-vue-next';
+import { X, Check } from 'lucide-vue-next';
 import {
   TEMPLATES,
   ASPECTS,
+  FONT_STACKS,
   getTemplateBackground,
   getTemplateAspectRatio,
-  pickRandomTemplateKey,
+  getTemplateTypography,
 } from '../../config/templates';
 
-const props = defineProps({
+defineProps({
   show: { type: Boolean, default: false },
   template: { type: String, default: 'default' },
 });
 
-const emit = defineEmits(['update:show', 'update:template', 'randomize']);
+const emit = defineEmits(['update:show', 'update:template']);
 
 function select(key) {
   emit('update:template', key);
 }
 
-/** Acak template: parent menandai pilihan sebagai random (bukan pilihan manual). */
-function selectRandom() {
-  emit('randomize', pickRandomTemplateKey(props.template));
+/** Contoh "Aa" memakai keluarga/weight/kapital template — biar format teks terlihat. */
+function typeSampleStyle(t) {
+  const typo = getTemplateTypography(t);
+  return {
+    fontFamily: FONT_STACKS[typo.family] || FONT_STACKS.sans,
+    fontWeight: String(typo.weight),
+    textTransform: typo.uppercase ? 'uppercase' : 'none',
+    letterSpacing: `${typo.letterSpacing}em`,
+  };
 }
 
 function aspectLabel(t) {
@@ -201,72 +199,6 @@ function close() {
   flex: 1;
   overflow-y: auto;
   padding: 12px 20px 20px;
-}
-
-/* ---- random template CTA ---- */
-.template-random-cta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  border-radius: 14px;
-  border: 1px dashed var(--border-strong, rgba(255, 255, 255, 0.25));
-  background: linear-gradient(135deg, rgba(0, 56, 255, 0.16), rgba(112, 0, 255, 0.16));
-  color: var(--text-main, #ffffff);
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    transform 0.18s ease;
-}
-
-.template-random-cta:hover {
-  border-color: var(--brand-blue, #0055ff);
-  background: linear-gradient(135deg, rgba(0, 56, 255, 0.26), rgba(112, 0, 255, 0.26));
-  transform: translateY(-1px);
-}
-
-.template-random-cta__icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.template-random-cta__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.template-random-cta__text strong {
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.template-random-cta__text span {
-  font-size: 12px;
-  color: var(--text-muted, rgba(255, 255, 255, 0.65));
-}
-
-.template-random-cta__badge {
-  flex-shrink: 0;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 .template-grid {
@@ -361,6 +293,17 @@ function close() {
   border-radius: 2px;
   background: currentColor;
   opacity: 0.4;
+}
+
+/* Contoh tipografi template — huruf "Aa" memakai keluarga & weight aslinya. */
+.template-thumb__type {
+  position: absolute;
+  right: 9px;
+  bottom: 7px;
+  font-size: 24px;
+  line-height: 1;
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 .ink-light .template-thumb {
