@@ -17,19 +17,51 @@
         </header>
 
         <div class="modal-body">
-          <!-- Preview carousel: kartu fess (1..N halaman) lalu media — sama
-               dengan urutan carousel yang diposting ke Instagram -->
-          <PostPreviewCarousel
-            :content="form.content"
-            :media="form.media"
-            :base-handle="form.baseHandle"
-            :topic="form.topic"
-            :song="form.song"
-            :template="form.template"
-            :author="author"
-            :quoted-fess="form.quotedFess"
-            :is-preview="true"
-          />
+          <!-- Pratinjau: kartu fess hasil render backend (1..N halaman) lalu
+               media user — sama persis dengan urutan carousel yang diposting -->
+          <div class="preview-panel">
+            <div class="preview-panel__head">
+              <span class="preview-panel__title">Pratinjau hasil render</span>
+              <button
+                v-if="previewImages.length"
+                type="button"
+                class="btn-download"
+                @click="downloadFirstPage"
+              >
+                <Download :size="13" />
+                <span>Unduh PNG</span>
+              </button>
+            </div>
+
+            <div v-if="previewLoading" class="preview-loading">
+              <Loader2 :size="20" class="spin" />
+              <span>Merender kartu persis seperti hasil posting…</span>
+            </div>
+            <template v-else>
+              <p v-if="previewError" class="preview-error">
+                <AlertCircle :size="14" />
+                <span>{{ previewError }}</span>
+              </p>
+              <PostPreviewCarousel
+                :content="form.content"
+                :media="form.media"
+                :base-handle="form.baseHandle"
+                :topic="form.topic"
+                :song="form.song"
+                :template="form.template"
+                :author="author"
+                :quoted-fess="form.quotedFess"
+                :is-preview="true"
+                :card-images="previewImages"
+                reorderable
+                @reorder-media="$emit('reorder-media', $event)"
+              />
+              <p v-if="mediaCount > 1" class="preview-hint">
+                <GripVertical :size="13" />
+                <span>Geser pegangan di slide media untuk mengatur urutannya (depan → belakang).</span>
+              </p>
+            </template>
+          </div>
 
           <!-- Summary -->
           <div class="publish-summary">
@@ -48,7 +80,7 @@
               <span class="summary-value">{{ form.song.title }} - {{ form.song.artist }}</span>
             </div>
 
-            <div v-if="form.template !== 'default'" class="summary-row">
+            <div v-if="form.template" class="summary-row">
               <span class="summary-label">Template</span>
               <span class="summary-value">{{ getTemplateLabel(form.template) }}</span>
             </div>
@@ -97,10 +129,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { X, Calendar, Loader2, AlertCircle } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
+import { X, Calendar, Loader2, AlertCircle, Download, GripVertical } from 'lucide-vue-next';
 import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
+import { TEMPLATES } from '../../config/templates';
+import { api } from '../../api';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -110,7 +144,7 @@ const props = defineProps({
   confirming: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['update:show', 'confirm', 'cancel']);
+const emit = defineEmits(['update:show', 'confirm', 'cancel', 'reorder-media']);
 
 const { getTopicById } = useTopics();
 
@@ -126,6 +160,65 @@ const author = computed(() => ({
   handle: '@kamu',
 }));
 
+/* ---- Pratinjau hasil render (identik dengan PNG yang diposting) ---------- */
+
+const previewImages = ref([]);
+const previewLoading = ref(false);
+const previewError = ref('');
+let previewReqId = 0;
+
+async function loadPreview() {
+  const reqId = ++previewReqId;
+  previewImages.value = [];
+  previewError.value = '';
+  previewLoading.value = true;
+  try {
+    const res = await api.previewFessCanvas({
+      base_handle: props.form.baseHandle,
+      content: props.form.content,
+      template: props.form.template,
+      quoted_fess: props.form.quotedFess || null,
+    });
+    if (reqId !== previewReqId) return;
+    previewImages.value = Array.isArray(res?.images) ? res.images : [];
+  } catch (err) {
+    if (reqId !== previewReqId) return;
+    previewError.value =
+      'Gagal memuat pratinjau hasil render. Pratinjau ringan ditampilkan sebagai cadangan.';
+    console.warn('[PublishModal] render pratinjau gagal:', err?.message || err);
+  } finally {
+    if (reqId === previewReqId) previewLoading.value = false;
+  }
+}
+
+// Muat ulang setiap modal dibuka — konten bisa berubah sejak terakhir dibuka.
+watch(
+  () => props.show,
+  (show) => {
+    if (show) {
+      loadPreview();
+    } else {
+      previewReqId += 1;
+      previewImages.value = [];
+      previewError.value = '';
+      previewLoading.value = false;
+    }
+  },
+  { immediate: true }
+);
+
+const mediaCount = computed(() => (Array.isArray(props.form.media) ? props.form.media.length : 0));
+
+/** Simpan halaman 1 kartu sebagai PNG — persis gambar yang dirender backend. */
+function downloadFirstPage() {
+  const src = previewImages.value[0];
+  if (!src) return;
+  const link = document.createElement('a');
+  link.href = src;
+  link.download = `fess-${props.form.template}-halaman-1.png`;
+  link.click();
+}
+
 function getBaseName(handle) {
   const bases = {
     '@codememfess': 'Code Memes & Rants',
@@ -138,15 +231,7 @@ function getBaseName(handle) {
 }
 
 function getTemplateLabel(key) {
-  const templates = {
-    default: 'Standar',
-    minimal: 'Minimal',
-    card: 'Kartu',
-    story: 'Story',
-    'text-only': 'Hanya Teks',
-    gallery: 'Galeri',
-  };
-  return templates[key] || key;
+  return TEMPLATES.find((t) => t.key === key)?.label || key;
 }
 
 function formatScheduleDate(dateStr) {
@@ -194,7 +279,7 @@ function close() {
 
 .modal-container {
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
   max-height: 90vh;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -243,6 +328,90 @@ function close() {
   flex: 1;
   overflow-y: auto;
   padding: 0;
+}
+
+/* ---- pratinjau hasil render ---- */
+.preview-panel {
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.preview-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.preview-panel__title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-main);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-download:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+.preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 240px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.preview-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--warning, #f59e0b);
+}
+
+.preview-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.preview-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.preview-hint svg {
+  flex-shrink: 0;
 }
 
 .publish-summary {

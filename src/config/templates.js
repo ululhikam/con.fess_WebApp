@@ -96,7 +96,7 @@ const blueprintGrid = (w = 40, stroke = 'rgba(72,202,228,0.22)') =>
       `<path d='M${w / 2} 0v${w} M0 ${w / 2}h${w}' fill='none' stroke='${stroke}' stroke-dasharray='2,2' stroke-width='0.8'/></svg>`,
   );
 
-/* ── Texture Helpers (Legacy Gradient Templates) ───────────────────────── */
+/* ── Texture Helpers (Legacy Solid Templates) ──────────────────────────── */
 
 /** Repeating dot grid — the most common texture on share cards. */
 const dots = (w = 28, r = 1.6, fill = 'rgba(255,255,255,0.16)') =>
@@ -153,7 +153,6 @@ export const TEMPLATES = [
     background: '#0a0e17',
     texture: techGrid(32, 'rgba(0,255,102,0.18)'),
     accent: '#00ff66',
-    category: 'tech',
     panel: panel('rgba(13, 20, 32, 0.94)', 'rgba(0, 255, 102, 0.4)'),
   },
 
@@ -167,7 +166,6 @@ export const TEMPLATES = [
     background: '#ffe600',
     texture: boldHalftone(24, 2.4, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
-    category: 'pop',
     panel: panel('#ffffff', '#000000', 4, 24),
   },
 
@@ -181,7 +179,6 @@ export const TEMPLATES = [
     background: '#121212',
     texture: rockSlashes(20, 'rgba(255,0,60,0.22)'),
     accent: '#ff003c',
-    category: 'rock',
     panel: panel('rgba(22, 22, 22, 0.96)', 'rgba(255, 0, 60, 0.35)'),
   },
 
@@ -195,7 +192,6 @@ export const TEMPLATES = [
     background: '#080c10',
     texture: scanlines(6, 'rgba(0,240,255,0.18)'),
     accent: '#00f0ff',
-    category: 'tech',
     panel: panel('rgba(10, 16, 24, 0.94)', 'rgba(0, 240, 255, 0.35)'),
   },
 
@@ -209,7 +205,6 @@ export const TEMPLATES = [
     background: '#ff4b8b',
     texture: popConfetti(40, 'rgba(255,255,255,0.24)'),
     accent: '#ffffff',
-    category: 'pop',
     panel: panel('rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.4)'),
   },
 
@@ -223,7 +218,6 @@ export const TEMPLATES = [
     background: '#f4f4f0',
     texture: swissGrid(28, 'rgba(0,0,0,0.08)'),
     accent: '#e63946',
-    category: 'modern',
     panel: panel('#ffffff', 'rgba(0, 0, 0, 0.12)'),
   },
 
@@ -237,7 +231,6 @@ export const TEMPLATES = [
     background: '#180828',
     texture: acidWaves(36, 'rgba(204,255,0,0.22)'),
     accent: '#ccff00',
-    category: 'modern',
     panel: panel('rgba(28, 12, 44, 0.94)', 'rgba(204, 255, 0, 0.4)'),
   },
 
@@ -251,7 +244,6 @@ export const TEMPLATES = [
     background: '#ffffff',
     texture: crosshairs(30, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
-    category: 'modern',
     panel: panel('#ffffff', 'rgba(0, 0, 0, 0.35)', 3),
   },
 
@@ -265,7 +257,6 @@ export const TEMPLATES = [
     background: '#b84227',
     texture: tapeHatch(16, 'rgba(253,240,213,0.18)'),
     accent: '#fdf0d5',
-    category: 'rock',
     panel: panel('rgba(56, 18, 10, 0.65)', 'rgba(253, 240, 213, 0.35)'),
   },
 
@@ -279,7 +270,6 @@ export const TEMPLATES = [
     background: '#0a2d54',
     texture: blueprintGrid(40, 'rgba(72,202,228,0.22)'),
     accent: '#48cae4',
-    category: 'tech',
     panel: panel('rgba(12, 42, 78, 0.90)', 'rgba(72, 202, 228, 0.45)'),
   },
 
@@ -287,10 +277,10 @@ export const TEMPLATES = [
   {
     key: 'midnight',
     label: 'Tengah Malam',
-    description: 'Biru tua pekat bertekstur bintang — cocok untuk curhat malam.',
+    description: 'Biru tua pekat — cocok untuk curhat malam.',
     aspect: 'portrait',
     ink: 'light',
-    background: 'radial-gradient(120% 90% at 20% 0%, #16204d 0%, #0a0e22 45%, #05060f 100%)',
+    background: '#0a0e27',
     texture: dots(34, 1.2, 'rgba(255,255,255,0.30)'),
     accent: '#7dd3fc',
     panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
@@ -300,10 +290,10 @@ export const TEMPLATES = [
   {
     key: 'sunset',
     label: 'Senja',
-    description: 'Oranye ke merah muda, hangat dan ramah di feed.',
+    description: 'Merah rose hangat dan ramah di feed.',
     aspect: 'portrait',
     ink: 'light',
-    background: 'linear-gradient(160deg, #ff7a18 0%, #ff3d6e 52%, #a01fff 100%)',
+    background: '#e11d48',
     texture: hatch(18, 'rgba(255,255,255,0.12)'),
     accent: '#fff4e8',
     panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
@@ -313,10 +303,10 @@ export const TEMPLATES = [
   {
     key: 'forest',
     label: 'Rimba',
-    description: 'Hijau teal yang menenangkan, pas untuk opini santai.',
+    description: 'Hijau emerald yang menenangkan, pas untuk opini santai.',
     aspect: 'square',
     ink: 'light',
-    background: 'linear-gradient(140deg, #0f766e 0%, #059669 55%, #34d399 100%)',
+    background: '#065f46',
     texture: speckle(60, 'rgba(255,255,255,0.22)'),
     accent: '#ecfdf5',
     panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
@@ -329,7 +319,7 @@ export const TEMPLATES = [
     description: 'Hitam pekat bergrid neon — gelap, tajam, misterius.',
     aspect: 'square',
     ink: 'light',
-    background: 'linear-gradient(180deg, #0b0d14 0%, #12141f 60%, #0b0d14 100%)',
+    background: '#0b0d14',
     texture: svgUrl(
       `<svg ${xmlns} width='40' height='40'>` +
         `<path d='M40 0H0v40' fill='none' stroke='rgba(0,56,255,0.35)' stroke-width='1'/></svg>`,
@@ -345,7 +335,7 @@ export const TEMPLATES = [
     description: 'Krem bersih bertekstur arsir — teks gelap, enak dibaca.',
     aspect: 'portrait',
     ink: 'dark',
-    background: 'linear-gradient(150deg, #fdf6ec 0%, #f6ead6 60%, #efe0c6 100%)',
+    background: '#f5ede0',
     texture: hatch(16, 'rgba(60,40,20,0.10)'),
     accent: '#b45309',
     panel: panel('rgba(255, 255, 255, 0.88)', 'rgba(0, 0, 0, 0.12)'),
@@ -355,10 +345,10 @@ export const TEMPLATES = [
   {
     key: 'ocean',
     label: 'Samudra',
-    description: 'Cyan ke biru tua, segar seperti biru laut.',
+    description: 'Biru laut dalam, segar dan tenang.',
     aspect: 'portrait',
     ink: 'light',
-    background: 'linear-gradient(200deg, #22d3ee 0%, #0ea5e9 48%, #1e3a8a 100%)',
+    background: '#0369a1',
     texture: svgUrl(
       `<svg ${xmlns} width='64' height='24'>` +
         `<path d='M0 12q8-8 16 0t16 0 16 0 16 0' fill='none' ` +
@@ -372,10 +362,10 @@ export const TEMPLATES = [
   {
     key: 'violet',
     label: 'Violet',
-    description: 'Format feed potret 4:5, gradien ungu–pink cerah di feed Instagram.',
+    description: 'Ungu cerah yang menonjol di feed Instagram.',
     aspect: 'portrait',
     ink: 'light',
-    background: 'linear-gradient(180deg, #7000ff 0%, #c026d3 45%, #f472b6 100%)',
+    background: '#7c3aed',
     texture: rings(90, 'rgba(255,255,255,0.16)'),
     accent: '#fdf4ff',
     panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
@@ -385,13 +375,12 @@ export const TEMPLATES = [
   {
     key: 'default',
     label: 'Standar',
-    description: 'Gradien biru–ungu khas Fess n Curious, siap pakai di feed.',
+    description: 'Biru khas Fess n Curious, siap pakai di feed.',
     aspect: 'portrait',
     ink: 'light',
-    background: 'linear-gradient(135deg, #0038ff 0%, #4b1fff 55%, #7000ff 100%)',
+    background: '#0038ff',
     texture: dots(28, 1.6, 'rgba(255,255,255,0.16)'),
     accent: '#ffffff',
-    category: 'standard',
     panel: panel('rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.18)'),
   },
 ];

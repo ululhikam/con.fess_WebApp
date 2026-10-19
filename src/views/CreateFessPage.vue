@@ -138,67 +138,6 @@
           </ToolbarButton>
         </div>
       </main>
-
-      <!-- Preview Panel (Right Sidebar on Desktop, Bottom on Mobile) -->
-      <aside class="preview-panel" :class="{ 'has-content': hasContent }">
-        <div class="preview-header">
-          <div>
-            <h2 class="preview-title">Pratinjau Postingan</h2>
-            <p class="preview-subtitle">{{ activeTemplate.label }} · {{ activeAspect.label }}</p>
-          </div>
-          <button
-            type="button"
-            class="btn-export"
-            :disabled="!hasContent || exporting"
-            :title="hasContent ? 'Simpan kartu halaman 1 sebagai gambar PNG' : 'Tulis fess dulu'"
-            @click="exportCard"
-          >
-            <Loader2 v-if="exporting" :size="15" class="spin" />
-            <Download v-else :size="15" />
-            <span>{{ exporting ? 'Membuat…' : 'Ekspor PNG' }}</span>
-          </button>
-        </div>
-
-        <div class="preview-content">
-          <PostPreviewCarousel
-            ref="previewRef"
-            :content="form.content"
-            :media="form.media"
-            :base-handle="form.baseHandle"
-            :topic="form.topic"
-            :song="form.song"
-            :template="form.template"
-            :author="currentUser"
-            :quoted-fess="form.quotedFess"
-            :is-preview="true"
-            :exporting="exporting"
-            reorderable
-            @reorder-media="onReorderMedia"
-          />
-          <p v-if="form.media.length > 1" class="preview-hint">
-            <GripVertical :size="13" />
-            <span>Geser pegangan di slide media untuk mengatur urutannya (depan → belakang).</span>
-          </p>
-          <p v-if="exportError" class="preview-error" role="alert">
-            <AlertCircle :size="14" /> {{ exportError }}
-          </p>
-        </div>
-
-        <div class="preview-stats" v-if="hasContent">
-          <div class="stat-item">
-            <span class="stat-label">Kata</span>
-            <span class="stat-value">{{ wordCount }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Karakter</span>
-            <span class="stat-value">{{ charCount }}/2000</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Est. Baca</span>
-            <span class="stat-value">{{ readingTime }} menit</span>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <!-- Modals -->
@@ -217,7 +156,7 @@
       @update:model-value="applyQuotedFess"
     />
 
-    <!-- Publish Confirmation Modal -->
+    <!-- Publish Confirmation Modal (satu-satunya pratinjau + atur urutan media) -->
     <PublishModal
       v-model:show="showPublishModal"
       :form="form"
@@ -225,12 +164,13 @@
       :confirming="publishing"
       @confirm="publishFess"
       @cancel="showPublishModal = false"
+      @reorder-media="onReorderMedia"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   ChevronLeft,
@@ -239,20 +179,16 @@ import {
   Calendar,
   Music,
   Layout,
-  Download,
   AlertCircle,
   Quote,
   X,
-  GripVertical,
 } from 'lucide-vue-next';
-import { toPng } from 'html-to-image';
 
 // Components
 import BaseSelector from '../components/compose/BaseSelector.vue';
 import EditorArea from '../components/compose/EditorArea.vue';
 import MediaUploader from '../components/compose/MediaUploader.vue';
 import ToolbarButton from '../components/compose/ToolbarButton.vue';
-import PostPreviewCarousel from '../components/compose/PostPreviewCarousel.vue';
 import TopicModal from '../components/compose/TopicModal.vue';
 import ScheduleModal from '../components/compose/ScheduleModal.vue';
 import SongModal from '../components/compose/SongModal.vue';
@@ -271,7 +207,7 @@ import { validateFessContent, generateClientId } from '../utils/format';
 import { mapFessToPost, mapQuotedFess } from '../utils/fessMapper';
 
 // Config
-import { ASPECTS, getTemplateByKey, TEMPLATES, pickRandomTemplateKey } from '../config/templates';
+import { TEMPLATES, pickRandomTemplateKey } from '../config/templates';
 
 const router = useRouter();
 const route = useRoute();
@@ -313,54 +249,6 @@ function handleBack() {
     router.push('/feed');
   }
 }
-
-/* ---------- card export ---------- */
-const previewRef = ref(null);
-const exporting = ref(false);
-const exportError = ref('');
-
-const activeTemplate = computed(() => getTemplateByKey(form.value.template));
-const activeAspect = computed(() => ASPECTS[activeTemplate.value.aspect] || ASPECTS.portrait);
-
-/**
- * Rasterise the preview card to a PNG sized for Instagram.
- *
- * html-to-image renders the node at its natural CSS size, so we bump
- * `pixelRatio` to reach the export width and keep `cacheBust` on for any
- * uploaded blob/media URLs.
- */
-async function exportCard() {
-  const node = previewRef.value?.cardEl;
-  if (!node || exporting.value) return;
-
-  exporting.value = true;
-  exportError.value = '';
-  try {
-    // Tunggu DOM memperbarui diri (pegangan geser media disembunyikan) sebelum capture.
-    await nextTick();
-    const targetWidth = activeAspect.value.exportWidth;
-    const naturalWidth = node.getBoundingClientRect().width || node.offsetWidth || targetWidth;
-    const pixelRatio = Math.max(1, targetWidth / naturalWidth);
-
-    const dataUrl = await toPng(node, {
-      pixelRatio,
-      cacheBust: true,
-      backgroundColor: undefined,
-      style: { transform: 'none', margin: '0' },
-    });
-
-    const link = document.createElement('a');
-    link.download = `fess-${form.value.template}-${Date.now()}.png`;
-    link.href = dataUrl;
-    link.click();
-  } catch (err) {
-    console.error('Export failed:', err);
-    exportError.value = 'Gagal membuat gambar. Coba lagi.';
-  } finally {
-    exporting.value = false;
-  }
-}
-const currentUser = computed(() => authStore.user);
 
 const { bases, ensureLoaded: ensureBasesLoaded, fetchBase } = useBases();
 const availableBases = ref([]);
@@ -469,17 +357,6 @@ const canPublish = computed(() => {
 });
 
 const isScheduled = computed(() => !!form.value.scheduledAt);
-
-const wordCount = computed(() => {
-  return form.value.content.trim() ? form.value.content.trim().split(/\s+/).length : 0;
-});
-
-const charCount = computed(() => form.value.content.length);
-
-const readingTime = computed(() => {
-  const words = wordCount.value;
-  return Math.max(1, Math.ceil(words / 200));
-});
 
 const getPlaceholder = computed(() => {
   if (form.value.baseHandle) {
@@ -905,14 +782,11 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   }
 }
 
-/* ===== CONTENT LAYOUT ===== */
+/* ===== CONTENT LAYOUT (editor full width — pratinjau pindah ke modal posting) ===== */
 .create-content {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
   padding: 16px;
-  max-width: 1080px;
+  max-width: 760px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -920,9 +794,6 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 
 @media (min-width: 900px) {
   .create-content {
-    grid-template-columns: minmax(0, 1fr) 340px;
-    align-items: start;
-    gap: 20px;
     padding: 20px 24px;
   }
 }
@@ -936,133 +807,9 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   overflow: hidden;
 }
 
-/* ===== PREVIEW PANEL ===== */
-.preview-panel {
-  position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 100px);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-panel .preview-content {
-  overflow-y: auto;
-  flex: 1;
-}
-
-.preview-panel:not(.has-content) .preview-content {
-  opacity: 0.75;
-}
-
-.preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-surface-2);
-}
-
-.preview-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 0;
-}
-
-.preview-subtitle {
-  margin: 3px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
-  letter-spacing: 0.2px;
-}
-
-.btn-export {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 8px 14px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: var(--bg-surface);
-  color: var(--text-main);
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.btn-export:hover:not(:disabled) {
-  border-color: var(--brand-blue);
-  color: var(--brand-blue);
-}
-
-.btn-export:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.preview-error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: var(--danger-text, #ef4444);
-}
-
-/* Petunjuk geser media di pratinjau */
-.preview-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.preview-hint svg {
-  flex-shrink: 0;
-}
-
-.preview-content {
-  padding: 16px;
-  min-height: 200px;
-}
-
-.preview-stats {
-  display: flex;
-  justify-content: space-around;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--bg-surface-2);
-  font-size: 12px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.stat-label {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.stat-value {
-  color: var(--text-main);
-  font-weight: 700;
-}
+/* ===== PREVIEW PANEL =====
+   Pratinjau live dihapus dari composer — pratinjau + atur urutan media kini
+   hanya ada di modal konfirmasi posting (PublishModal). */
 
 /* ===== EDITOR TOOLBAR ===== */
 .editor-toolbar {
@@ -1079,18 +826,15 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 }
 
 /* ===== SCROLLBAR ===== */
-.create-content::-webkit-scrollbar,
-.preview-panel::-webkit-scrollbar {
+.create-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.create-content::-webkit-scrollbar-track,
-.preview-panel::-webkit-scrollbar-track {
+.create-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.create-content::-webkit-scrollbar-thumb,
-.preview-panel::-webkit-scrollbar-thumb {
+.create-content::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 3px;
 }
@@ -1148,13 +892,6 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 
   .editor-toolbar::-webkit-scrollbar {
     display: none;
-  }
-
-  /* Preview panel on mobile: not sticky, just flow */
-  .preview-panel {
-    position: relative;
-    top: 0;
-    max-height: none;
   }
 }
 

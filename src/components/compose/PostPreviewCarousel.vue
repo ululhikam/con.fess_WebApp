@@ -30,6 +30,16 @@
           :page-total="pageTotal"
         />
 
+        <!-- Kartu hasil render backend (identik dengan PNG yang diposting) -->
+        <img
+          v-else-if="slide.kind === 'card-image'"
+          class="post-carousel__card-image"
+          :src="slide.src"
+          :alt="`Kartu fess halaman ${slide.pageIndex + 1}`"
+          :style="{ aspectRatio: cardAspectRatio }"
+          draggable="false"
+        />
+
         <div
           v-else
           class="post-carousel__media"
@@ -128,6 +138,12 @@ const props = defineProps({
   exporting: { type: Boolean, default: false },
   /** Aktifkan pengaturan urutan media via geser (khusus halaman composer). */
   reorderable: { type: Boolean, default: false },
+  /**
+   * Kartu hasil render backend (PNG data URI). Bila diisi, slide kartu memakai
+   * gambar ini — bukan replay DOM — supaya pratinjau identik dengan hasil
+   * render yang diposting.
+   */
+  cardImages: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['reorder-media']);
@@ -184,7 +200,6 @@ const skippedMediaCount = computed(() => mediaCount.value - postableCount.value)
 // Batas 10 slide Instagram: kartu dapat sisa slot (minimal 1), media ikut semua.
 const cardSlotLimit = computed(() => Math.max(1, 10 - postableCount.value));
 const cardSlides = computed(() => pages.value.slice(0, cardSlotLimit.value));
-const hiddenPageCount = computed(() => Math.max(0, pages.value.length - cardSlides.value.length));
 
 /* ---- Urutan media (geser untuk atur depan→belakang) ----------------------- */
 
@@ -212,13 +227,39 @@ const reorderEnabled = computed(
 
 /* ---- Daftar slide -------------------------------------------------------- */
 
-const slides = computed(() => {
-  const list = cardSlides.value.map((lines, index) => ({
-    key: `card-${index}`,
-    kind: 'card',
-    lines,
+/** Render backend siap dipakai → slide kartu memakai PNG hasil render. */
+const hasRenderedCards = computed(
+  () => Array.isArray(props.cardImages) && props.cardImages.length > 0,
+);
+
+const renderedCardSlides = computed(() =>
+  (hasRenderedCards.value ? props.cardImages : []).slice(0, cardSlotLimit.value).map((src, index) => ({
+    key: `card-img-${index}`,
+    kind: 'card-image',
+    src,
     pageIndex: index,
-  }));
+  })),
+);
+
+const cardCount = computed(() =>
+  hasRenderedCards.value ? renderedCardSlides.value.length : cardSlides.value.length,
+);
+
+const hiddenPageCount = computed(() =>
+  hasRenderedCards.value
+    ? Math.max(0, props.cardImages.length - renderedCardSlides.value.length)
+    : Math.max(0, pages.value.length - cardSlides.value.length),
+);
+
+const slides = computed(() => {
+  const list = hasRenderedCards.value
+    ? renderedCardSlides.value.slice()
+    : cardSlides.value.map((lines, index) => ({
+        key: `card-${index}`,
+        kind: 'card',
+        lines,
+        pageIndex: index,
+      }));
   orderedMedia.value.forEach((item, index) => {
     list.push({ key: `media-${item.id || index}`, kind: 'media', item, mediaIndex: index });
   });
@@ -226,14 +267,14 @@ const slides = computed(() => {
 });
 
 const legend = computed(() => {
-  const cardCount = cardSlides.value.length;
+  const cards = cardCount.value;
   const mediaTotal = postableCount.value;
   if (!mediaTotal) {
-    return cardCount > 1
-      ? `${cardCount} kartu fess, diposting berurutan seperti ini`
+    return cards > 1
+      ? `${cards} kartu fess, diposting berurutan seperti ini`
       : 'Beginilah kartu yang diposting ke Instagram';
   }
-  return `${cardCount} kartu fess dulu, lalu ${mediaTotal} media — sama seperti di Instagram`;
+  return `${cards} kartu fess dulu, lalu ${mediaTotal} media — sama seperti di Instagram`;
 });
 
 const note = computed(() => {
@@ -441,6 +482,16 @@ onBeforeUnmount(() => {
   flex: 0 0 calc(100% - 32px);
   min-width: 0;
   scroll-snap-align: start;
+}
+
+/* ---- slide kartu hasil render ---- */
+.post-carousel__card-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.35);
 }
 
 /* ---- slide media ---- */

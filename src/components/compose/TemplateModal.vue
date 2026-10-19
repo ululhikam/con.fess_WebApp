@@ -19,20 +19,6 @@
           </button>
         </header>
 
-        <!-- Category Filter Tabs -->
-        <div class="template-categories" role="tablist">
-          <button
-            v-for="cat in categories"
-            :key="cat.key"
-            type="button"
-            class="cat-chip"
-            :class="{ active: selectedCategory === cat.key }"
-            @click="selectedCategory = cat.key"
-          >
-            {{ cat.label }}
-          </button>
-        </div>
-
         <div class="modal-body">
           <button type="button" class="template-random-cta" @click="selectRandom">
             <span class="template-random-cta__icon">
@@ -47,7 +33,7 @@
 
           <div class="template-grid">
             <button
-              v-for="t in filteredTemplates"
+              v-for="t in TEMPLATES"
               :key="t.key"
               type="button"
               class="template-card"
@@ -82,9 +68,6 @@
               </span>
 
               <div class="template-card__tags">
-                <span v-if="t.category && t.category !== 'standard'" class="template-card__cat-badge">
-                  {{ formatCategory(t.category) }}
-                </span>
                 <span class="template-card__badge">{{ aspectLabel(t) }}</span>
               </div>
 
@@ -105,7 +88,6 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
 import { X, Check, Shuffle } from 'lucide-vue-next';
 import {
   TEMPLATES,
@@ -121,31 +103,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:show', 'update:template', 'randomize']);
-
-const selectedCategory = ref('all');
-
-const categories = [
-  { key: 'all', label: 'Semua' },
-  { key: 'tech', label: 'Tech' },
-  { key: 'pop', label: 'Pop' },
-  { key: 'rock', label: 'Rock' },
-  { key: 'modern', label: 'Modern' },
-];
-
-const filteredTemplates = computed(() => {
-  if (selectedCategory.value === 'all') return TEMPLATES;
-  return TEMPLATES.filter((t) => t.category === selectedCategory.value);
-});
-
-function formatCategory(cat) {
-  const map = {
-    tech: '⚡ Tech',
-    pop: '✨ Pop',
-    rock: '🎸 Rock',
-    modern: '📐 Modern',
-  };
-  return map[cat] || cat;
-}
 
 function select(key) {
   emit('update:template', key);
@@ -238,43 +195,7 @@ function close() {
   color: var(--text-main, #ffffff);
 }
 
-/* Category filter bar */
-.template-categories {
-  display: flex;
-  gap: 8px;
-  padding: 12px 20px 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.template-categories::-webkit-scrollbar {
-  display: none;
-}
-
-.cat-chip {
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
-  background: var(--bg-inset, rgba(255, 255, 255, 0.04));
-  color: var(--text-secondary, rgba(255, 255, 255, 0.75));
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-
-.cat-chip:hover {
-  border-color: var(--border-strong, rgba(255, 255, 255, 0.25));
-  color: var(--text-main, #ffffff);
-}
-
-.cat-chip.active {
-  background: var(--brand-blue, #0038ff);
-  border-color: var(--brand-blue, #0038ff);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 56, 255, 0.4);
-}
+/* Category filter bar dihapus — semua template tampil dalam satu grid. */
 
 .modal-body {
   flex: 1;
@@ -474,17 +395,6 @@ function close() {
   gap: 6px;
   flex-wrap: wrap;
   margin-top: auto;
-}
-
-.template-card__cat-badge {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(0, 56, 255, 0.15);
-  border: 1px solid rgba(0, 56, 255, 0.3);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: #7dd3fc;
-  letter-spacing: 0.2px;
 }
 
 .template-card__badge {

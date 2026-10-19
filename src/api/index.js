@@ -55,6 +55,7 @@ export const api = {
   reportFess: (id, payload) => client.post(`/fesses/${id}/report`, payload),
   deleteFess: (id) => client.delete(`/fesses/${id}/delete`),
   postFessToInstagram: (id, payload) => client.post(`/fesses/${id}/instagram-post`, payload),
+  previewFessCanvas: (payload) => client.post('/fesses/canvas/preview', payload),
 
   /* COMMENTS */
   getComments: (fessId, params) => client.get(`/fesses/${fessId}/comments`, { params }),
