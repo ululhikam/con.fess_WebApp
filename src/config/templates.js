@@ -4,8 +4,8 @@
  * Canvas template configuration for the post composer.
  *
  * Dua generasi template hidup berdampingan di sini:
- *  - "modern" (10): latar solid + tekstur geometris SVG, dengan banner strip &
- *    subline — dirender identik oleh backend canvas.
+ *  - "modern" (10): latar solid + tekstur geometris SVG — dirender identik
+ *    oleh backend canvas.
  *  - "legacy" (8): template gradasi orisinal — dipertahankan supaya fess lama
  *    tetap tampil persis seperti sebelumnya.
  *
@@ -154,8 +154,6 @@ export const TEMPLATES = [
     texture: techGrid(32, 'rgba(0,255,102,0.18)'),
     accent: '#00ff66',
     category: 'tech',
-    strip: '[HUD // ENCRYPTED 256-BIT]',
-    subline: 'TERMINAL BROADCAST',
     panel: panel('rgba(13, 20, 32, 0.94)', 'rgba(0, 255, 102, 0.4)'),
   },
 
@@ -170,8 +168,6 @@ export const TEMPLATES = [
     texture: boldHalftone(24, 2.4, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
     category: 'pop',
-    strip: '* RAW CONFESSION *',
-    subline: 'POPARTS EDITION',
     panel: panel('#ffffff', '#000000', 4, 24),
   },
 
@@ -186,8 +182,6 @@ export const TEMPLATES = [
     texture: rockSlashes(20, 'rgba(255,0,60,0.22)'),
     accent: '#ff003c',
     category: 'rock',
-    strip: '/// ROCK ARCHIVE // SIDE A ///',
-    subline: 'UNFILTERED SOUNDS',
     panel: panel('rgba(22, 22, 22, 0.96)', 'rgba(255, 0, 60, 0.35)'),
   },
 
@@ -202,8 +196,6 @@ export const TEMPLATES = [
     texture: scanlines(6, 'rgba(0,240,255,0.18)'),
     accent: '#00f0ff',
     category: 'tech',
-    strip: 'o o o bash - session_01',
-    subline: 'SYSTEM OUTPUT // 200 OK',
     panel: panel('rgba(10, 16, 24, 0.94)', 'rgba(0, 240, 255, 0.35)'),
   },
 
@@ -218,8 +210,6 @@ export const TEMPLATES = [
     texture: popConfetti(40, 'rgba(255,255,255,0.24)'),
     accent: '#ffffff',
     category: 'pop',
-    strip: '+ SWEET CONFESSION +',
-    subline: 'Y2K RETRO ARCHIVE',
     panel: panel('rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.4)'),
   },
 
@@ -234,8 +224,6 @@ export const TEMPLATES = [
     texture: swissGrid(28, 'rgba(0,0,0,0.08)'),
     accent: '#e63946',
     category: 'modern',
-    strip: 'No. 01 / ZURICH EDITORIAL',
-    subline: 'ARCHITECTURAL GRID',
     panel: panel('#ffffff', 'rgba(0, 0, 0, 0.12)'),
   },
 
@@ -250,8 +238,6 @@ export const TEMPLATES = [
     texture: acidWaves(36, 'rgba(204,255,0,0.22)'),
     accent: '#ccff00',
     category: 'modern',
-    strip: '[145 BPM // RAW FREQUENCY]',
-    subline: 'UNDERGROUND SOUND',
     panel: panel('rgba(28, 12, 44, 0.94)', 'rgba(204, 255, 0, 0.4)'),
   },
 
@@ -266,8 +252,6 @@ export const TEMPLATES = [
     texture: crosshairs(30, 'rgba(0,0,0,0.16)'),
     accent: '#000000',
     category: 'modern',
-    strip: '"CONFESSION" - SPEC 2026',
-    subline: 'STREETWEAR ARCHIVE',
     panel: panel('#ffffff', 'rgba(0, 0, 0, 0.35)', 3),
   },
 
@@ -282,8 +266,6 @@ export const TEMPLATES = [
     texture: tapeHatch(16, 'rgba(253,240,213,0.18)'),
     accent: '#fdf0d5',
     category: 'rock',
-    strip: '[ CASSETTE SIDE A // 45 RPM ]',
-    subline: 'ANALOG MASTER TAPE',
     panel: panel('rgba(56, 18, 10, 0.65)', 'rgba(253, 240, 213, 0.35)'),
   },
 
@@ -298,8 +280,6 @@ export const TEMPLATES = [
     texture: blueprintGrid(40, 'rgba(72,202,228,0.22)'),
     accent: '#48cae4',
     category: 'tech',
-    strip: 'DWG NO: FNC-2026 // REV A',
-    subline: 'SCALE: 1:1 SCHEMATIC',
     panel: panel('rgba(12, 42, 78, 0.90)', 'rgba(72, 202, 228, 0.45)'),
   },
 
@@ -417,6 +397,19 @@ export const TEMPLATES = [
 ];
 
 const DEFAULT_KEY = 'default';
+
+/**
+ * Pilih key template acak.
+ *
+ * Dipakai composer saat user tidak memilih template: setiap fess baru mendapat
+ * template acak, tetapi key yang dikirim ke API tetap konkret sehingga pratinjau
+ * dan hasil PNG selalu sama.
+ */
+export function pickRandomTemplateKey(excludeKey) {
+  const pool = TEMPLATES.filter((t) => t.key !== excludeKey);
+  const list = pool.length ? pool : TEMPLATES;
+  return list[Math.floor(Math.random() * list.length)].key;
+}
 
 /** Look up one template by its key, falling back to the brand default. */
 export function getTemplateByKey(key) {

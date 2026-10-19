@@ -118,11 +118,11 @@
           <ToolbarButton
             :icon="Layout"
             label="Template"
-            :active="form.template !== 'default'"
+            :active="!isRandomTemplate"
             @click="showTemplateModal = true"
           >
-            <span v-if="form.template !== 'default'" class="toolbar-badge">
-              {{ getTemplateLabel(form.template) }}
+            <span class="toolbar-badge">
+              {{ isRandomTemplate ? 'Acak' : getTemplateLabel(form.template) }}
             </span>
           </ToolbarButton>
 
@@ -205,7 +205,12 @@
     <TopicModal v-model:show="showTopicModal" v-model:topic="form.topic" :topics="topics" />
     <ScheduleModal v-model:show="showScheduleModal" v-model:date="form.scheduledAt" />
     <SongModal v-model:show="showSongModal" v-model:song="form.song" />
-    <TemplateModal v-model:show="showTemplateModal" v-model:template="form.template" />
+    <TemplateModal
+      v-model:show="showTemplateModal"
+      :template="form.template"
+      @update:template="onTemplatePick"
+      @randomize="onTemplateRandomize"
+    />
     <QuoteModal
       v-model:show="showQuoteModal"
       :model-value="form.quotedFess"
@@ -266,7 +271,7 @@ import { validateFessContent, generateClientId } from '../utils/format';
 import { mapFessToPost, mapQuotedFess } from '../utils/fessMapper';
 
 // Config
-import { ASPECTS, getTemplateByKey, TEMPLATES } from '../config/templates';
+import { ASPECTS, getTemplateByKey, TEMPLATES, pickRandomTemplateKey } from '../config/templates';
 
 const router = useRouter();
 const route = useRoute();
@@ -282,7 +287,7 @@ const form = ref({
   topic: '',
   scheduledAt: null,
   song: null,
-  template: 'default',
+  template: pickRandomTemplateKey(),
   quotedFess: null,
 });
 
@@ -293,6 +298,8 @@ const showSongModal = ref(false);
 const showTemplateModal = ref(false);
 const showQuoteModal = ref(false);
 const showPublishModal = ref(false);
+// true = user belum memilih template; composer memakai template acak.
+const isRandomTemplate = ref(true);
 const savingDraft = ref(false);
 const publishing = ref(false);
 const publishError = ref('');
@@ -486,6 +493,17 @@ const getTemplateLabel = (key) => {
   return TEMPLATES.find((t) => t.key === key)?.label || key;
 };
 
+// Template: pilihan manual vs acak (default composer).
+function onTemplatePick(key) {
+  form.value.template = key;
+  isRandomTemplate.value = false;
+}
+
+function onTemplateRandomize(key) {
+  form.value.template = key;
+  isRandomTemplate.value = true;
+}
+
 const formatScheduleDate = (dateStr) => {
   const d = new Date(dateStr);
   return d.toLocaleDateString('id-ID', {
@@ -532,6 +550,7 @@ async function saveDraft() {
   try {
     const draft = {
       ...form.value,
+      isRandomTemplate: isRandomTemplate.value,
       id: generateClientId('draft'),
       savedAt: Date.now(),
       isDraft: true,
@@ -664,6 +683,7 @@ onMounted(async () => {
             template: draft.template || 'default',
             quotedFess: null,
           });
+          isRandomTemplate.value = draft.isRandomTemplate === true;
           // Kutipan dipulihkan lewat applier supaya base tujuan ikut terkunci.
           if (draft.quotedFess) applyQuotedFess(draft.quotedFess);
         }

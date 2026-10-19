@@ -12,12 +12,6 @@
     <div v-if="panelStyle" class="post-card__panel" aria-hidden="true" :style="panelStyle" />
 
     <div class="post-card__inner">
-      <!-- Theme banner strip -->
-      <div v-if="templateDef.strip" class="post-card__theme-strip">
-        <span class="theme-strip__text">{{ templateDef.strip }}</span>
-        <span class="theme-strip__dot" aria-hidden="true" />
-      </div>
-
       <!-- Header -->
       <header class="post-card__header">
         <span class="post-card__avatar" aria-hidden="true">{{ baseAvatar }}</span>
@@ -66,10 +60,7 @@
 
       <!-- Footer -->
       <footer class="post-card__footer">
-        <div class="post-card__footer-left">
-          <span class="post-card__platform">Instagram Feed · {{ baseHandle }}</span>
-          <span v-if="templateDef.subline" class="post-card__subline">{{ templateDef.subline }}</span>
-        </div>
+        <span class="post-card__platform">Instagram Feed · {{ baseHandle }}</span>
         <span class="post-card__footer-right">{{ footerRight }}</span>
       </footer>
     </div>
@@ -567,65 +558,11 @@ const footerRight = computed(() =>
   opacity: 1;
 }
 
-/* ---- theme banner strip ---- */
-.post-card__theme-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  font-family: var(--font-mono, monospace);
-  font-size: clamp(9.5px, 2.3vw, 11px);
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-}
-
-.theme-strip__text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.theme-strip__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--card-accent, currentColor);
-  box-shadow: 0 0 6px var(--card-accent, currentColor);
-  flex-shrink: 0;
-}
-
-.post-card__footer-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.post-card__subline {
-  font-size: clamp(9px, 2.1vw, 10.5px);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  opacity: 0.65;
-  text-transform: uppercase;
-}
-
 /* ── Theme Specific Visual Styles (Non-Gradient, Flat & Punchy) ───────── */
 
 /* Neo-Brutalism (Bold Pop) */
 .tpl-neobrutalism .post-card__panel {
   box-shadow: 7px 7px 0px #000000;
-}
-.tpl-neobrutalism .post-card__theme-strip {
-  background: #000000;
-  color: #ffe600;
-  border: 1.5px solid #000000;
-  border-radius: 4px;
-  transform: rotate(-0.5deg);
 }
 .tpl-neobrutalism .post-card__avatar {
   background: #000000;
@@ -646,11 +583,6 @@ const footerRight = computed(() =>
 .tpl-cyberpunk .post-card__panel {
   box-shadow: 0 0 24px rgba(0, 255, 102, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
 }
-.tpl-cyberpunk .post-card__theme-strip {
-  background: rgba(0, 255, 102, 0.12);
-  border: 1px solid rgba(0, 255, 102, 0.35);
-  color: #00ff66;
-}
 .tpl-cyberpunk .post-card__avatar {
   background: rgba(0, 255, 102, 0.18);
   border: 1.5px solid #00ff66;
@@ -665,11 +597,6 @@ const footerRight = computed(() =>
 /* Terminal Dev (Tech Console) */
 .tpl-terminal .post-card__panel {
   box-shadow: 0 0 20px rgba(0, 240, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.6);
-}
-.tpl-terminal .post-card__theme-strip {
-  background: rgba(0, 240, 255, 0.12);
-  border: 1px solid rgba(0, 240, 255, 0.35);
-  color: #00f0ff;
 }
 .tpl-terminal .post-card__avatar {
   background: rgba(0, 240, 255, 0.16);
@@ -686,11 +613,6 @@ const footerRight = computed(() =>
 .tpl-rock .post-card__panel {
   box-shadow: 0 0 25px rgba(255, 0, 60, 0.18), 0 18px 40px rgba(0, 0, 0, 0.7);
 }
-.tpl-rock .post-card__theme-strip {
-  background: rgba(255, 0, 60, 0.18);
-  border: 1px solid rgba(255, 0, 60, 0.4);
-  color: #ff3366;
-}
 .tpl-rock .post-card__avatar {
   background: #ff003c;
   color: #ffffff;
@@ -703,11 +625,6 @@ const footerRight = computed(() =>
 /* Acid Techno (Rave Modern) */
 .tpl-acid .post-card__panel {
   box-shadow: 0 0 25px rgba(204, 255, 0, 0.18), 0 18px 40px rgba(0, 0, 0, 0.6);
-}
-.tpl-acid .post-card__theme-strip {
-  background: rgba(204, 255, 0, 0.15);
-  border: 1px solid rgba(204, 255, 0, 0.4);
-  color: #ccff00;
 }
 .tpl-acid .post-card__avatar {
   background: rgba(204, 255, 0, 0.2);
@@ -724,11 +641,6 @@ const footerRight = computed(() =>
 .tpl-monochrome .post-card__panel {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
 }
-.tpl-monochrome .post-card__theme-strip {
-  background: #000000;
-  color: #ffffff;
-  border: 1px solid #000000;
-}
 .tpl-monochrome .post-card__avatar {
   background: #000000;
   color: #ffffff;
@@ -741,11 +653,6 @@ const footerRight = computed(() =>
 /* Blueprint Engineering */
 .tpl-blueprint .post-card__panel {
   box-shadow: 0 0 20px rgba(72, 202, 228, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
-}
-.tpl-blueprint .post-card__theme-strip {
-  background: rgba(72, 202, 228, 0.15);
-  border: 1px solid rgba(72, 202, 228, 0.4);
-  color: #48cae4;
 }
 .tpl-blueprint .post-card__avatar {
   background: rgba(72, 202, 228, 0.2);
@@ -762,22 +669,10 @@ const footerRight = computed(() =>
 .tpl-bubblegum .post-card__panel {
   box-shadow: 0 16px 36px rgba(255, 75, 139, 0.35);
 }
-.tpl-bubblegum .post-card__theme-strip {
-  background: rgba(255, 255, 255, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #ffffff;
-  border-radius: 999px;
-}
 
 /* Swiss Modern Minimalist */
 .tpl-swiss .post-card__panel {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-}
-.tpl-swiss .post-card__theme-strip {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-left: 4px solid #e63946;
-  color: #111827;
 }
 .tpl-swiss .post-card__brand {
   background: #e63946;
@@ -787,10 +682,5 @@ const footerRight = computed(() =>
 /* Indie Rock Cassette */
 .tpl-indie .post-card__panel {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
-}
-.tpl-indie .post-card__theme-strip {
-  background: rgba(253, 240, 213, 0.18);
-  border: 1px solid rgba(253, 240, 213, 0.35);
-  color: #fdf0d5;
 }
 </style>
