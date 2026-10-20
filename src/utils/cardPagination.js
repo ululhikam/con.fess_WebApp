@@ -21,13 +21,13 @@ const MAX_PAGES = 10; // batas carousel Instagram
 const MAX_QUOTE_LINES = 4;
 const PAD = 56;
 const CONTENT_INSET = 116; // area teks = cardW - 116 (mirror backend)
-const QUOTE = { pad: 18, headerH: 48, font: 25, lineHeight: 34 };
+const QUOTE = { pad: 18, headerH: 48, font: 29, lineHeight: 40 };
 
 /** Geometri + tier font per aspek (mirror ASPECTS + tiers di canvas.service.ts). */
 const GEOMETRY = {
-  square: { width: 1080, height: 1080, tiers: [38, 33, 28, 24] },
-  portrait: { width: 1080, height: 1350, tiers: [42, 36, 30, 26] },
-  story: { width: 1080, height: 1920, tiers: [44, 38, 32, 28] },
+  square: { width: 1080, height: 1080, tiers: [45, 39, 33, 28] },
+  portrait: { width: 1080, height: 1350, tiers: [50, 42, 35, 31] },
+  story: { width: 1080, height: 1920, tiers: [52, 45, 38, 33] },
 };
 
 const FONT_STACK = `Poppins, "Noto Sans", Arial, sans-serif`;
@@ -79,7 +79,7 @@ export function ensureMeasurementFonts() {
     fontsPromise = Promise.resolve();
     return fontsPromise;
   }
-  fontsPromise = Promise.all([fonts.load('600 42px Poppins'), fonts.load('500 25px Poppins')])
+  fontsPromise = Promise.all([fonts.load('600 50px Poppins'), fonts.load('500 29px Poppins')])
     .then(() => fonts.ready)
     .catch(() => {});
   return fontsPromise;
