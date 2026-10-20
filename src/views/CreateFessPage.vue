@@ -10,10 +10,13 @@
         <button
           type="button"
           class="btn-save-draft"
+          title="Simpan draf"
+          aria-label="Simpan draf"
           @click="saveDraft"
           :disabled="savingDraft || !hasContent"
         >
-          {{ savingDraft ? 'Menyimpan...' : 'Simpan Draf' }}
+          <Save :size="15" class="draft-icon" />
+          <span class="draft-label">{{ savingDraft ? 'Menyimpan...' : 'Simpan Draf' }}</span>
         </button>
         <button
           type="button"
@@ -174,6 +177,7 @@ import { useRouter, useRoute } from 'vue-router';
 import {
   ChevronLeft,
   Loader2,
+  Save,
   Tag,
   Calendar,
   Music,
@@ -717,6 +721,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 }
 
 .btn-save-draft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 8px 16px;
   border-radius: 20px;
   border: 1px solid var(--border-subtle);
@@ -726,6 +734,10 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.draft-icon {
+  display: none;
 }
 
 .btn-save-draft:hover:not(:disabled) {
@@ -879,13 +891,47 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
     gap: 6px;
     padding: 6px;
     justify-content: flex-start;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
+    overflow: visible;
   }
 
-  .editor-toolbar::-webkit-scrollbar {
+  .editor-toolbar :deep(.toolbar-btn) {
+    flex: 0 1 auto;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .editor-toolbar :deep(.toolbar-badge) {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 380px) {
+  .header-title {
+    font-size: 14px;
+  }
+
+  .btn-save-draft {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .draft-label {
     display: none;
+  }
+
+  .draft-icon {
+    display: block;
+  }
+
+  .btn-publish {
+    padding: 7px 11px;
+    font-size: 12px;
   }
 }
 

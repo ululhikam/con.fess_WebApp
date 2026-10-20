@@ -22,6 +22,7 @@
               <span class="follow-tab-count">{{ formatCount(followersCount) }}</span>
             </button>
             <button
+              v-if="followingSource === 'me'"
               type="button"
               class="follow-tab-btn"
               :class="{ active: tab === 'following' }"

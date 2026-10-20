@@ -405,6 +405,39 @@ function close() {
   box-shadow: 0 4px 12px rgba(0, 56, 255, 0.5);
 }
 
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-container {
+    max-height: 92vh;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    padding: 14px;
+  }
+
+  .modal-body {
+    padding: 10px 12px 16px;
+  }
+
+  .template-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .template-card {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .template-card__desc {
+    font-size: 10.5px;
+  }
+}
+
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.2s ease;

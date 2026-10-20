@@ -1418,6 +1418,8 @@ function formatCount(num) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
   margin-bottom: 12px;
 }
 
@@ -1425,6 +1427,8 @@ function formatCount(num) {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 .user-meta-box.clickable-author {
@@ -1477,9 +1481,14 @@ function formatCount(num) {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .handle-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13.5px;
   font-weight: 800;
   color: var(--shell-text);
@@ -1494,7 +1503,11 @@ function formatCount(num) {
 .header-right-group {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  flex-shrink: 0;
   gap: 8px;
+  min-width: 0;
 }
 
 .tag-badge {
@@ -1742,18 +1755,49 @@ function formatCount(num) {
 }
 
 @media (max-width: 480px) {
+  .card-header-row {
+    gap: 6px;
+  }
+
+  .user-meta-box {
+    gap: 8px;
+  }
+
+  .header-right-group {
+    max-width: 58%;
+    gap: 4px;
+  }
+
+  .tag-badge,
+  .badge-subtle {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
   .card-action-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
     gap: 4px;
     padding-top: 10px;
     justify-content: space-between;
   }
+
   .action-btn {
     padding: 5px 3px;
     gap: 4px;
     font-size: 11px;
   }
-  .action-label-quote, .action-count {
+
+  .action-label-quote,
+  .action-count {
     font-size: 11px;
+  }
+
+  .admin-quick-actions {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
 

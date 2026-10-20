@@ -37,7 +37,7 @@
               </div>
               <div class="song-item__info">
                 <span class="song-item__title">Tanpa lagu</span>
-                <span class="song-item__artist">Hapus lagu yang dipilih</span>
+                <span class="song-item__artist">Hapus pilihan lagu</span>
               </div>
               <Check :size="16" v-if="!song" class="song-item__check" />
             </button>
@@ -51,7 +51,14 @@
               @click="selectSong(s)"
             >
               <div class="song-item__cover">
-                <img :src="s.cover" :alt="s.title" loading="lazy" />
+                <Music :size="20" class="song-item__cover-fallback" />
+                <img
+                  v-if="s.cover || s.cover_url"
+                  :src="s.cover || s.cover_url"
+                  :alt="s.title"
+                  loading="lazy"
+                  @error="$event.target.remove()"
+                />
                 <button
                   type="button"
                   class="song-play-btn"
@@ -294,7 +301,14 @@ function close() {
   color: var(--text-muted);
 }
 
+.song-item__cover-fallback {
+  position: absolute;
+  color: var(--text-muted);
+}
+
 .song-item__cover img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -345,7 +359,7 @@ function close() {
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis.;
+  text-overflow: ellipsis;
 }
 
 .song-item__check {

@@ -146,7 +146,7 @@
         @click="fessFilter = 'semua'"
       >
         <Grid :size="16" />
-        <span>Semua Fess ({{ totalFesses }})</span>
+        <span>Semua ({{ totalFesses }})</span>
       </button>
 
       <button
@@ -182,7 +182,7 @@
         @click="fessFilter = 'reported'"
       >
         <Flag :size="16" />
-        <span>Dilaporkan ({{ reportedCount }})</span>
+        <span>Laporan ({{ reportedCount }})</span>
       </button>
     </div>
 
@@ -1844,6 +1844,64 @@ async function handleAdminLogout() {
 }
 
 @media (max-width: 480px) {
+  .ig-header-top-row {
+    gap: 12px;
+    align-items: center;
+  }
+
+  .ig-avatar-ring {
+    width: 72px;
+    height: 72px;
+  }
+
+  .ig-metrics-row {
+    min-width: 0;
+    padding-top: 0;
+    justify-content: space-between;
+  }
+
+  .ig-metric-col {
+    padding: 6px;
+    min-width: 0;
+  }
+
+  .ig-metric-label {
+    font-size: 10.5px;
+  }
+
+  .ig-metric-num {
+    font-size: 16px;
+  }
+
+  .btn-edit-profile-left {
+    width: auto;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .quick-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .status-lbl {
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .feed-tab-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 11px 4px;
+    gap: 0;
+    font-size: 10.5px;
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+  }
+
+  .feed-tab-btn svg {
+    display: none;
+  }
+
   .post-mode-grid {
     grid-template-columns: 1fr;
   }

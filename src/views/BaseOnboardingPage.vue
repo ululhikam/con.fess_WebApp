@@ -201,34 +201,8 @@
             </div>
           </div>
 
-          <!-- State: BELUM TERHUBUNG (Input Langsung + Opsi Meta OAuth) -->
+          <!-- State: BELUM TERHUBUNG — hanya OAuth resmi, tanpa input handle manual -->
           <div v-else class="onb-ig-disconnected-view">
-            <label class="onb-label-sm" for="onb-ig">Username / Handle Instagram Base</label>
-            <div class="onb-ig-input-row">
-              <input
-                id="onb-ig"
-                v-model.trim="form.igAccount"
-                type="text"
-                class="onb-input onb-ig-input"
-                placeholder="@namabase_ig"
-                @keyup.enter="verifyAndSaveHandle"
-              />
-              <button
-                type="button"
-                class="onb-ig-save-btn"
-                :disabled="!form.igAccount.trim()"
-                @click="verifyAndSaveHandle"
-              >
-                <Check :size="14" />
-                <span>Verifikasi &amp; Simpan</span>
-              </button>
-            </div>
-            <p class="onb-hint">Masukkan handle Instagram base Anda (contoh: <code>@fess_kampus</code>).</p>
-
-            <div class="onb-ig-or-divider">
-              <span>ATAU HUBUNGKAN DENGAN META OAUTH</span>
-            </div>
-
             <button
               type="button"
               class="onb-ig-oauth-btn"
@@ -237,12 +211,34 @@
             >
               <Loader2 v-if="isConnectingIg" class="spin" :size="18" />
               <Instagram v-else :size="18" />
-              <span>{{ isConnectingIg ? 'Mengarahkan ke Meta…' : 'Otorisasi Resmi via Meta OAuth' }}</span>
+              <span>
+                {{
+                  isConnectingIg
+                    ? 'Mengarahkan ke Meta…'
+                    : 'Hubungkan Akun Instagram via Meta OAuth'
+                }}
+              </span>
               <ExternalLink :size="14" class="oauth-ext-icon" />
             </button>
 
-            <div class="onb-ig-dev-note">
-              <strong>Catatan Meta Developer:</strong> Jika aplikasi Meta masih dalam mode Development, otorisasi OAuth hanya berlaku bagi akun yang terdaftar sebagai Tester di Meta Developers. Anda bisa langsung menggunakan tombol <em>Verifikasi &amp; Simpan</em> di atas tanpa hambatan.
+            <p class="onb-ig-oauth-hint">
+              Kamu akan memilih akun Instagram profesional base langsung di halaman resmi
+              Meta. Tidak perlu mengetik handle — akun yang terhubung akan terisi otomatis.
+            </p>
+
+            <div class="onb-ig-perks">
+              <div class="onb-ig-hl-item">
+                <CheckCircle2 :size="14" class="hl-check" />
+                <span>Auto-post fess yang disetujui ke Feed &amp; Reels base.</span>
+              </div>
+              <div class="onb-ig-hl-item">
+                <CheckCircle2 :size="14" class="hl-check" />
+                <span>Token disimpan aman di server, bukan di browser.</span>
+              </div>
+              <div class="onb-ig-hl-item">
+                <CheckCircle2 :size="14" class="hl-check" />
+                <span>Bisa diputus atau diganti kapan saja lewat dashboard.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -296,7 +292,6 @@ import {
   Instagram,
   CheckCircle2,
   ShieldCheck,
-  Check,
   Unlink,
   RefreshCw,
   ExternalLink,
@@ -330,7 +325,6 @@ const handleTouched = ref(false);
 
 const igConnected = ref(false);
 const isConnectingIg = ref(false);
-const showManualIgInput = ref(false);
 const igSuccessMessage = ref('');
 
 const form = reactive({
@@ -416,10 +410,6 @@ async function handleAvatarUpload(e) {
   }
 }
 
-function handleIgAccountInput() {
-  // Biarkan user mengedit manual jika diinginkan
-}
-
 function saveDraft() {
   try {
     sessionStorage.setItem(
@@ -473,23 +463,6 @@ async function handleInstagramOAuth() {
     base,
     origin: 'onboarding',
   });
-}
-
-function verifyAndSaveHandle() {
-  errorMessage.value = '';
-  const raw = (form.igAccount || '').trim();
-  if (!raw) {
-    errorMessage.value = 'Silakan masukkan username atau handle Instagram base Anda.';
-    return;
-  }
-  const clean = raw.startsWith('@') ? raw : `@${raw}`;
-  if (!/^@[a-zA-Z0-9_.]{2,30}$/.test(clean)) {
-    errorMessage.value = 'Format handle Instagram tidak valid (contoh: @namabase_ig).';
-    return;
-  }
-  form.igAccount = clean;
-  igConnected.value = true;
-  igSuccessMessage.value = `Akun Instagram ${clean} berhasil diverifikasi & terhubung ke base!`;
 }
 
 function reconnectIg() {
@@ -578,6 +551,7 @@ onMounted(async () => {
 
   // Parse OAuth Callback URL Query Params
   const query = route.query;
+  const hadDraft = !!draft?.form;
 
   if (query.token && typeof query.token === 'string') {
     localStorage.setItem('fess_token', query.token);
@@ -588,9 +562,16 @@ onMounted(async () => {
     }
   }
 
+  // OAuth bisa datang dari alur registrasi (belum punya draft). Sinkronkan
+  // akun IG yang sudah tersimpan di profil agar base baru tetap terhubung.
+  const storedIg = authStore.user?.igAccount;
+  if (storedIg && !igConnected.value) {
+    igConnected.value = true;
+    form.igAccount = storedIg;
+  }
+
   if (query.error) {
     errorMessage.value = decodeURIComponent(String(query.error));
-    step.value = 3;
     sessionStorage.removeItem(DRAFT_KEY);
   } else if (query.ig_connected === 'true') {
     igConnected.value = true;
@@ -599,7 +580,7 @@ onMounted(async () => {
       form.igAccount = igUser.startsWith('@') ? igUser : `@${igUser}`;
     }
     igSuccessMessage.value = `Akun Instagram ${form.igAccount} berhasil terhubung via Meta OAuth!`;
-    step.value = 3;
+    if (hadDraft) step.value = 3;
     sessionStorage.removeItem(DRAFT_KEY);
   }
 
@@ -613,16 +594,19 @@ onMounted(async () => {
 <style scoped>
 .onb-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--shell-bg);
   color: var(--shell-text);
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 32px 16px 64px;
+  overflow-x: clip;
 }
 
 .onb-card {
   width: 100%;
+  min-width: 0;
   max-width: 520px;
   background: var(--shell-card);
   border: 1px solid var(--shell-border);
@@ -648,6 +632,7 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   max-width: 72%;
+  min-width: 0;
 }
 
 .onb-account {
@@ -1072,12 +1057,14 @@ onMounted(async () => {
 .onb-ig-profile-details {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .onb-ig-username {
   font-size: 13.5px;
   font-weight: 900;
   color: var(--shell-text);
+  overflow-wrap: anywhere;
 }
 
 .onb-ig-account-type {
@@ -1159,6 +1146,7 @@ onMounted(async () => {
 
 .oauth-ext-icon {
   margin-left: 2px;
+  flex-shrink: 0;
 }
 
 .onb-ig-perks {
@@ -1185,89 +1173,11 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.onb-ig-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 4px;
-}
-
-.onb-ig-input {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 10px 12px;
-}
-
-.onb-ig-save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--brand-blue, #0055ff);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-
-.onb-ig-save-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.onb-ig-save-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.onb-ig-or-divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  margin: 14px 0 10px;
-  color: var(--shell-text-muted);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-}
-
-.onb-ig-or-divider::before,
-.onb-ig-or-divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid var(--shell-border);
-}
-
-.onb-ig-or-divider span {
-  padding: 0 10px;
-}
-
-.onb-ig-dev-note {
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: rgba(0, 85, 255, 0.06);
-  border: 1px solid rgba(0, 85, 255, 0.18);
-  border-radius: 10px;
+.onb-ig-oauth-hint {
+  margin: 10px 2px 0;
   font-size: 11px;
   line-height: 1.5;
   color: var(--shell-text-muted);
-}
-
-.onb-ig-dev-note strong {
-  color: var(--shell-text);
-}
-
-.onb-label-sm {
-  display: block;
-  font-size: 11px;
-  font-weight: 800;
-  margin: 8px 0 4px;
 }
 
 .text-meta-verified {
@@ -1281,5 +1191,175 @@ onMounted(async () => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ── Mobile: wizard tetap di dalam frame, tombol mudah dijangkau ───────── */
+@media (max-width: 560px) {
+  .onb-shell {
+    padding: 16px 12px 48px;
+  }
+
+  .onb-card {
+    padding: 20px 16px 22px;
+    border-radius: 18px;
+  }
+
+  .onb-head {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .onb-head-right {
+    max-width: 62%;
+    gap: 6px;
+  }
+
+  .onb-account {
+    max-width: 108px;
+    font-size: 10.5px;
+  }
+
+  .onb-steps {
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+
+  .onb-step {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    padding: 8px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .onb-step-dot {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .onb-title {
+    font-size: 18px;
+  }
+
+  .onb-desc {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+
+  .onb-avatar-row {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .onb-colors {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .onb-ig-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .onb-ig-header {
+    gap: 10px;
+  }
+
+  .onb-ig-badge-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+  }
+
+  .onb-ig-app-title {
+    font-size: 13px;
+  }
+
+  .onb-ig-title-row {
+    align-items: flex-start;
+  }
+
+  .onb-ig-connected-view {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .onb-ig-connected-actions {
+    width: 100%;
+  }
+
+  .onb-ig-action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .onb-ig-oauth-btn {
+    padding: 13px 12px;
+    font-size: 12.5px;
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  .onb-ig-oauth-btn span {
+    min-width: 0;
+  }
+
+  .onb-ig-perks {
+    padding: 9px 10px;
+  }
+
+  .onb-summary {
+    padding: 12px;
+  }
+
+  .onb-summary-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .onb-summary-row strong {
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .onb-nav {
+    flex-direction: column;
+    margin-top: 18px;
+  }
+
+  .onb-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .onb-shell {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .onb-card {
+    padding: 18px 13px 20px;
+  }
+
+  .onb-brand {
+    font-size: 13.5px;
+  }
+
+  .onb-head-right {
+    max-width: 58%;
+  }
+
+  .onb-account {
+    display: none;
+  }
+
+  .onb-step-label {
+    font-size: 9.5px;
+  }
 }
 </style>

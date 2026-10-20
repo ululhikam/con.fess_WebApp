@@ -496,7 +496,7 @@ function close() {
 
 .btn-secondary:disabled {
   opacity: 0.5;
-  cursor: not-allowed.;
+  cursor: not-allowed;
 }
 
 .btn-primary {
@@ -517,7 +517,7 @@ function close() {
 
 .btn-primary:disabled {
   opacity: 0.6;
-  cursor: not-allowed.;
+  cursor: not-allowed;
 }
 
 .btn-primary.btn-danger {
@@ -527,6 +527,42 @@ function close() {
 
 .btn-primary.btn-danger:hover:not(:disabled) {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-container {
+    max-height: 92vh;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    padding: 12px 14px;
+  }
+
+  .preview-panel {
+    padding: 12px 12px 8px;
+  }
+
+  .publish-summary {
+    padding: 12px 14px;
+  }
+
+  .modal-footer {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .modal-footer .btn-secondary,
+  .modal-footer .btn-primary {
+    flex: 1;
+    padding: 10px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
 }
 
 .spin {

@@ -42,6 +42,10 @@
       </div>
     </div>
 
+    <p v-if="errors.submit" class="form-alert" role="alert">
+      {{ errors.submit }}
+    </p>
+
     <!-- STEP 1: EMAIL & PASSWORD / GOOGLE -->
     <section v-if="currentStep === 1" class="wizard-step-pane">
       <div class="step-hero mb-4">
@@ -174,38 +178,22 @@
               @click="handleInstagramOAuth"
             >
               <Instagram :size="15" />
-              <span>Konek ke Instagram via Meta OAuth</span>
+              <span>Hubungkan Akun Instagram via Meta OAuth</span>
             </button>
             <button
               v-else
               type="button"
               class="btn-meta-oauth-connected"
-              @click="toggleConnectIg"
+              @click="disconnectIg"
             >
               <span>✓ Terhubung ({{ form.igAccount }}) — Putuskan</span>
             </button>
           </div>
 
-          <div class="manual-ig-row mt-2">
-            <label for="ig-username" class="text-xs text-muted block mb-1">Atau masukkan handle manual:</label>
-            <div class="flex gap-2">
-              <input
-                id="ig-username"
-                v-model="form.igAccount"
-                type="text"
-                placeholder="@username_ig_base"
-                class="form-input text-xs"
-              />
-              <button
-                type="button"
-                class="btn-connect-action"
-                :class="{ 'btn-connected': igConnected }"
-                @click="toggleConnectIg"
-              >
-                {{ igConnected ? 'Tersimpan' : 'Set Handle' }}
-              </button>
-            </div>
-          </div>
+          <p v-if="!igConnected" class="ig-oauth-hint">
+            Kamu akan memilih akun Instagram profesional base langsung di halaman resmi
+            Meta. Tidak perlu mengetik handle — akun yang terhubung akan terisi otomatis.
+          </p>
 
           <!-- Feature Highlights of Instagram Link -->
           <div class="ig-features-list mt-3">
@@ -265,7 +253,16 @@
 
           <div class="base-avatar-center mt-2">
             <div class="base-avatar-ring">
-              <img :src="form.avatar" alt="Preview Foto Base" class="base-avatar-img" />
+              <img
+                v-if="form.avatar && !avatarError"
+                :src="form.avatar"
+                alt=""
+                class="base-avatar-img"
+                @error="avatarError = true"
+              />
+              <div v-else class="base-avatar-img base-avatar-fallback">
+                {{ avatarInitials }}
+              </div>
             </div>
           </div>
 
@@ -276,9 +273,10 @@
               type="button"
               class="btn-base-preset"
               :class="{ active: form.avatar === preset }"
-              @click="form.avatar = preset"
+              :aria-label="`Pilih foto profil ${i + 1}`"
+              @click="selectAvatarPreset(preset)"
             >
-              <img :src="preset" :alt="`Pilihan ${i+1}`" />
+              <img :src="preset" alt="" @error="$event.target.style.visibility = 'hidden'" />
             </button>
           </div>
         </div>
@@ -326,7 +324,7 @@
           <button type="submit" class="btn-submit-lime" :disabled="isSubmitting">
             <Loader2 v-if="isSubmitting" class="spin" :size="16" />
             <template v-else>
-              <span>SELESAI &amp; MASUK KE HOME</span>
+              <span>SELESAI &amp; MASUK</span>
               <ArrowRight :size="16" />
             </template>
           </button>
@@ -385,23 +383,46 @@ const DRAFT_KEY = 'fess_base_register_draft';
 const currentStep = ref(1);
 const isSubmitting = ref(false);
 const igConnected = ref(false);
+const avatarError = ref(false);
+
+const avatarInitials = computed(() => {
+  const source = form.name.trim() || form.handle.replace(/^@/, '').trim() || 'FS';
+  return source.slice(0, 2).toUpperCase();
+});
+
+function selectAvatarPreset(preset) {
+  form.avatar = preset;
+  avatarError.value = false;
+}
+
+/** Preset avatar lokal (SVG) — tidak bergantung pada layanan gambar eksternal. */
+function avatarPreset(from, to) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>
+    <rect width="160" height="160" fill="url(#g)"/>
+    <circle cx="48" cy="42" r="30" fill="rgba(255,255,255,.22)"/>
+    <circle cx="126" cy="128" r="54" fill="rgba(0,0,0,.16)"/>
+    <path d="M0 120 Q42 92 84 120 T160 120 V160 H0 Z" fill="rgba(255,255,255,.12)"/>
+  </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
 
 const BASE_AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?auto=format&fit=crop&w=150&q=80',
+  avatarPreset('#0055FF', '#00B2FF'),
+  avatarPreset('#7000FF', '#FF3CAC'),
+  avatarPreset('#00A86B', '#B4FF39'),
+  avatarPreset('#FF5A1F', '#FFB800'),
 ];
 
 const form = reactive({
   email: '',
   password: '',
   confirmPassword: '',
-  igAccount: '@codememfess_ig',
-  name: 'Code & Memes Base',
-  handle: '@codememfess',
+  igAccount: '',
+  name: '',
+  handle: '',
   avatar: BASE_AVATAR_PRESETS[0],
-  bio: 'Base resmi komunitas developer & programmer. Kirim confession anonim seputar tech, coding, dan karir dev!',
+  bio: '',
 });
 
 function handleAvatarFileSelect(e) {
@@ -410,6 +431,7 @@ function handleAvatarFileSelect(e) {
   const reader = new FileReader();
   reader.onload = (event) => {
     form.avatar = event.target.result;
+    avatarError.value = false;
   };
   reader.readAsDataURL(file);
 }
@@ -500,27 +522,27 @@ function handleGoogleRegister() {
 
 function handleInstagramOAuth() {
   try {
+    // Jangan pernah menyimpan password di sessionStorage. Draft hanya untuk
+    // memulihkan isian non-sensitif bila pengguna membatalkan OAuth.
     sessionStorage.setItem(
       DRAFT_KEY,
       JSON.stringify({
         step: 2,
-        form: { ...form },
+        form: { ...form, password: '', confirmPassword: '' },
       })
     );
   } catch {
     // Ignored
   }
 
-  const token = localStorage.getItem('fess_token') || '';
   window.location.href = instagramAuthUrl({
-    token,
-    base: form.handle || '',
     origin: 'register',
   });
 }
 
-function toggleConnectIg() {
-  igConnected.value = !igConnected.value;
+function disconnectIg() {
+  igConnected.value = false;
+  form.igAccount = '';
 }
 
 function goToStep3() {
@@ -533,6 +555,7 @@ async function handleCompleteRegister() {
   if (!okName || !okHandle) return;
 
   isSubmitting.value = true;
+  errors.submit = '';
   try {
     const cleanHandle = form.handle.startsWith('@') ? form.handle : `@${form.handle}`;
     await authStore.registerBase({
@@ -542,7 +565,7 @@ async function handleCompleteRegister() {
       handle: cleanHandle.trim(),
       avatar: /^https?:\/\//.test(form.avatar || '') ? form.avatar : null,
       bio: form.bio.trim(),
-      igAccount: form.igAccount.trim(),
+      igAccount: igConnected.value && form.igAccount.trim() ? form.igAccount.trim() : null,
     });
 
     try {
@@ -585,6 +608,11 @@ onMounted(() => {
     } catch {
       // Ignored
     }
+  }
+
+  if (query.error) {
+    errors.submit = decodeURIComponent(String(query.error));
+    currentStep.value = 2;
   }
 
   if (query.ig_connected || query.error || query.ig_user || query.token) {
@@ -632,6 +660,17 @@ onMounted(() => {
   background: var(--lime-primary);
   color: var(--lime-ink);
   box-shadow: 0 4px 14px var(--lime-glow);
+}
+
+.form-alert {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 /* Step wizard bar */
@@ -835,24 +874,11 @@ onMounted(() => {
   color: #f87171;
 }
 
-.btn-connect-action {
-  padding: 8px 16px;
-  border-radius: 10px;
-  background: var(--brand-blue);
-  color: var(--brand-blue-ink);
-  border: none;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-
-.btn-connect-action.btn-connected {
-  background: var(--bg-inset);
+.ig-oauth-hint {
+  margin: 10px 2px 0;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--text-muted);
-  border: 1px solid var(--border-subtle);
 }
 
 .ig-features-list {
@@ -932,6 +958,17 @@ onMounted(() => {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--bg-surface);
+}
+
+.base-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  color: var(--brand-blue);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
 }
 
 .avatar-preset-chips {
@@ -1024,6 +1061,7 @@ onMounted(() => {
   font-family: inherit;
   font-size: 13.5px;
   font-weight: 900;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 4px 16px var(--neon-blue-glow);
   transition: transform 0.15s ease;
@@ -1052,6 +1090,7 @@ onMounted(() => {
   font-family: inherit;
   font-size: 13.5px;
   font-weight: 900;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 4px 16px var(--lime-glow);
   transition: transform 0.15s ease;
@@ -1173,6 +1212,21 @@ onMounted(() => {
 @media (max-width: 600px) {
   .auth-form {
     gap: 12px;
+  }
+
+  .wizard-nav-buttons {
+    gap: 8px;
+  }
+
+  .btn-step-back {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .wizard-nav-buttons .btn-step-next,
+  .wizard-nav-buttons .btn-submit-lime {
+    padding: 11px 12px;
+    font-size: 12px;
   }
 
   .base-avatar-ring {

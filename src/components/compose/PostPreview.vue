@@ -64,7 +64,9 @@
 
       <!-- Footer -->
       <footer class="post-card__footer">
-        <span class="post-card__platform">Instagram Feed · {{ baseHandle }}</span>
+        <span class="post-card__platform">
+          <span class="post-card__platform-label">Instagram Feed · </span>{{ baseHandle }}
+        </span>
         <span class="post-card__footer-right">{{ footerRight }}</span>
       </footer>
     </div>
@@ -335,6 +337,7 @@ const footerRight = computed(() =>
   overflow: hidden;
   border-radius: 18px;
   isolation: isolate;
+  container-type: inline-size;
   font-family: var(--font-sans);
   box-shadow: var(--neo-shadow, 0 18px 40px rgba(0, 0, 0, 0.35));
   -webkit-font-smoothing: antialiased;
@@ -440,20 +443,28 @@ const footerRight = computed(() =>
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
   line-height: 1.25;
 }
 
 .post-card__handle {
   font-size: clamp(13px, 3.4vw, 16px);
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .post-card__name {
   font-size: clamp(11px, 2.8vw, 13px);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .post-card__brand {
+  flex-shrink: 0;
   margin-left: auto;
   padding: 4px 10px;
   border-radius: 999px;
@@ -476,6 +487,10 @@ const footerRight = computed(() =>
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 5px 11px;
   border-radius: 999px;
   font-size: clamp(10px, 2.7vw, 12.5px);
@@ -572,14 +587,59 @@ const footerRight = computed(() =>
 }
 
 .post-card__platform {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: clamp(11px, 2.9vw, 13px);
   font-weight: 800;
 }
 
 .post-card__footer-right {
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: clamp(10.5px, 2.7vw, 12.5px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* Kartu preview di layar ponsel lebih sempit daripada kanvas ekspor 1080px.
+   Rapikan header/footer tanpa mengubah hasil ekspor (container queries
+   mengikuti lebar kartu, bukan lebar viewport). */
+@container (max-width: 360px) {
+  .post-card__header {
+    gap: 7px;
+  }
+
+  .post-card__brand {
+    display: none;
+  }
+
+  .post-card__brand {
+    padding: 3px 7px;
+    font-size: 9.5px;
+    letter-spacing: 0.3px;
+  }
+
+  .post-card__handle {
+    font-size: 13px;
+  }
+
+  .post-card__name {
+    font-size: 10.5px;
+  }
+
+  .post-card__platform-label {
+    display: none;
+  }
+
+  .post-card__platform,
+  .post-card__footer-right {
+    font-size: 10px;
+  }
 }
 
 /* ---- export state ---- */

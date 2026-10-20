@@ -189,37 +189,39 @@
                 </div>
               </div>
 
-              <button
-                type="button"
-                class="bento-stat-card bento-clickable"
-                title="Lihat daftar akun yang diikuti"
-                @click="openFollowModal('following')"
-              >
+              <!-- Daftar following base tidak diekspos ke publik. -->
+              <div class="bento-stat-card">
                 <div class="bento-stat-top">
                   <span class="bento-stat-num">{{ baseData.followingCount }}</span>
-                  <ChevronRight :size="14" class="bento-stat-arrow" />
                 </div>
                 <div class="bento-stat-bottom">
                   <span class="bento-stat-label">Mengikuti</span>
                   <span class="bento-stat-sub">akun</span>
                 </div>
-              </button>
+              </div>
 
-              <button
-                type="button"
-                class="bento-stat-card bento-clickable"
-                title="Lihat pengikut base"
-                @click="openFollowModal('followers')"
+              <!-- Daftar pengikut hanya bisa dibuka oleh pemilik base. -->
+              <component
+                :is="isBaseOwner ? 'button' : 'div'"
+                :type="isBaseOwner ? 'button' : undefined"
+                class="bento-stat-card"
+                :class="{ 'bento-clickable': isBaseOwner }"
+                :title="
+                  isBaseOwner
+                    ? 'Lihat pengikut base'
+                    : 'Hanya pemilik base yang dapat melihat daftar pengikut'
+                "
+                @click="isBaseOwner && openFollowModal('followers')"
               >
                 <div class="bento-stat-top">
                   <span class="bento-stat-num">{{ currentFollowersDisplay }}</span>
-                  <ChevronRight :size="14" class="bento-stat-arrow" />
+                  <ChevronRight v-if="isBaseOwner" :size="14" class="bento-stat-arrow" />
                 </div>
                 <div class="bento-stat-bottom">
                   <span class="bento-stat-label">Pengikut</span>
                   <span class="bento-stat-sub">komunitas</span>
                 </div>
-              </button>
+              </component>
             </div>
 
             <!-- Visitor Action Buttons: Follow / Send Fess -->
@@ -444,6 +446,7 @@
 
     <!-- MODAL DAFTAR FOLLOWER / FOLLOWING (komponen bersama — data real dari server) -->
     <FollowListModal
+      v-if="isBaseOwner"
       v-model:show="showFollowModal"
       v-model:tab="followModalTab"
       :base-handle="cleanHandle"
@@ -504,6 +507,7 @@ const showFollowModal = ref(false);
 const followModalTab = ref('followers'); // 'followers' or 'following'
 
 function openFollowModal(tab = 'followers') {
+  if (!isBaseOwner.value) return;
   followModalTab.value = tab;
   showFollowModal.value = true;
 }
@@ -516,6 +520,24 @@ const baseData = ref(null);
 const baseLoading = ref(false);
 const baseError = ref(null);
 const baseNotFound = computed(() => baseError.value?.status === 404);
+
+/** Hanya pemilik/base admin pengelola yang boleh membuka daftar pengikut. */
+const isBaseOwner = computed(() => {
+  const normalized = (value) =>
+    String(value || '')
+      .replace(/^@/, '')
+      .trim()
+      .toLowerCase();
+  const target = normalized(baseData.value?.handle || cleanHandle.value);
+  if (!target) return false;
+
+  const user = authStore.user;
+  const ownedHandles = [
+    user?.handle,
+    ...(user?.managedBases || user?.managed_bases || []).map((base) => base?.handle),
+  ];
+  return ownedHandles.some((handle) => normalized(handle) === target);
+});
 
 // Published confessions for this base — GET /bases/:handle/fesses
 const baseFesses = ref([]);
@@ -1714,6 +1736,48 @@ function handleBottomNavChange(tabKey) {
     padding: 10px 10px 32px;
   }
 
+  .top-bar-inner {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .top-title-col {
+    min-width: 0;
+  }
+
+  .top-handle-title {
+    max-width: 100%;
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .top-handle-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .public-tabs-nav {
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .profile-subtab-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px 4px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .profile-subtab-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
   .base-hero-card {
     border-radius: 18px;
   }
@@ -1821,6 +1885,34 @@ function handleBottomNavChange(tabKey) {
   .about-meta-grid {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .btn-back-text {
+    display: none;
+  }
+
+  .btn-back {
+    padding-right: 4px;
+  }
+
+  .btn-icon-action {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+
+  .profile-subtab-btn {
+    gap: 3px;
+    padding: 10px 2px;
+    font-size: 10.5px;
+    letter-spacing: -0.1px;
+  }
+
+  .profile-subtab-btn svg {
+    width: 13px;
+    height: 13px;
   }
 }
 </style>
