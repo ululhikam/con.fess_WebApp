@@ -236,10 +236,30 @@ export function useFessModeration(options = {}) {
   async function exportCanvas(fess) {
     const id = typeof fess === 'object' && fess !== null ? fess.id : fess;
     const template = CANVAS_TEMPLATES.includes(fess?.template) ? fess.template : 'default';
-    return api.exportCanvas({ fess_id: String(id), template, aspect: 'story' });
+    // Semua output card & Instagram sekarang 4:5 (portrait).
+    return api.exportCanvas({ fess_id: String(id), template, aspect: 'portrait' });
   }
 
-  return { fesses, loading, error, reload, ensureLoaded, approve, hide, exportCanvas };
+  /** POST /fesses/:id/instagram-post — retry manual dari panel admin. */
+  async function retryInstagram(fess) {
+    const id = typeof fess === 'object' && fess !== null ? fess.id : fess;
+    const template = CANVAS_TEMPLATES.includes(fess?.template) ? fess.template : 'default';
+    const res = await api.postFessToInstagram(String(id), { template, aspect: 'portrait' });
+    await reload();
+    return res;
+  }
+
+  return {
+    fesses,
+    loading,
+    error,
+    reload,
+    ensureLoaded,
+    approve,
+    hide,
+    exportCanvas,
+    retryInstagram,
+  };
 }
 
 /**

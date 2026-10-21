@@ -40,11 +40,7 @@
 
     <!-- Media Preview Grid (When media files are selected) -->
     <div v-if="mediaFiles.length > 0" class="media-uploader__preview-grid">
-      <div
-        v-for="(file, index) in mediaFiles"
-        :key="file.id"
-        class="media-uploader__preview-item"
-      >
+      <div v-for="(file, index) in mediaFiles" :key="file.id" class="media-uploader__preview-item">
         <button
           type="button"
           class="media-uploader__remove"
@@ -86,24 +82,30 @@
                 />
               </svg>
               <div class="radial-progress-number">
-                <span>{{ Math.round(getProgress(file).progress || 0) }}</span><span class="percent-sign">%</span>
+                <span>{{ Math.round(getProgress(file).progress || 0) }}</span
+                ><span class="percent-sign">%</span>
               </div>
             </div>
 
             <div class="upload-status-pill">
               <span class="pulse-indicator-dot"></span>
-              <span class="upload-status-text">{{ getProgress(file).statusText || 'Mengunggah...' }}</span>
+              <span class="upload-status-text">{{
+                getProgress(file).statusText || 'Mengunggah...'
+              }}</span>
             </div>
 
             <div v-if="getProgress(file).totalBytes" class="upload-bytes-indicator">
-              {{ formatFileSize(getProgress(file).loadedBytes) }} / {{ formatFileSize(getProgress(file).totalBytes) }}
+              {{ formatFileSize(getProgress(file).loadedBytes) }} /
+              {{ formatFileSize(getProgress(file).totalBytes) }}
             </div>
           </div>
 
           <!-- Failed / Retry Overlay -->
           <div v-else-if="getProgress(file).failed" class="media-preview-error-overlay">
             <AlertCircle :size="22" class="error-badge-icon" />
-            <span class="error-badge-text">{{ getProgress(file).errorMessage || 'Gagal diunggah' }}</span>
+            <span class="error-badge-text">{{
+              getProgress(file).errorMessage || 'Gagal diunggah'
+            }}</span>
             <button
               type="button"
               class="btn-retry-upload"
@@ -124,6 +126,7 @@
         <div class="media-uploader__info">
           <span class="media-uploader__name" :title="file.name">{{ truncate(file.name, 18) }}</span>
           <span class="media-uploader__size">{{ file.sizeText || formatFileSize(file.size) }}</span>
+          <span v-if="file.trimmed" class="media-uploader__trim-note">Dipotong 60 dtk</span>
           <!-- Mini linear progress bar while uploading -->
           <div
             v-if="getProgress(file).uploading"
@@ -133,7 +136,10 @@
             aria-valuemin="0"
             aria-valuemax="100"
           >
-            <div class="mini-linear-fill" :style="{ width: `${getProgress(file).progress || 0}%` }"></div>
+            <div
+              class="mini-linear-fill"
+              :style="{ width: `${getProgress(file).progress || 0}%` }"
+            ></div>
           </div>
         </div>
 
@@ -169,7 +175,6 @@
       <AlertCircle :size="15" />
       <span>{{ pickerHint }}</span>
     </p>
-
   </div>
 </template>
 
@@ -178,6 +183,7 @@ import { ref, computed, reactive } from 'vue';
 import { Image, Upload, X, Plus, AlertCircle, Film, Check, RotateCcw } from 'lucide-vue-next';
 
 import { api } from '../../api';
+import { normalizeVideoFile } from '../../utils/videoNormalizer';
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -302,8 +308,8 @@ function getProgress(file) {
   if (!file?.id) return { progress: 0, statusText: '', uploading: false, failed: false };
   if (!progressMap[file.id]) {
     progressMap[file.id] = {
-      progress: file.url ? 100 : (file.uploading ? 5 : 100),
-      statusText: file.url ? 'Selesai' : (file.uploading ? 'Mengunggah...' : 'Selesai'),
+      progress: file.url ? 100 : file.uploading ? 5 : 100,
+      statusText: file.url ? 'Selesai' : file.uploading ? 'Mengunggah...' : 'Selesai',
       loadedBytes: 0,
       totalBytes: file.size || 0,
       uploading: !!file.uploading && !file.url,
@@ -460,8 +466,46 @@ async function uploadItem(targetItem, originalFile = null) {
   }
 
   try {
+    // Video user wajib ikut carousel 4:5. Normalisasi dilakukan di browser
+    // (ffmpeg.wasm, dimuat malas) supaya tidak membebani Vercel dan video
+    // >60 detik otomatis dipotong ke 60 detik pertama.
+    let uploadBase = 0;
+    if (targetItem.type === 'video') {
+      st.statusText = 'Memeriksa video…';
+      const normalized = await normalizeVideoFile(actualFile, {
+        onStatus: (message, progress) => {
+          if (progress != null) st.progress = Math.max(st.progress, Math.round(progress * 100));
+          st.statusText = message;
+        },
+      });
+      if (abortController.signal.aborted) return;
+
+      actualFile = normalized.file;
+      fileCache.set(targetItem.id, actualFile);
+      targetItem.size = actualFile.size;
+      targetItem.width = normalized.width;
+      targetItem.height = normalized.height;
+      targetItem.duration = normalized.duration;
+      // Fast path pada retry tidak mengetahui video sudah dipotong sebelumnya.
+      targetItem.trimmed = normalized.trimmed || Boolean(targetItem.trimmed);
+      targetItem.normalized = normalized.normalized || Boolean(targetItem.normalized);
+      st.totalBytes = actualFile.size;
+      uploadBase = normalized.normalized ? 80 : 0;
+      st.progress = Math.max(st.progress, uploadBase);
+      if (normalized.trimmed) {
+        st.statusText = 'Video dipotong ke 60 dtk pertama. Mengunggah…';
+      } else {
+        st.statusText = 'Mengunggah…';
+      }
+    }
+
     const onProgress = (percent, loaded, total) => {
-      st.progress = Math.max(st.progress, percent);
+      // Saat ada normalisasi video, progres unggah mengisi 80–100%.
+      const scaled =
+        uploadBase === 0
+          ? percent
+          : uploadBase + (Math.max(0, Math.min(100, percent)) / 100) * (100 - uploadBase);
+      st.progress = Math.max(st.progress, scaled);
       if (loaded) st.loadedBytes = loaded;
       if (total) st.totalBytes = total;
 
@@ -509,10 +553,15 @@ async function uploadItem(targetItem, originalFile = null) {
       // kredensial storage atau backend versi lama.
       console.warn(
         '[MediaUploader] Direct upload tidak tersedia, memakai jalur lama:',
-        directErr?.message
+        directErr?.message,
       );
       st.statusText = 'Mengunggah...';
-      const res = await api.uploadMedia(actualFile, targetItem.type, onProgress, abortController.signal);
+      const res = await api.uploadMedia(
+        actualFile,
+        targetItem.type,
+        onProgress,
+        abortController.signal,
+      );
       uploadedUrl = res?.url || res?.data?.url;
       uploadedThumbnail = res?.thumbnail || res?.data?.thumbnail || undefined;
       uploadedSize = res?.size ?? res?.data?.size ?? actualFile.size;
@@ -535,6 +584,11 @@ async function uploadItem(targetItem, originalFile = null) {
           url: uploadedUrl,
           thumbnail: uploadedThumbnail,
           size: uploadedSize,
+          width: targetItem.width ?? m.width,
+          height: targetItem.height ?? m.height,
+          duration: targetItem.duration ?? m.duration,
+          trimmed: Boolean(targetItem.trimmed),
+          normalized: Boolean(targetItem.normalized),
           uploading: false,
           failed: false,
           progress: 100,
@@ -1029,8 +1083,15 @@ function truncate(str, max) {
 }
 
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.7); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
 }
 
 .upload-status-text {
@@ -1153,6 +1214,13 @@ function truncate(str, max) {
 .media-uploader__size {
   font-size: 9.5px;
   color: #cbd5e1;
+}
+
+.media-uploader__trim-note {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fbbf24;
+  white-space: nowrap;
 }
 
 .media-uploader__type-badge {

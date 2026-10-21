@@ -29,16 +29,47 @@
         <!-- Tag / Topic asli dari database (bukan label default palsu) -->
         <span
           v-if="post.topicLabel || post.tag"
-          :class="['tag-badge', post.topic === 'tanya' || post.tag === 'Tanya' ? 'tag-tanya' : 'tag-cerita']"
+          :class="[
+            'tag-badge',
+            post.topic === 'tanya' || post.tag === 'Tanya' ? 'tag-tanya' : 'tag-cerita',
+          ]"
         >
           <Pin :size="11" />
           <span>{{ post.topicLabel || post.tag }}</span>
         </span>
 
-        <!-- Instagram Feed Post Badge (Admin / Feed) -->
+        <!-- Status publikasi Instagram (terlihat semua user; detail hanya admin) -->
         <span v-if="post.postedToIg" class="badge-subtle badge-ig">
           <Instagram :size="12" />
           <span>Feed</span>
+        </span>
+        <span
+          v-else-if="post.igStatus === 'failed'"
+          class="badge-subtle badge-ig-failed"
+          :title="
+            isAdmin && post.igError
+              ? post.igError
+              : 'Publikasi Instagram gagal — hubungi admin base untuk mencoba lagi.'
+          "
+        >
+          <AlertTriangle :size="12" />
+          <span>IG gagal</span>
+        </span>
+        <span
+          v-else-if="post.igStatus === 'processing'"
+          class="badge-subtle badge-ig-pending"
+          title="Publikasi Instagram sedang diproses."
+        >
+          <Loader2 :size="12" class="spin" />
+          <span>IG proses</span>
+        </span>
+        <span
+          v-else-if="post.igStatus === 'pending'"
+          class="badge-subtle badge-ig-pending"
+          title="Video sedang diproses Instagram; postingan akan terbit otomatis."
+        >
+          <Clock :size="12" />
+          <span>IG menunggu</span>
         </span>
 
         <!-- Indikasi filter NLP (mode auto post) — hanya terlihat admin base -->
@@ -52,11 +83,7 @@
         </span>
 
         <!-- Status Badge — pemilik base (atau Super Admin), plus daftar Fess Saya -->
-        <span
-          v-if="showStatusBadge"
-          class="badge-subtle"
-          :class="statusBadgeClass"
-        >
+        <span v-if="showStatusBadge" class="badge-subtle" :class="statusBadgeClass">
           <Check v-if="post.status === 'approved'" :size="12" />
           <Clock v-else-if="post.status === 'pending'" :size="12" />
           <X v-else :size="12" />
@@ -164,12 +191,32 @@
             <span v-if="post.quotedFess.avatarText">{{ post.quotedFess.avatarText }}</span>
             <span v-else>{{ (post.quotedFess.handle || '@fess').slice(1, 3).toUpperCase() }}</span>
           </div>
-          <span class="quoted-handle">{{ post.quotedFess.handle || post.quotedFess.senderHandle }}</span>
+          <span class="quoted-handle">{{
+            post.quotedFess.handle || post.quotedFess.senderHandle
+          }}</span>
           <span class="quoted-time">• {{ post.quotedFess.time || 'Waktu lalu' }}</span>
           <span class="badge-quote-pill">Lihat</span>
         </div>
         <p class="quoted-content">{{ post.quotedFess.content }}</p>
       </div>
+    </div>
+
+    <!-- Detail kegagalan auto-post Instagram — KHUSUS admin base/Super Admin. -->
+    <div
+      v-if="isAdmin && post.igStatus === 'failed' && post.igError"
+      class="ig-failure-banner"
+      role="alert"
+    >
+      <AlertTriangle :size="15" class="ig-failure-icon" />
+      <div class="ig-failure-copy">
+        <strong>Publikasi Instagram gagal</strong>
+        <span>{{ post.igError }}</span>
+        <small v-if="post.igAttempts">Sudah dicoba {{ post.igAttempts }}×.</small>
+      </div>
+      <button type="button" class="btn-ig-retry" @click="shareToInstagram">
+        <RotateCcw :size="13" />
+        <span>Coba lagi</span>
+      </button>
     </div>
 
     <!-- Action Bar: Like, Komen, Kutip, Share, Simpan, Moderasi Admin -->
@@ -232,7 +279,12 @@
             <Copy :size="14" />
             <span>Salin Tautan</span>
           </button>
-          <button type="button" class="share-menu-item" @click="shareToInstagram">
+          <button
+            v-if="canManageInstagram"
+            type="button"
+            class="share-menu-item"
+            @click="shareToInstagram"
+          >
             <Instagram :size="14" />
             <span>Post ke Feed Instagram</span>
           </button>
@@ -276,6 +328,7 @@
           </button>
         </template>
         <button
+          v-if="canManageInstagram"
           type="button"
           class="btn-mod-ig"
           :class="{ 'is-posted': post.postedToIg }"
@@ -325,11 +378,7 @@
 
             <!-- Reply Button (mention-style, flat thread) -->
             <div class="comment-action-links">
-              <button
-                type="button"
-                class="btn-reply-link"
-                @click="initiateReply(comment)"
-              >
+              <button type="button" class="btn-reply-link" @click="initiateReply(comment)">
                 <CornerDownRight :size="12" />
                 <span>Balas</span>
               </button>
@@ -352,7 +401,9 @@
           <input
             v-model="newCommentText"
             type="text"
-            :placeholder="replyTarget ? `Balas ${replyTarget.author}...` : 'Tulis komentar anonim kamu...'"
+            :placeholder="
+              replyTarget ? `Balas ${replyTarget.author}...` : 'Tulis komentar anonim kamu...'
+            "
             class="comment-text-field"
             maxlength="280"
           />
@@ -406,7 +457,7 @@
                 </div>
                 <div>
                   <h3 class="ig-story-title">Instagram Feed Auto-Post</h3>
-                  <p class="ig-story-sub">Visual card confession (1:1 / 4:5) untuk Instagram Feed base</p>
+                  <p class="ig-story-sub">Visual card confession 4:5 untuk Instagram Feed base</p>
                 </div>
               </div>
               <button
@@ -424,7 +475,9 @@
               <div v-if="igPostLoading" class="ig-story-loading-state">
                 <Loader2 :size="32" class="spin mb-2" />
                 <p class="font-bold">Merender Card &amp; Memproses Auto-Post…</p>
-                <p class="text-xs text-muted">Mengonversi template card menjadi visual Feed resolusi tinggi (1:1 / 4:5)</p>
+                <p class="text-xs text-muted">
+                  Mengonversi template card menjadi visual Feed 4:5 resolusi tinggi…
+                </p>
               </div>
 
               <!-- Content Preview State -->
@@ -433,7 +486,8 @@
                   class="ig-story-status-pill"
                   :class="{
                     success: igPostData?.meta_published || post.postedToIg,
-                    pending: igPostData?.ig_pending && !igPostData?.meta_published && !post.postedToIg,
+                    pending:
+                      igPostData?.ig_pending && !igPostData?.meta_published && !post.postedToIg,
                   }"
                 >
                   <CheckCircle2 v-if="igPostData?.meta_published || post.postedToIg" :size="14" />
@@ -449,7 +503,7 @@
                   </span>
                 </div>
 
-                <!-- Preview Image Frame (9:16 Aspect Ratio) -->
+                <!-- Preview Image Frame (4:5 Aspect Ratio) -->
                 <div class="ig-story-card-frame">
                   <img
                     v-if="igPostData?.imageUrl || igPostData?.image_url"
@@ -489,11 +543,7 @@
                     <Download :size="15" />
                     <span>Unduh Card Feed HD</span>
                   </a>
-                  <button
-                    type="button"
-                    class="btn-ig-action btn-open-ig"
-                    @click="openInstagramApp"
-                  >
+                  <button type="button" class="btn-ig-action btn-open-ig" @click="openInstagramApp">
                     <Instagram :size="15" />
                     <span>Buka Instagram</span>
                   </button>
@@ -510,7 +560,7 @@
 <script setup>
 /**
  * FessCard.vue — Unified Confession Card for both User Feed and Admin Dashboard.
- * 
+ *
  * Shared Features:
  *  - Interactive Like with counter updates
  *  - Expandable Comments & nested replies with reply chip
@@ -518,7 +568,7 @@
  *  - Bookmark / Simpan toggle
  *  - Report modal dialog (ReportFessModal)
  *  - Admin Moderation actions (Setujui / Tolak) when isAdmin is true
- * 
+ *
  * Aesthetics:
  *  - 100% theme-token bound (--shell-card, --shell-border, --shell-text, --shell-sub-accent)
  *  - Zero emojis, Lucide SVG icons only.
@@ -547,12 +597,13 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-vue-next';
 import ReportFessModal from './ReportFessModal.vue';
 import MediaViewer from './MediaViewer.vue';
 import { api } from '../../api';
 import { mapFessComment } from '../../utils/fessMapper';
-import { getTemplateByKey } from '../../config/templates';
 import { useAuthStore } from '../../stores/authStore';
 
 const props = defineProps({
@@ -617,7 +668,17 @@ const showStatusBadge = computed(() => {
 
 /** Take down hanya untuk admin base yang memegang fess ber-status terbit. */
 const canTakeDown = computed(
-  () => props.isAdmin && props.post?.status === 'approved' && isManagedBasePost.value
+  () => props.isAdmin && props.post?.status === 'approved' && isManagedBasePost.value,
+);
+
+/** Posting/retry Instagram = admin pengelola base, hanya untuk fess terbit
+ *  yang belum pernah sukses dipublikasikan (mencegah duplikat). */
+const canManageInstagram = computed(
+  () =>
+    props.isAdmin &&
+    isManagedBasePost.value &&
+    ['approved', 'published'].includes(props.post?.status) &&
+    !props.post?.postedToIg,
 );
 
 const statusBadgeLabel = computed(() => {
@@ -643,7 +704,7 @@ watch(
   () => props.post?.avatarImg,
   () => {
     avatarFailed.value = false;
-  }
+  },
 );
 
 function toggleLike() {
@@ -694,7 +755,7 @@ const allMedia = computed(() =>
       if (!m || typeof m.url !== 'string') return null;
       return { ...m, type: m.type === 'video' ? 'video' : 'image' };
     })
-    .filter((m) => m && m.url.length > 0)
+    .filter((m) => m && m.url.length > 0),
 );
 
 const hasMedia = computed(() => allMedia.value.length > 0);
@@ -1064,7 +1125,7 @@ function onCarouselWheel(e) {
   carouselWheelActive.value = true;
   carouselOffset.value = Math.max(
     0,
-    Math.min(carouselOffset.value + delta, carouselMaxOffset.value)
+    Math.min(carouselOffset.value + delta, carouselMaxOffset.value),
   );
 
   if (carouselWheelTimer) clearTimeout(carouselWheelTimer);
@@ -1105,7 +1166,7 @@ onMounted(() => {
         const entry = entries[0];
         if (entry) carouselInView.value = entry.isIntersecting;
       },
-      { threshold: 0.25 }
+      { threshold: 0.25 },
     );
     carouselViewObserver.observe(el);
   }
@@ -1185,6 +1246,10 @@ function copyFessLink() {
 }
 
 function shareToInstagram() {
+  if (!canManageInstagram.value) {
+    triggerToast('Hanya admin base yang dapat memposting fess ini ke Instagram.');
+    return;
+  }
   showShareMenu.value = false;
   openInstagramStoryAutoPost();
 }
@@ -1223,11 +1288,23 @@ async function openInstagramStoryAutoPost() {
   try {
     const res = await api.postFessToInstagram(props.post.id, {
       template: props.post.template || 'default',
-      // Aspek mengikuti template (persegi tetap persegi) — konsisten dengan
-      // pratinjau komposer dan auto-post saat fess diterbitkan.
-      aspect: props.post.aspect || getTemplateByKey(props.post.template || 'default').aspect,
+      // Semua posting Instagram 4:5; backend juga memaksa portrait.
+      aspect: 'portrait',
     });
     igPostData.value = res?.data || res;
+
+    // Sinkronkan status di kartu agar badge/error langsung berubah tanpa reload.
+    props.post.igStatus =
+      igPostData.value?.ig_status ||
+      (igPostData.value?.meta_published
+        ? 'published'
+        : igPostData.value?.ig_pending
+          ? 'pending'
+          : 'failed');
+    props.post.igError = igPostData.value?.ig_error || null;
+    props.post.igAttempts =
+      Number(igPostData.value?.ig_result?.ig_attempts) || props.post.igAttempts || 0;
+
     if (igPostData.value?.meta_published) {
       props.post.postedToIg = true;
       const cardCount = igCardUrls.value.length;
@@ -1235,16 +1312,30 @@ async function openInstagramStoryAutoPost() {
       triggerToast(
         cardCount > 1 || mediaCount > 0
           ? `Card fess berhasil diposting ke Instagram Feed (carousel: ${cardCount} card${mediaCount > 0 ? ` + ${mediaCount} media` : ''})!`
-          : 'Card fess berhasil diposting ke Instagram Feed!'
+          : 'Card fess berhasil diposting ke Instagram Feed!',
       );
     } else if (igPostData.value?.ig_pending) {
-      triggerToast('Video sedang diproses Instagram — postingan akan terbit otomatis dalam ±1 menit ⏳');
+      triggerToast(
+        'Video sedang diproses Instagram — postingan akan terbit otomatis dalam ±1 menit.',
+      );
+    } else if (igPostData.value?.retry_scheduled) {
+      triggerToast('Gagal sementara — sistem mencoba lagi otomatis. Pantau badge status IG.');
     } else {
-      triggerToast('Card fess selesai dirender — publikasi Instagram belum berhasil.');
+      const reason = igPostData.value?.ig_error || igPostData.value?.message;
+      triggerToast(
+        reason
+          ? `Publikasi Instagram gagal: ${reason}`
+          : 'Card fess selesai dirender — publikasi Instagram belum berhasil.',
+      );
     }
   } catch (err) {
     console.error('Gagal memposting fess ke Instagram:', err);
-    triggerToast('Gagal memproses card Instagram. Silakan coba lagi.');
+    const reason =
+      err?.response?.data?.message ||
+      err?.response?.data?.error?.message ||
+      err?.message ||
+      'Silakan coba lagi.';
+    triggerToast(`Gagal memposting ke Instagram: ${reason}`);
   } finally {
     igPostLoading.value = false;
   }
@@ -1288,7 +1379,9 @@ function saveAndNavigateQuote(targetFess) {
     time: targetFess.time || 'Baru saja',
     content: targetFess.content,
     avatarBg: targetFess.avatarBg || '#0038FF',
-    avatarText: targetFess.avatarText || (targetFess.handle ? targetFess.handle.slice(1, 3).toUpperCase() : 'QF'),
+    avatarText:
+      targetFess.avatarText ||
+      (targetFess.handle ? targetFess.handle.slice(1, 3).toUpperCase() : 'QF'),
     tag: targetFess.tag,
   };
 
@@ -1562,6 +1655,86 @@ function formatCount(num) {
   color: #e1306c;
 }
 
+.badge-ig-failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-ig-pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
+.spin {
+  animation: fess-spin 0.8s linear infinite;
+}
+
+@keyframes fess-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ig-failure-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 10px;
+}
+
+.ig-failure-icon {
+  color: #f87171;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ig-failure-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--shell-sub-accent, #cbd5e1);
+  overflow-wrap: anywhere;
+}
+
+.ig-failure-copy strong {
+  font-size: 12px;
+  color: #f87171;
+}
+
+.ig-failure-copy small {
+  color: var(--shell-sub-accent, #94a3b8);
+  font-size: 10.5px;
+}
+
+.btn-ig-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: transparent;
+  color: #fca5a5;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 5px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.btn-ig-retry:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fff;
+}
+
 .badge-approved {
   background: rgba(16, 185, 129, 0.15);
   color: #10b981;
@@ -1593,7 +1766,9 @@ function formatCount(num) {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.12s ease, background 0.12s ease;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
 }
 
 .btn-takedown:hover {
@@ -1611,7 +1786,9 @@ function formatCount(num) {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.12s ease, background 0.12s ease;
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
 }
 
 .btn-flag-report:hover {
@@ -1643,7 +1820,10 @@ function formatCount(num) {
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.12s ease;
 }
 
 .quoted-fess-box:hover {
@@ -1871,7 +2051,14 @@ function formatCount(num) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   color: #ffffff;
   border: none;
   font-family: inherit;
@@ -2030,7 +2217,7 @@ function formatCount(num) {
 .ig-story-card-frame {
   width: 100%;
   max-width: 250px;
-  aspect-ratio: 9 / 16;
+  aspect-ratio: 4 / 5;
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
@@ -2063,7 +2250,8 @@ function formatCount(num) {
   border-radius: 10px;
   border: 1.5px solid var(--shell-border);
   flex-shrink: 0;
-  object-fit: cover;
+  object-fit: contain;
+  background: #fff;
 }
 
 .ig-card-strip-note {
@@ -2108,7 +2296,14 @@ function formatCount(num) {
 }
 
 .btn-ig-action.btn-open-ig {
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   color: #ffffff;
   border: none;
   box-shadow: 0 4px 14px rgba(220, 39, 67, 0.3);
@@ -2182,8 +2377,14 @@ function formatCount(num) {
 }
 
 @keyframes toastFade {
-  from { opacity: 0; transform: translate(-50%, -6px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 /* Comments Section */
@@ -2415,7 +2616,9 @@ function formatCount(num) {
   overflow: hidden;
   border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
   background: #000;
-  transition: border-radius 220ms ease, border-color 220ms ease;
+  transition:
+    border-radius 220ms ease,
+    border-color 220ms ease;
   cursor: grab;
 }
 
@@ -2450,8 +2653,6 @@ function formatCount(num) {
   font-weight: 700;
   pointer-events: none;
 }
-
-
 
 @media (max-width: 600px) {
   .fess-feed-card {

@@ -42,7 +42,12 @@
         <div v-if="publishError" class="publish-error-banner" role="alert">
           <AlertCircle :size="16" class="flex-shrink-0" />
           <span class="error-msg">{{ publishError }}</span>
-          <button type="button" class="btn-dismiss-err" @click="publishError = ''" aria-label="Tutup pesan error">
+          <button
+            type="button"
+            class="btn-dismiss-err"
+            @click="publishError = ''"
+            aria-label="Tutup pesan error"
+          >
             <X :size="14" />
           </button>
         </div>
@@ -63,7 +68,9 @@
           <div class="composer-quoted-head">
             <div class="cq-author">
               <Quote :size="13" class="cq-icon" />
-              <span class="cq-handle">{{ form.quotedFess.handle || form.quotedFess.senderHandle }}</span>
+              <span class="cq-handle">{{
+                form.quotedFess.handle || form.quotedFess.senderHandle
+              }}</span>
               <span class="cq-time">• {{ form.quotedFess.time }}</span>
             </div>
             <button
@@ -311,7 +318,9 @@ async function loadAvailableBases() {
       if (list.length) {
         availableBases.value = list;
         if (baseLocked.value) {
-          await ensureQuotedBaseInList(form.value.quotedFess?.handle || form.value.quotedFess?.senderHandle);
+          await ensureQuotedBaseInList(
+            form.value.quotedFess?.handle || form.value.quotedFess?.senderHandle,
+          );
         }
         return;
       }
@@ -326,7 +335,9 @@ async function loadAvailableBases() {
   }
   availableBases.value = bases.value;
   if (baseLocked.value) {
-    await ensureQuotedBaseInList(form.value.quotedFess?.handle || form.value.quotedFess?.senderHandle);
+    await ensureQuotedBaseInList(
+      form.value.quotedFess?.handle || form.value.quotedFess?.senderHandle,
+    );
   }
 }
 
@@ -341,13 +352,11 @@ const selectedTopicLabel = computed(() => {
 
 const hasContent = computed(
   () =>
-    form.value.content.trim().length > 0 ||
-    form.value.media.length > 0 ||
-    !!form.value.quotedFess,
+    form.value.content.trim().length > 0 || form.value.media.length > 0 || !!form.value.quotedFess,
 );
 
 const hasUploadingMedia = computed(() =>
-  form.value.media.some((m) => m.uploading || !m.url || String(m.url).startsWith('blob:'))
+  form.value.media.some((m) => m.uploading || !m.url || String(m.url).startsWith('blob:')),
 );
 
 const canPublish = computed(() => {
@@ -440,7 +449,8 @@ function openPublishConfirm() {
   if (publishing.value) return;
 
   if (hasUploadingMedia.value) {
-    publishError.value = 'Foto/video masih dalam proses unggah. Mohon tunggu hingga lingkaran animasi selesai.';
+    publishError.value =
+      'Foto/video masih dalam proses unggah. Mohon tunggu hingga lingkaran animasi selesai.';
     return;
   }
   if (!form.value.baseHandle) {
@@ -466,7 +476,7 @@ async function publishFess() {
   publishing.value = true;
   try {
     const hasUnfinishedUpload = form.value.media.some(
-      (m) => m.uploading || !m.url || String(m.url).startsWith('blob:')
+      (m) => m.uploading || !m.url || String(m.url).startsWith('blob:'),
     );
     if (hasUnfinishedUpload) {
       publishError.value = 'Mohon tunggu beberapa detik hingga upload media selesai.';
@@ -482,6 +492,8 @@ async function publishFess() {
         url: m.url,
         thumbnail: m.thumbnail || null,
         duration: m.duration || null,
+        width: m.width || null,
+        height: m.height || null,
         caption: m.caption || null,
       })),
       topic: form.value.topic || null,
@@ -518,7 +530,8 @@ async function publishFess() {
     }
   } catch (error) {
     console.error('Publish failed:', error);
-    publishError.value = error?.message || 'Gagal mengirim fess. Pastikan format konten valid dan coba lagi.';
+    publishError.value =
+      error?.message || 'Gagal mengirim fess. Pastikan format konten valid dan coba lagi.';
   } finally {
     publishing.value = false;
     showPublishModal.value = false;
@@ -550,7 +563,7 @@ onMounted(async () => {
             baseHandle: draft.baseHandle || '',
             content: draft.content || '',
             media: (draft.media || []).filter(
-              (m) => !m.uploading && !!m.url && !String(m.url).startsWith('blob:')
+              (m) => !m.uploading && !!m.url && !String(m.url).startsWith('blob:'),
             ),
             topic: draft.topic || '',
             scheduledAt: draft.scheduledAt || null,
@@ -639,7 +652,7 @@ watch(
       }
       loadQuoteFess(newId);
     }
-  }
+  },
 );
 
 onUnmounted(() => {

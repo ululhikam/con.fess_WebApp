@@ -62,6 +62,9 @@ Thumbs.db
 *.local
 vite.config.js.timestamp-*
 
+# ffmpeg.wasm core (disalin dari @ffmpeg/core oleh postinstall)
+public/ffmpeg/
+
 # ================================
 # Testing
 # ================================

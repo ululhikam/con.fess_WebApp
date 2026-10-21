@@ -9,9 +9,13 @@
     "start": "vite preview --port 5173 --host",
     "preview": "vite preview",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "postinstall": "node scripts/copy-ffmpeg-core.mjs"
   },
   "dependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "html-to-image": "^1.11.11",
     "lucide-vue-next": "^0.359.0",
     "pinia": "^2.1.7",

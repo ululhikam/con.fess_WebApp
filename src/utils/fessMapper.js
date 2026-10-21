@@ -43,11 +43,7 @@ export function mapFessComment(c) {
 /** API quoted_fess → quoted card model (also the shape POST /fesses wants). */
 export function mapQuotedFess(q) {
   if (!q) return null;
-  const handle = q.handle
-    ? q.handle.startsWith('@')
-      ? q.handle
-      : `@${q.handle}`
-    : '@anonim';
+  const handle = q.handle ? (q.handle.startsWith('@') ? q.handle : `@${q.handle}`) : '@anonim';
   return {
     id: q.id,
     handle,
@@ -55,7 +51,8 @@ export function mapQuotedFess(q) {
     time: q.time || '',
     content: q.content,
     avatar_bg: q.avatar_bg || q.avatarBg || colorForHandle(handle),
-    avatar_text: q.avatar_text || q.avatarText || handle.replace(/^@/, '').slice(0, 2).toUpperCase(),
+    avatar_text:
+      q.avatar_text || q.avatarText || handle.replace(/^@/, '').slice(0, 2).toUpperCase(),
     avatarBg: q.avatar_bg || q.avatarBg || colorForHandle(handle),
     avatarText: q.avatar_text || q.avatarText || handle.replace(/^@/, '').slice(0, 2).toUpperCase(),
   };
@@ -75,11 +72,12 @@ export function mapFessToPost(f) {
   // `base_avatar` yang bisa berupa foto (URL/data-URL) atau inisial teks.
   const rawBaseAvatar = f.base_avatar ?? f.baseAvatar ?? null;
   const avatarImg =
-    typeof rawBaseAvatar === 'string' && IMAGE_URL_RE.test(rawBaseAvatar)
-      ? rawBaseAvatar
-      : null;
+    typeof rawBaseAvatar === 'string' && IMAGE_URL_RE.test(rawBaseAvatar) ? rawBaseAvatar : null;
   const avatarText =
-    !avatarImg && typeof rawBaseAvatar === 'string' && rawBaseAvatar.trim() && rawBaseAvatar.length <= 3
+    !avatarImg &&
+    typeof rawBaseAvatar === 'string' &&
+    rawBaseAvatar.trim() &&
+    rawBaseAvatar.length <= 3
       ? rawBaseAvatar.trim().toUpperCase()
       : clean.slice(0, 2).toUpperCase() || 'FS';
 
@@ -101,6 +99,10 @@ export function mapFessToPost(f) {
     status: f.status === 'published' ? 'approved' : f.status,
     rawStatus: f.status,
     postedToIg: f.posted_to_ig ?? f.postedToIg ?? false,
+    igStatus: f.ig_status ?? f.igStatus ?? 'idle',
+    igError: f.ig_error ?? f.igError ?? null,
+    igAttempts: f.ig_attempts ?? f.igAttempts ?? 0,
+    igUpdatedAt: f.ig_updated_at ?? f.igUpdatedAt ?? null,
     media: Array.isArray(f.media) ? f.media : [],
     song: f.song || null,
     topic: f.topic || null,
