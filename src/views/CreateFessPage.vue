@@ -165,7 +165,7 @@
       @update:model-value="applyQuotedFess"
     />
 
-    <!-- Publish Confirmation Modal (satu-satunya pratinjau + atur urutan media) -->
+    <!-- Publish Confirmation Modal (satu-satunya pratinjau + atur urutan slide) -->
     <PublishModal
       v-model:show="showPublishModal"
       :form="form"
@@ -173,7 +173,7 @@
       :confirming="publishing"
       @confirm="publishFess"
       @cancel="showPublishModal = false"
-      @reorder-media="onReorderMedia"
+      @reorder-slides="onReorderSlides"
     />
   </div>
 </template>
@@ -230,6 +230,7 @@ const form = ref({
   baseHandle: '',
   content: '',
   media: [],
+  carouselOrder: [],
   topic: '',
   scheduledAt: null,
   song: null,
@@ -408,13 +409,20 @@ function onMediaChange(media) {
 }
 
 /**
- * Terapkan urutan media baru dari pratinjau (geser depan/tengah/belakang).
- * Daftar dari carousel boleh berupa subset (mis. video non-MP4 yang tidak
- * ikut diposting ke IG tidak punya slide) — sisanya tetap di akhir.
+ * Terapkan urutan slide baru dari pratinjau. Token kartu (`card:0`) dan media
+ * (`media:<id>`) boleh berselang-seling, jadi media bisa menjadi slide pertama.
+ * Urutan array media ikut diselaraskan agar grid uploader tetap masuk akal.
  */
-function onReorderMedia(orderedIds) {
+function onReorderSlides(order) {
+  if (!Array.isArray(order) || !order.length) return;
+  form.value.carouselOrder = order.slice();
+
   const list = form.value.media || [];
-  if (!Array.isArray(orderedIds) || !orderedIds.length) return;
+  const orderedIds = order
+    .filter((token) => String(token).startsWith('media:'))
+    .map((token) => String(token).slice('media:'.length));
+  if (!orderedIds.length) return;
+
   const byId = new Map(list.map((m) => [m.id, m]));
   const next = [];
   for (const id of orderedIds) {
@@ -488,6 +496,7 @@ async function publishFess() {
       base_handle: form.value.baseHandle,
       content: form.value.content.trim(),
       media: form.value.media.map((m) => ({
+        id: m.id,
         type: m.type,
         url: m.url,
         thumbnail: m.thumbnail || null,
@@ -496,6 +505,7 @@ async function publishFess() {
         height: m.height || null,
         caption: m.caption || null,
       })),
+      carousel_order: form.value.carouselOrder || [],
       topic: form.value.topic || null,
       scheduled_at: form.value.scheduledAt || null,
       song: form.value.song
@@ -565,6 +575,7 @@ onMounted(async () => {
             media: (draft.media || []).filter(
               (m) => !m.uploading && !!m.url && !String(m.url).startsWith('blob:'),
             ),
+            carouselOrder: Array.isArray(draft.carouselOrder) ? draft.carouselOrder : [],
             topic: draft.topic || '',
             scheduledAt: draft.scheduledAt || null,
             song: draft.song || null,
@@ -623,6 +634,7 @@ watch(
   () => [
     form.value.content,
     form.value.media,
+    form.value.carouselOrder,
     form.value.topic,
     form.value.scheduledAt,
     form.value.song,
@@ -827,7 +839,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 }
 
 /* ===== PREVIEW PANEL =====
-   Pratinjau live dihapus dari composer — pratinjau + atur urutan media kini
+   Pratinjau live dihapus dari composer — pratinjau + atur urutan slide kini
    hanya ada di modal konfirmasi posting (PublishModal). */
 
 /* ===== EDITOR TOOLBAR ===== */

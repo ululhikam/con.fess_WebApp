@@ -1,7 +1,7 @@
 <template>
   <div class="post-carousel" :class="{ 'is-exporting': exporting }">
-    <!-- Jalur slide: kartu fess (1..N halaman) dulu, lalu media user — persis
-         urutan carousel yang diposting ke Instagram (maks 10 slide). -->
+    <!-- Jalur slide: kartu fess (1..N halaman) dan media user dalam urutan
+         bebas, persis seperti carousel yang diposting (maks 10 slide). -->
     <div
       ref="viewportEl"
       class="post-carousel__viewport"
@@ -11,7 +11,12 @@
       @pointerup="endViewportDrag"
       @pointercancel="endViewportDrag"
     >
-      <div v-for="(slide, idx) in slides" :key="slide.key" class="post-carousel__slide">
+      <div
+        v-for="(slide, idx) in slides"
+        :key="slide.token"
+        class="post-carousel__slide"
+        :data-slide-token="slide.token"
+      >
         <PostPreview
           v-if="slide.kind === 'card'"
           :ref="(el) => registerCardRef(el, idx)"
@@ -43,9 +48,8 @@
         <div
           v-else
           class="post-carousel__media"
-          :class="{ 'is-drag-source': dragIndex === slide.mediaIndex }"
+          :class="{ 'is-drag-source': dragToken === slide.token }"
           :style="{ aspectRatio: cardAspectRatio }"
-          :data-media-index="slide.mediaIndex"
         >
           <img
             v-if="slide.item.type !== 'video'"
@@ -76,19 +80,19 @@
             {{ slide.item.type === 'video' ? 'Video' : 'Foto' }}
           </span>
 
-          <!-- Pegangan geser pengatur urutan media (urutan memengaruhi carousel IG) -->
+          <!-- Pegangan geser: media bisa dipindah ke posisi slide mana pun. -->
           <button
             v-if="reorderEnabled"
             type="button"
             class="media-reorder-handle"
-            :title="`Geser untuk memindahkan media ${slide.mediaIndex + 1}`"
-            aria-label="Geser untuk mengubah urutan media"
-            @pointerdown.stop.prevent="startReorder($event, slide.mediaIndex)"
+            :title="`Geser untuk memindahkan slide media ke posisi ${slide.slideIndex + 1}`"
+            aria-label="Geser untuk mengubah urutan slide media"
+            @pointerdown.stop.prevent="startReorder($event, slide.token)"
             @click.stop
           >
             <GripVertical :size="14" />
           </button>
-          <span v-if="reorderEnabled" class="media-order-badge">{{ slide.mediaIndex + 1 }}</span>
+          <span v-if="reorderEnabled" class="media-order-badge">{{ slide.slideIndex + 1 }}</span>
         </div>
       </div>
     </div>
@@ -111,12 +115,13 @@
  * PostPreviewCarousel — pratinjau postingan sebagai carousel.
  *
  * Struktur slide dibuat sama dengan yang dikirim ke Instagram:
- *   1. Kartu fess halaman 1..N (paginasi cermin backend, lihat cardPagination.js)
- *   2. Media user berurutan (hasil geser urutan) — maksimal total 10 slide.
+ *   kartu fess halaman 1..N (paginasi cermin backend, lihat cardPagination.js)
+ *   dan media user dalam urutan bebas — maksimal total 10 slide.
  *
- * Media TIDAK lagi digambar di dalam kartu karena di Instagram media menjadi
- * slide tersendiri. Pegangan geser di sudut media mengubah urutan slide media
- * (emit `reorder-media`), bukan posisi kartu — kartu selalu di depan.
+ * Media TIDAK digambar di dalam kartu karena di Instagram media menjadi slide
+ * tersendiri. Pegangan geser di sudut media memindahkan media ke posisi mana
+ * pun, termasuk menjadi slide pertama (emit `reorder-slides`). Halaman kartu
+ * tetap berurutan agar isi cerita tidak tertukar.
  */
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import { GripVertical, Loader2, AlertCircle } from 'lucide-vue-next';
@@ -136,8 +141,10 @@ const props = defineProps({
   isPreview: { type: Boolean, default: true },
   /** True while html-to-image is rasterising — freezes animations/jitter. */
   exporting: { type: Boolean, default: false },
-  /** Aktifkan pengaturan urutan media via geser (khusus halaman composer). */
+  /** Aktifkan pengaturan urutan slide media via geser (khusus composer). */
   reorderable: { type: Boolean, default: false },
+  /** Urutan slide tersimpan: ["media:<id>", "card:0", ...]. */
+  carouselOrder: { type: Array, default: () => [] },
   /**
    * Kartu hasil render backend (PNG data URI). Bila diisi, slide kartu memakai
    * gambar ini — bukan replay DOM — supaya pratinjau identik dengan hasil
@@ -146,7 +153,7 @@ const props = defineProps({
   cardImages: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(['reorder-media']);
+const emit = defineEmits(['reorder-slides']);
 
 const templateDef = computed(() => getTemplateByKey(props.template));
 const aspectKey = computed(() => templateDef.value.aspect || 'portrait');
@@ -201,31 +208,10 @@ const skippedMediaCount = computed(() => mediaCount.value - postableCount.value)
 const cardSlotLimit = computed(() => Math.max(1, 10 - postableCount.value));
 const cardSlides = computed(() => pages.value.slice(0, cardSlotLimit.value));
 
-/* ---- Urutan media (geser untuk atur depan→belakang) ----------------------- */
+/* ---- Urutan slide bebas (kartu + media) ---------------------------------- */
 
-const dragIds = ref(null);
-const dragIndex = ref(-1);
-
-const orderedMedia = computed(() => {
-  const list = postableMedia.value;
-  if (!dragIds.value) return list;
-  const byId = new Map(list.map((m) => [m.id, m]));
-  const ordered = [];
-  for (const id of dragIds.value) {
-    const item = byId.get(id);
-    if (item) ordered.push(item);
-  }
-  for (const item of list) {
-    if (!ordered.includes(item)) ordered.push(item);
-  }
-  return ordered;
-});
-
-const reorderEnabled = computed(
-  () => props.reorderable && props.isPreview && !props.exporting && postableCount.value > 1,
-);
-
-/* ---- Daftar slide -------------------------------------------------------- */
+const dragToken = ref('');
+const dragOrder = ref(null);
 
 /** Render backend siap dipakai → slide kartu memakai PNG hasil render. */
 const hasRenderedCards = computed(
@@ -233,17 +219,26 @@ const hasRenderedCards = computed(
 );
 
 const renderedCardSlides = computed(() =>
-  (hasRenderedCards.value ? props.cardImages : []).slice(0, cardSlotLimit.value).map((src, index) => ({
-    key: `card-img-${index}`,
-    kind: 'card-image',
-    src,
-    pageIndex: index,
-  })),
+  (hasRenderedCards.value ? props.cardImages : [])
+    .slice(0, cardSlotLimit.value)
+    .map((src, index) => ({
+      kind: 'card-image',
+      src,
+      pageIndex: index,
+    })),
 );
 
-const cardCount = computed(() =>
-  hasRenderedCards.value ? renderedCardSlides.value.length : cardSlides.value.length,
+const cardSlideDefs = computed(() =>
+  hasRenderedCards.value
+    ? renderedCardSlides.value
+    : cardSlides.value.map((lines, index) => ({
+        kind: 'card',
+        lines,
+        pageIndex: index,
+      })),
 );
+
+const cardCount = computed(() => cardSlideDefs.value.length);
 
 const hiddenPageCount = computed(() =>
   hasRenderedCards.value
@@ -251,20 +246,81 @@ const hiddenPageCount = computed(() =>
     : Math.max(0, pages.value.length - cardSlides.value.length),
 );
 
+function mediaToken(item, index) {
+  return `media:${item.id || index}`;
+}
+
+/** Token default: semua kartu dulu, lalu media (perilaku lama). */
+const defaultTokens = computed(() => [
+  ...cardSlideDefs.value.map((_, index) => `card:${index}`),
+  ...postableMedia.value.map((item, index) => mediaToken(item, index)),
+]);
+
+const cardByToken = computed(
+  () => new Map(cardSlideDefs.value.map((slide, index) => [`card:${index}`, slide])),
+);
+
+const mediaByToken = computed(
+  () =>
+    new Map(
+      postableMedia.value.map((item, index) => [
+        mediaToken(item, index),
+        { item, mediaIndex: index },
+      ]),
+    ),
+);
+
+/**
+ * Terapkan urutan dari parent. Token yang tidak relevan (media dihapus,
+ * halaman kartu berubah) dilewati, lalu sisa slide ditempel di akhir.
+ */
+const resolvedOrder = computed(() => {
+  if (dragOrder.value) return dragOrder.value;
+  const allowed = new Set(defaultTokens.value);
+  const result = [];
+  const requested = Array.isArray(props.carouselOrder) ? props.carouselOrder : [];
+
+  for (const rawToken of requested) {
+    const token = String(rawToken || '').trim();
+    if (!allowed.has(token) || result.includes(token)) continue;
+    result.push(token);
+  }
+  for (const token of defaultTokens.value) {
+    if (!result.includes(token)) result.push(token);
+  }
+  return result;
+});
+
 const slides = computed(() => {
-  const list = hasRenderedCards.value
-    ? renderedCardSlides.value.slice()
-    : cardSlides.value.map((lines, index) => ({
-        key: `card-${index}`,
-        kind: 'card',
-        lines,
-        pageIndex: index,
-      }));
-  orderedMedia.value.forEach((item, index) => {
-    list.push({ key: `media-${item.id || index}`, kind: 'media', item, mediaIndex: index });
-  });
+  const list = [];
+  for (const token of resolvedOrder.value) {
+    const card = cardByToken.value.get(token);
+    if (card) {
+      list.push({ ...card, token, slideIndex: list.length });
+      continue;
+    }
+    const media = mediaByToken.value.get(token);
+    if (media) {
+      list.push({
+        token,
+        kind: 'media',
+        item: media.item,
+        mediaIndex: media.mediaIndex,
+        slideIndex: list.length,
+      });
+    }
+  }
   return list;
 });
+
+const reorderEnabled = computed(
+  () =>
+    props.reorderable &&
+    props.isPreview &&
+    !props.exporting &&
+    postableCount.value > 0 &&
+    slides.value.length > 1,
+);
 
 const legend = computed(() => {
   const cards = cardCount.value;
@@ -274,7 +330,7 @@ const legend = computed(() => {
       ? `${cards} kartu fess, diposting berurutan seperti ini`
       : 'Beginilah kartu yang diposting ke Instagram';
   }
-  return `${cards} kartu fess dulu, lalu ${mediaTotal} media — sama seperti di Instagram`;
+  return `${cards} kartu + ${mediaTotal} media — urutan slide bebas seperti di Instagram`;
 });
 
 const note = computed(() => {
@@ -334,10 +390,15 @@ let scrollDrag = null;
 function onViewportPointerDown(event) {
   if (event.pointerType !== 'mouse' || event.button !== 0) return;
   const target = event.target;
-  if (target instanceof Element && target.closest('.media-reorder-handle, video, button, a')) return;
+  if (target instanceof Element && target.closest('.media-reorder-handle, video, button, a'))
+    return;
   const viewport = viewportEl.value;
   if (!viewport) return;
-  scrollDrag = { startX: event.clientX, startLeft: viewport.scrollLeft, pointerId: event.pointerId };
+  scrollDrag = {
+    startX: event.clientX,
+    startLeft: viewport.scrollLeft,
+    pointerId: event.pointerId,
+  };
   try {
     viewport.setPointerCapture(event.pointerId);
   } catch {
@@ -366,20 +427,20 @@ function endViewportDrag(event) {
   viewportEl.value?.classList.remove('is-grabbing');
 }
 
-/* ---- Geser pegangan untuk mengubah urutan media --------------------------- */
+/* ---- Geser pegangan untuk mengubah urutan slide -------------------------- */
 
-function startReorder(event, index) {
-  if (!reorderEnabled.value || dragIndex.value !== -1) return;
-  dragIndex.value = index;
-  dragIds.value = orderedMedia.value.map((m) => m.id);
+function startReorder(event, token) {
+  if (!reorderEnabled.value || dragToken.value) return;
+  dragToken.value = token;
+  dragOrder.value = resolvedOrder.value.slice();
   window.addEventListener('pointermove', onReorderMove, { passive: false });
   window.addEventListener('pointerup', finishReorder);
   window.addEventListener('pointercancel', finishReorder);
 }
 
-/** Tukar posisi item yang digeser dengan slide media yang berada di bawah pointer. */
+/** Pindahkan media yang digeser ke posisi slide yang berada di bawah pointer. */
 function onReorderMove(event) {
-  if (dragIndex.value < 0) return;
+  if (!dragToken.value) return;
   event.preventDefault();
 
   // Dekatkan pegangan ke tepi → track ikut bergulir agar slide lain terjangkau.
@@ -391,36 +452,35 @@ function onReorderMove(event) {
   }
 
   const el = document.elementFromPoint(event.clientX, event.clientY);
-  const tile = el && typeof el.closest === 'function' ? el.closest('[data-media-index]') : null;
+  const tile = el && typeof el.closest === 'function' ? el.closest('[data-slide-token]') : null;
   if (!tile) return;
-  const index = Number(tile.getAttribute('data-media-index'));
-  if (Number.isNaN(index) || index === dragIndex.value) return;
-  moveMedia(dragIndex.value, index);
-  dragIndex.value = index;
-}
+  const targetToken = tile.getAttribute('data-slide-token');
+  if (!targetToken || targetToken === dragToken.value) return;
 
-function moveMedia(from, to) {
-  const ids = (dragIds.value || []).slice();
-  if (from < 0 || from >= ids.length || to < 0 || to >= ids.length) return;
-  const [moved] = ids.splice(from, 1);
-  ids.splice(to, 0, moved);
-  dragIds.value = ids;
+  const order = (dragOrder.value || []).slice();
+  const from = order.indexOf(dragToken.value);
+  const to = order.indexOf(targetToken);
+  if (from < 0 || to < 0) return;
+
+  const [moved] = order.splice(from, 1);
+  order.splice(to, 0, moved);
+  dragOrder.value = order;
 }
 
 function finishReorder() {
   window.removeEventListener('pointermove', onReorderMove);
   window.removeEventListener('pointerup', finishReorder);
   window.removeEventListener('pointercancel', finishReorder);
-  const ids = dragIds.value;
-  dragIndex.value = -1;
-  if (ids && ids.length) {
-    emit('reorder-media', ids);
+  const order = dragOrder.value;
+  dragToken.value = '';
+  if (Array.isArray(order) && order.length) {
+    emit('reorder-slides', order.slice());
     // Lepaskan urutan lokal setelah parent menyinkronkan prop-nya.
     nextTick(() => {
-      if (dragIndex.value === -1) dragIds.value = null;
+      if (!dragToken.value) dragOrder.value = null;
     });
   } else {
-    dragIds.value = null;
+    dragOrder.value = null;
   }
 }
 

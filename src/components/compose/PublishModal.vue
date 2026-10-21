@@ -17,8 +17,8 @@
         </header>
 
         <div class="modal-body">
-          <!-- Pratinjau: kartu fess hasil render backend (1..N halaman) lalu
-               media user — sama persis dengan urutan carousel yang diposting -->
+          <!-- Pratinjau: kartu fess hasil render backend + media user, dengan
+               urutan slide yang sama persis seperti carousel yang diposting. -->
           <div class="preview-panel">
             <div class="preview-panel__head">
               <span class="preview-panel__title">Pratinjau hasil render</span>
@@ -53,12 +53,16 @@
                 :quoted-fess="form.quotedFess"
                 :is-preview="true"
                 :card-images="previewImages"
+                :carousel-order="form.carouselOrder || []"
                 reorderable
-                @reorder-media="$emit('reorder-media', $event)"
+                @reorder-slides="$emit('reorder-slides', $event)"
               />
-              <p v-if="mediaCount > 1" class="preview-hint">
+              <p v-if="mediaCount > 0" class="preview-hint">
                 <GripVertical :size="13" />
-                <span>Geser pegangan di slide media untuk mengatur urutannya (depan → belakang).</span>
+                <span>
+                  Geser pegangan media ke posisi mana pun — media bisa jadi slide pertama, di antara
+                  kartu, atau terakhir.
+                </span>
               </p>
             </template>
           </div>
@@ -144,7 +148,7 @@ const props = defineProps({
   confirming: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['update:show', 'confirm', 'cancel', 'reorder-media']);
+const emit = defineEmits(['update:show', 'confirm', 'cancel', 'reorder-slides']);
 
 const { getTopicById } = useTopics();
 
@@ -204,7 +208,7 @@ watch(
       previewLoading.value = false;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 const mediaCount = computed(() => (Array.isArray(props.form.media) ? props.form.media.length : 0));
