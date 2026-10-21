@@ -5,7 +5,12 @@
     :class="[`ink-${templateDef.ink}`, `tpl-${templateDef.key}`, { 'is-exporting': exporting }]"
     :style="wrapperStyle"
   >
-    <div v-if="templateDef.texture" class="post-card__texture" aria-hidden="true" :style="textureStyle" />
+    <div
+      v-if="templateDef.texture"
+      class="post-card__texture"
+      aria-hidden="true"
+      :style="textureStyle"
+    />
 
     <!-- Panel kartu — meniru rect panel yang digambar renderer SVG backend
          (warna/border/radius dari `panel` di config template) -->
@@ -14,7 +19,16 @@
     <div class="post-card__inner">
       <!-- Header -->
       <header class="post-card__header">
-        <span class="post-card__avatar" aria-hidden="true">{{ baseAvatar }}</span>
+        <span class="post-card__avatar" aria-hidden="true">
+          <img
+            v-if="baseAvatarImage"
+            :src="baseAvatarImage"
+            alt=""
+            class="post-card__avatar-img"
+            @error="avatarError = true"
+          />
+          <template v-else>{{ baseAvatar }}</template>
+        </span>
         <span class="post-card__ident">
           <strong class="post-card__handle">{{ baseHandle }}</strong>
           <span class="post-card__name">{{ baseInfo.name }}</span>
@@ -142,18 +156,45 @@ const bodyTypographyStyle = computed(() => {
 const { getTopicById } = useTopics();
 const { bases } = useBases();
 
+/** Foto profil base bisa berupa URL/data-URI; inisial teks tetap jadi fallback. */
+function avatarImage(value) {
+  if (typeof value !== 'string') return '';
+  return /^(data:image\/|https?:\/\/|\/)/i.test(value) ? value : '';
+}
+
+const avatarError = ref(false);
+
 /** Resolve the target base from the live directory (falls back to handle). */
 const baseInfo = computed(() => {
   const clean = String(props.baseHandle || '').replace(/^@/, '');
   const found = bases.value.find((b) => b.handle.replace(/^@/, '') === clean);
-  if (found) return { name: found.name, color: found.color, initials: found.initial };
+  if (found) {
+    return {
+      name: found.name,
+      color: found.color,
+      initials: found.initial,
+      avatar: found.avatar,
+    };
+  }
   return {
     name: clean || 'Base',
     color: '#0053ff',
     initials: clean.slice(0, 2).toUpperCase() || 'FB',
+    avatar: '',
   };
 });
-const baseAvatar = computed(() => baseInfo.value.initials);
+
+watch(
+  () => baseInfo.value.avatar,
+  () => {
+    avatarError.value = false;
+  },
+);
+
+const baseAvatarImage = computed(() =>
+  avatarError.value ? '' : avatarImage(baseInfo.value.avatar),
+);
+const baseAvatar = computed(() => (baseAvatarImage.value ? '' : baseInfo.value.initials));
 
 const topicLabel = computed(() => {
   if (!props.topic) return '';
@@ -177,10 +218,7 @@ const displayContent = computed(() => {
 });
 
 const showPlaceholder = computed(
-  () =>
-    Array.isArray(props.pageLines) &&
-    !String(props.content || '').trim() &&
-    !props.quotedFess,
+  () => Array.isArray(props.pageLines) && !String(props.content || '').trim() && !props.quotedFess,
 );
 
 /* ---- Skala teks pratinjau → menyesuaikan ruang yang tersedia ------------- */
@@ -280,7 +318,7 @@ const panelStyle = computed(() => {
     style.borderRadius = `${(panel.radius * scale).toFixed(2)}px`;
   }
   if (panel.shadow === 'hard') {
-    style.boxShadow = `${(Math.max(1, 10 * scale)).toFixed(2)}px ${(Math.max(1, 10 * scale)).toFixed(2)}px 0 #000000`;
+    style.boxShadow = `${Math.max(1, 10 * scale).toFixed(2)}px ${Math.max(1, 10 * scale).toFixed(2)}px 0 #000000`;
   } else if (panel.shadow === 'none') {
     style.boxShadow = 'none';
   }
@@ -434,9 +472,18 @@ const footerRight = computed(() =>
   width: clamp(34px, 9%, 44px);
   aspect-ratio: 1;
   border-radius: 12px;
+  overflow: hidden;
   font-size: clamp(12px, 3vw, 15px);
   font-weight: 800;
   letter-spacing: 0.4px;
+}
+
+.post-card__avatar-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .post-card__ident {
@@ -670,7 +717,9 @@ const footerRight = computed(() =>
 
 /* Cyberpunk (Tech Matrix) */
 .tpl-cyberpunk .post-card__panel {
-  box-shadow: 0 0 24px rgba(0, 255, 102, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 24px rgba(0, 255, 102, 0.15),
+    0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-cyberpunk .post-card__avatar {
   background: rgba(0, 255, 102, 0.18);
@@ -685,7 +734,9 @@ const footerRight = computed(() =>
 
 /* Terminal Dev (Tech Console) */
 .tpl-terminal .post-card__panel {
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 20px rgba(0, 240, 255, 0.12),
+    0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-terminal .post-card__avatar {
   background: rgba(0, 240, 255, 0.16);
@@ -700,7 +751,9 @@ const footerRight = computed(() =>
 
 /* Rock Grunge (Alternative Metal) */
 .tpl-rock .post-card__panel {
-  box-shadow: 0 0 25px rgba(255, 0, 60, 0.18), 0 18px 40px rgba(0, 0, 0, 0.7);
+  box-shadow:
+    0 0 25px rgba(255, 0, 60, 0.18),
+    0 18px 40px rgba(0, 0, 0, 0.7);
 }
 .tpl-rock .post-card__avatar {
   background: #ff003c;
@@ -713,7 +766,9 @@ const footerRight = computed(() =>
 
 /* Acid Techno (Rave Modern) */
 .tpl-acid .post-card__panel {
-  box-shadow: 0 0 25px rgba(204, 255, 0, 0.18), 0 18px 40px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 25px rgba(204, 255, 0, 0.18),
+    0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-acid .post-card__avatar {
   background: rgba(204, 255, 0, 0.2);
@@ -741,7 +796,9 @@ const footerRight = computed(() =>
 
 /* Blueprint Engineering */
 .tpl-blueprint .post-card__panel {
-  box-shadow: 0 0 20px rgba(72, 202, 228, 0.15), 0 18px 40px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 20px rgba(72, 202, 228, 0.15),
+    0 18px 40px rgba(0, 0, 0, 0.6);
 }
 .tpl-blueprint .post-card__avatar {
   background: rgba(72, 202, 228, 0.2);

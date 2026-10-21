@@ -181,6 +181,7 @@ async function loadPreview() {
       base_handle: props.form.baseHandle,
       content: props.form.content,
       template: props.form.template,
+      topic: props.form.topic || null,
       quoted_fess: props.form.quotedFess || null,
     });
     if (reqId !== previewReqId) return;
