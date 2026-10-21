@@ -81,7 +81,12 @@
       <div class="mv-infobar" :class="{ 'mv-chrome-hidden': !chromeVisible }" @click.stop>
         <div class="mv-info-head">
           <div class="mv-avatar" :style="{ background: post?.avatarBg || '#0038FF' }">
-            <img v-if="post?.avatarImg" :src="post.avatarImg" alt="" />
+            <img
+              v-if="post?.avatarImg && !avatarFailed"
+              :src="post.avatarImg"
+              alt=""
+              @error="avatarFailed = true"
+            />
             <span v-else>{{ post?.avatarText || (post?.handle || '@fess').slice(1, 3).toUpperCase() }}</span>
           </div>
           <div class="mv-info-meta">
@@ -125,6 +130,15 @@ const emit = defineEmits(['close']);
 
 const activeIndex = ref(Math.min(Math.max(0, props.initialIndex), Math.max(0, props.items.length - 1)));
 const activeItem = computed(() => props.items[activeIndex.value] || null);
+
+/** Jangan biarkan avatar rusak meninggalkan kotak kosong di panel viewer. */
+const avatarFailed = ref(false);
+watch(
+  () => props.post?.avatarImg,
+  () => {
+    avatarFailed.value = false;
+  }
+);
 
 /* ── Audio video viewer ──────────────────────────────────────────────────── */
 const viewerVideoRef = ref(null);

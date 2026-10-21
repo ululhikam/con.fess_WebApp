@@ -50,6 +50,25 @@ async function safeJson(res) {
   }
 }
 
+/**
+ * Beri tahu lapisan aplikasi saat sesi tidak berlaku lagi.
+ * - TOKEN_EXPIRED / UNAUTHORIZED → logout dan kembali ke halaman masuk.
+ * - EMAIL_NOT_VERIFIED → lanjutkan ke halaman verifikasi memakai ticket baru.
+ */
+function notifyAuthFailure(status, payload, hadToken) {
+  if (!hadToken || typeof window === 'undefined') return;
+  const code = payload?.code;
+  const detail = { reason: 'expired', email: payload?.email, ticket: payload?.verification_ticket };
+
+  if (code === 'EMAIL_NOT_VERIFIED') {
+    window.dispatchEvent(new CustomEvent('auth:email-unverified', { detail }));
+    return;
+  }
+  if (status === 401 && (code === 'TOKEN_EXPIRED' || code === 'UNAUTHORIZED')) {
+    window.dispatchEvent(new CustomEvent('auth:session-ended', { detail }));
+  }
+}
+
 /** Error class with status + payload. */
 export class ApiError extends Error {
   constructor(message, status, data) {
@@ -79,6 +98,7 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
 
     if (!res.ok) {
       const payload = await safeJson(res);
+      notifyAuthFailure(res.status, payload, Boolean(token));
       throw new ApiError(payload?.message || 'Request failed', res.status, payload);
     }
 
@@ -129,6 +149,7 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
           }
           resolve(xhr.status === 204 ? null : payload);
         } else {
+          notifyAuthFailure(xhr.status, payload, Boolean(token));
           const msg = payload?.message || `Upload gagal dengan kode status ${xhr.status}`;
           reject(new ApiError(msg, xhr.status, payload));
         }

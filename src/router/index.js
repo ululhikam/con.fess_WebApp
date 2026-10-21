@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
+import { isTokenExpired } from '../utils/authToken';
 
 /**
  * Routes are code-split with dynamic `import()` so each screen ships as its
@@ -27,6 +28,12 @@ const routes = [
     name: 'ForgotPassword',
     component: () => import('../views/ForgotPasswordPage.vue'),
     meta: { title: 'Lupa Kata Sandi', layout: 'auth', guestOnly: true },
+  },
+  {
+    path: '/verify-email',
+    name: 'VerifyEmail',
+    component: () => import('../views/VerifyEmailPage.vue'),
+    meta: { title: 'Verifikasi Email', layout: 'auth', guestOnly: true },
   },
   {
     path: '/register',
@@ -169,6 +176,28 @@ router.beforeEach(async (to, from, next) => {
     } catch (e) {
       console.warn('[Router Guard] Gagal autentikasi token dari query URL:', e);
     }
+  }
+
+  // JWT kedaluwarsa = sesi berakhir, tanpa menunggu request API berikutnya.
+  if (authStore.token && isTokenExpired(authStore.token)) {
+    authStore.clearSession();
+    try {
+      localStorage.setItem('fess_session_reason', 'expired');
+    } catch {
+      // ignore
+    }
+    if (to.meta.requiresAuth || to.meta.roles) {
+      return next({ name: 'Login', query: { reason: 'expired' } });
+    }
+  }
+
+  // Ticket verifikasi adalah sesi terbatas. Jika browser masih menyimpan sesi
+  // lama (mis. token JWT sebelum fitur verifikasi), jangan sampai guest guard
+  // memantulkan pengguna dari halaman verifikasi.
+  const hasVerificationTicket =
+    typeof to.query.ticket === 'string' || String(to.hash || '').includes('ticket=');
+  if (to.name === 'VerifyEmail' && hasVerificationTicket && authStore.isAuthenticated) {
+    authStore.clearSession();
   }
 
   const userRole = authStore.user?.role;

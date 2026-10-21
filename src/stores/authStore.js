@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { api } from '../api';
+import { getTokenExpiry, isTokenExpired, parseJwtPayload } from '../utils/authToken';
 
 /** Safe JSON parse — returns null for missing or corrupt payloads. */
 function readJson(key) {
@@ -11,25 +12,8 @@ function readJson(key) {
   }
 }
 
-/** Decode JWT payload safely in the browser without external dependencies. */
-function parseJwt(token) {
-  try {
-    if (!token || typeof token !== 'string') return null;
-    const parts = token.split('.');
-    if (parts.length < 2) return null;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(''),
-    );
-    return JSON.parse(jsonPayload);
-  } catch {
-    return null;
-  }
-}
+// Timer modul-level agar hanya ada satu jadwal kedaluwarsa per tab.
+let expiryTimer = null;
 
 /** Plain string values (tokens) are stored unencoded. */
 const readToken = () => localStorage.getItem('fess_token');
@@ -42,6 +26,7 @@ function normalizeUser(user) {
   if (!user) return null;
   return {
     ...user,
+    emailVerified: Boolean(user.email_verified ?? user.emailVerified),
     managedBases: user.managed_bases ?? user.managedBases ?? [],
     igAccount: user.ig_account ?? user.igAccount ?? null,
     followersCount: user.followers_count ?? user.followersCount ?? 0,
@@ -73,25 +58,31 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     /** Persist a session returned by the API ({ user, token }). */
-    setSession({ user, token }) {
-      this.user = normalizeUser(user);
-      if (token) this.token = token;
+    setSession({ user, token } = {}) {
+      if (user) this.user = normalizeUser(user);
+      if (token) {
+        this.token = token;
+        this.scheduleSessionExpiry(token);
+      }
       localStorage.setItem('fess_user', JSON.stringify(this.user));
-      localStorage.setItem('fess_token', this.token);
+      if (this.token) localStorage.setItem('fess_token', this.token);
     },
 
-    /** Login via the backend. @param {{identifier: string, password: string, role?: string}} credentials */
+    /**
+     * Login via the backend. Bila email belum terverifikasi, backend tidak
+     * mengirim token; hasilnya diteruskan ke halaman verifikasi.
+     */
     async login({ identifier, password, role = 'User' }) {
       const res = await api.login({ identifier, password, role });
-      this.setSession(res);
-      return this.user;
+      if (res?.token) this.setSession(res);
+      return res;
     },
 
     /** Social login via Google ID token. */
     async loginGoogle(payload) {
       const res = await api.loginGoogle(payload);
-      this.setSession(res);
-      return this.user;
+      if (res?.token) this.setSession(res);
+      return res;
     },
 
     /**
@@ -99,11 +90,17 @@ export const useAuthStore = defineStore('auth', {
      * store the JWT, then load the profile from the backend.
      */
     async loginWithToken(token) {
+      if (isTokenExpired(token)) {
+        this.expireSession('expired');
+        throw new Error('Sesi login sudah kedaluwarsa. Silakan masuk kembali.');
+      }
+
       this.token = token;
       localStorage.setItem('fess_token', token);
+      this.scheduleSessionExpiry(token);
 
       // Fast-path: ekstrak payload dasar (id, role, handle, email) dari JWT
-      const payload = parseJwt(token);
+      const payload = parseJwtPayload(token);
       if (payload) {
         this.user = normalizeUser({
           id: payload.sub,
@@ -117,6 +114,12 @@ export const useAuthStore = defineStore('auth', {
       try {
         return await this.fetchMe();
       } catch (err) {
+        // Event global 401/403 sudah menghapus token; jangan lanjut sebagai
+        // user lama hanya karena payload JWT sempat diisi.
+        if (!this.token) {
+          this.clearSession();
+          throw err;
+        }
         console.warn('Gagal fetch profile via /auth/me, memakai data token JWT:', err);
         // Jika token valid dan user memiliki role, tetap izinkan masuk
         if (this.user?.role) {
@@ -129,14 +132,14 @@ export const useAuthStore = defineStore('auth', {
 
     async registerUser(payload) {
       const res = await api.registerUser(payload);
-      this.setSession(res);
-      return this.user;
+      if (res?.token) this.setSession(res);
+      return res;
     },
 
     async registerBase(payload) {
       const res = await api.registerBase(payload);
-      this.setSession(res);
-      return this.user;
+      if (res?.token) this.setSession(res);
+      return res;
     },
 
     /** Refresh the cached profile from the backend. */
@@ -161,9 +164,70 @@ export const useAuthStore = defineStore('auth', {
       return this.user;
     },
 
+    /** Jadwalkan logout otomatis tepat saat `exp` JWT terlewati. */
+    scheduleSessionExpiry(token = this.token) {
+      if (expiryTimer) {
+        clearTimeout(expiryTimer);
+        expiryTimer = null;
+      }
+      if (!token || typeof window === 'undefined') return;
+
+      const expiry = getTokenExpiry(token);
+      if (!expiry) {
+        this.expireSession('expired');
+        return;
+      }
+
+      const delay = expiry - Date.now();
+      if (delay <= 0) {
+        this.expireSession('expired');
+        return;
+      }
+
+      // setTimeout dibatasi ±24,8 hari; JWT kita hanya 1 hari.
+      expiryTimer = window.setTimeout(() => {
+        expiryTimer = null;
+        if (this.token === token) this.expireSession('expired');
+      }, Math.min(delay, 2_147_483_647));
+    },
+
+    /** Dipanggil App saat mount: cek token tersimpan + muat profil terbaru. */
+    async startSessionWatch() {
+      if (!this.token) return;
+      if (isTokenExpired(this.token)) {
+        this.expireSession('expired');
+        return;
+      }
+      this.scheduleSessionExpiry(this.token);
+      try {
+        await this.fetchMe();
+      } catch {
+        // 401/403 ditangani listener global di App.vue.
+      }
+    },
+
+    /** Akhiri sesi lokal lalu beri tahu App untuk mengarahkan ke login. */
+    expireSession(reason = 'expired') {
+      this.clearSession();
+      try {
+        localStorage.setItem('fess_session_reason', reason);
+      } catch {
+        // ignore
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('auth:session-ended', { detail: { reason } })
+        );
+      }
+    },
+
     clearSession() {
       this.user = null;
       this.token = null;
+      if (expiryTimer) {
+        clearTimeout(expiryTimer);
+        expiryTimer = null;
+      }
       try {
         localStorage.removeItem('fess_user');
         localStorage.removeItem('fess_token');

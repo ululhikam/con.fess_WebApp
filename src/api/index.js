@@ -33,6 +33,13 @@ export const api = {
   verifyResetOtp: (payload) => client.post('/auth/verify-reset-otp', payload),
   resetPassword: (payload) => client.post('/auth/reset-password', payload),
 
+  /* AUTH — verifikasi email akun via OTP (tanpa sesi login) */
+  verifyEmail: (payload) => client.post('/auth/email-verification/verify', payload),
+  resendEmailVerification: (payload) =>
+    client.post('/auth/email-verification/resend', payload),
+  changeVerificationEmail: (payload) =>
+    client.post('/auth/email-verification/change-email', payload),
+
   /* BASES */
   getBases: (params) => client.get('/bases', { params }),
   getBase: (handle) => client.get(`/bases/${encodeURIComponent(handle)}`),

@@ -17,6 +17,9 @@
       :value="modelValue"
       :placeholder="placeholder"
       :autocomplete="autocomplete"
+      :inputmode="inputmode"
+      :maxlength="maxlength"
+      :pattern="pattern"
       :required="required"
       :aria-invalid="error ? 'true' : undefined"
       :aria-describedby="error ? `${id}-error` : hint ? `${id}-hint` : undefined"
@@ -47,6 +50,9 @@ defineProps({
   type: { type: String, default: 'text' },
   placeholder: { type: String, default: '' },
   autocomplete: { type: String, default: 'off' },
+  inputmode: { type: String, default: undefined },
+  maxlength: { type: [String, Number], default: undefined },
+  pattern: { type: String, default: undefined },
   required: { type: Boolean, default: false },
   error: { type: String, default: '' },
   hint: { type: String, default: '' },

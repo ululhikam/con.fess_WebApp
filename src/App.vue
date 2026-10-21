@@ -41,11 +41,42 @@ import { useRouter } from 'vue-router';
 import AppStateView from './components/ui/AppStateView.vue';
 import AppDialogHost from './components/ui/AppDialogHost.vue';
 import { useBases } from './composables/useBases';
-
+import { useAuthStore } from './stores/authStore';
+import { saveVerification } from './utils/emailVerification';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const isNavigating = ref(false);
 const fatalError = ref(null);
+
+function goToLogin(reason = 'expired') {
+  if (router.currentRoute.value.name === 'Login') return;
+  router.push({ name: 'Login', query: { reason } });
+}
+
+function handleSessionEnded(event) {
+  authStore.clearSession();
+  goToLogin(event?.detail?.reason || 'expired');
+}
+
+function handleEmailUnverified(event) {
+  const { ticket, email } = event?.detail || {};
+  // clearSession mengosongkan sessionStorage, jadi simpan ticket setelahnya.
+  authStore.clearSession();
+  // Ticket dari 403 belum tentu disertai email OTP; halaman verifikasi akan
+  // mengirim ulang sekali secara otomatis.
+  if (ticket && email) saveVerification({ ticket, email, needs_send: true });
+  router.push({ name: 'VerifyEmail' });
+}
+
+function handleStorage(event) {
+  // Hanya tab yang benar-benar punya sesi yang perlu dikeluarkan. Tab lain
+  // yang sedang di halaman verifikasi tidak boleh kehilangan ticket-nya.
+  if (event.key === 'fess_token' && !event.newValue && authStore.token) {
+    authStore.clearSession();
+    goToLogin('logged_out');
+  }
+}
 
 /**
  * `from.name` is undefined on the very first navigation, so the progress bar
@@ -72,6 +103,16 @@ function reload() {
 }
 
 onMounted(() => {
+  window.addEventListener('auth:session-ended', handleSessionEnded);
+  window.addEventListener('auth:email-unverified', handleEmailUnverified);
+  window.addEventListener('storage', handleStorage);
+
+  /**
+   * Cek exp JWT tersimpan, jadwalkan auto-logout, lalu segarkan profil.
+   * Listener dipasang lebih dulu agar 401/403 dari fetchMe ikut tertangani.
+   */
+  authStore.startSessionWatch();
+
   /**
    * Warm caches as early as possible so every page finds data already loaded.
    * Both fetches are silent (no loading spinner) and errors are swallowed —
@@ -85,6 +126,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopBefore();
   stopAfter();
+  window.removeEventListener('auth:session-ended', handleSessionEnded);
+  window.removeEventListener('auth:email-unverified', handleEmailUnverified);
+  window.removeEventListener('storage', handleStorage);
 });
 </script>
 

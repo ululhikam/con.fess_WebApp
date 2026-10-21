@@ -61,7 +61,6 @@
           v-model="form.email"
           label="Email Admin Base"
           type="email"
-          placeholder="admin@namabase.id"
           autocomplete="email"
           required
           :error="errors.email"
@@ -73,7 +72,6 @@
           v-model="form.password"
           label="Kata Sandi"
           type="password"
-          placeholder="Minimal 8 karakter"
           autocomplete="new-password"
           required
           hint="Minimal 8 karakter"
@@ -102,7 +100,6 @@
           v-model="form.confirmPassword"
           label="Konfirmasi Kata Sandi"
           type="password"
-          placeholder="Ketik ulang kata sandi Anda"
           autocomplete="new-password"
           required
           :error="errors.confirmPassword"
@@ -238,7 +235,7 @@
         <!-- Foto Profil Base Picker -->
         <div class="base-avatar-picker-group">
           <div class="base-avatar-picker-head">
-            <label class="form-label mb-0">Foto Profil Base</label>
+            <label class="form-label mb-0">Foto Profil Base (opsional)</label>
             <label class="btn-upload-file-pill">
               <Upload :size="12" />
               <span>Upload Gambar</span>
@@ -286,7 +283,6 @@
           id="base-name"
           v-model="form.name"
           label="Nama Base"
-          placeholder="contoh: Code & Memes Base"
           required
           :error="errors.name"
           @blur="validateName"
@@ -297,7 +293,6 @@
           id="base-handle"
           v-model="form.handle"
           label="Username Base"
-          placeholder="contoh: @codememfess"
           required
           hint="Format handle diawali tanda @"
           :error="errors.handle"
@@ -312,7 +307,6 @@
             v-model="form.bio"
             rows="2"
             class="form-textarea"
-            placeholder="Tuliskan deskripsi base, aturan kirim, dan topik yang diperbolehkan..."
           ></textarea>
         </div>
 
@@ -324,7 +318,7 @@
           <button type="submit" class="btn-submit-lime" :disabled="isSubmitting">
             <Loader2 v-if="isSubmitting" class="spin" :size="16" />
             <template v-else>
-              <span>SELESAI &amp; MASUK</span>
+              <span>SELESAI &amp; VERIFIKASI EMAIL</span>
               <ArrowRight :size="16" />
             </template>
           </button>
@@ -367,6 +361,8 @@ import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
 import { googleAuthUrl, instagramAuthUrl } from '../api';
+import { avatarPreset, fileToAvatarDataUrl, isAvatarImage } from '../utils/avatar';
+import { saveVerification, verificationRoute } from '../utils/emailVerification';
 
 const router = useRouter();
 const route = useRoute();
@@ -395,23 +391,11 @@ function selectAvatarPreset(preset) {
   avatarError.value = false;
 }
 
-/** Preset avatar lokal (SVG) — tidak bergantung pada layanan gambar eksternal. */
-function avatarPreset(from, to) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>
-    <rect width="160" height="160" fill="url(#g)"/>
-    <circle cx="48" cy="42" r="30" fill="rgba(255,255,255,.22)"/>
-    <circle cx="126" cy="128" r="54" fill="rgba(0,0,0,.16)"/>
-    <path d="M0 120 Q42 92 84 120 T160 120 V160 H0 Z" fill="rgba(255,255,255,.12)"/>
-  </svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 const BASE_AVATAR_PRESETS = [
-  avatarPreset('#0055FF', '#00B2FF'),
-  avatarPreset('#7000FF', '#FF3CAC'),
-  avatarPreset('#00A86B', '#B4FF39'),
-  avatarPreset('#FF5A1F', '#FFB800'),
+  avatarPreset('#0055FF', '#00B2FF', ''),
+  avatarPreset('#7000FF', '#FF3CAC', ''),
+  avatarPreset('#00A86B', '#B4FF39', ''),
+  avatarPreset('#FF5A1F', '#FFB800', ''),
 ];
 
 const form = reactive({
@@ -421,19 +405,22 @@ const form = reactive({
   igAccount: '',
   name: '',
   handle: '',
-  avatar: BASE_AVATAR_PRESETS[0],
+  avatar: '',
   bio: '',
 });
 
-function handleAvatarFileSelect(e) {
+async function handleAvatarFileSelect(e) {
   const file = e.target.files?.[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    form.avatar = event.target.result;
+  errors.submit = '';
+  try {
+    form.avatar = await fileToAvatarDataUrl(file);
     avatarError.value = false;
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    errors.submit = err?.message || 'Gagal memproses foto profil.';
+  } finally {
+    e.target.value = '';
+  }
 }
 
 const errors = reactive({
@@ -558,12 +545,12 @@ async function handleCompleteRegister() {
   errors.submit = '';
   try {
     const cleanHandle = form.handle.startsWith('@') ? form.handle : `@${form.handle}`;
-    await authStore.registerBase({
+    const result = await authStore.registerBase({
       email: form.email,
       password: form.password,
       name: form.name.trim(),
       handle: cleanHandle.trim(),
-      avatar: /^https?:\/\//.test(form.avatar || '') ? form.avatar : null,
+      avatar: isAvatarImage(form.avatar) ? form.avatar : null,
       bio: form.bio.trim(),
       igAccount: igConnected.value && form.igAccount.trim() ? form.igAccount.trim() : null,
     });
@@ -574,7 +561,13 @@ async function handleCompleteRegister() {
       // Ignored
     }
 
-    // Langsung diarahkan ke Home Admin Base!
+    if (result?.requires_email_verification) {
+      saveVerification(result);
+      await router.push(verificationRoute(result));
+      return;
+    }
+
+    // Fallback jika backend sudah mengembalikan sesi langsung.
     await router.push('/base-admin');
   } catch (err) {
     errors.submit = err.message || 'Terjadi kesalahan saat pendaftaran';

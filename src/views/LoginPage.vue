@@ -66,6 +66,10 @@
         </template>
       </FormField>
 
+      <p v-if="sessionNotice" class="form-alert" role="status">
+        {{ sessionNotice }}
+      </p>
+
       <p v-if="submitError" class="form-alert" role="alert">
         {{ submitError }}
       </p>
@@ -156,6 +160,7 @@ import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
 import { useValidatedForm, rules } from '../composables/useValidatedForm';
 import { googleAuthUrl } from '../api';
+import { saveVerification, verificationRoute } from '../utils/emailVerification';
 
 const ROLES = ['User', 'Base Admin'];
 
@@ -165,6 +170,13 @@ const authStore = useAuthStore();
 const selectedRole = ref('User');
 /** Local submitting flag — avoids spinner stuck during async route transition. */
 const isSubmitting = ref(false);
+
+const sessionNotice = computed(() => {
+  const reason = route.query.reason;
+  if (reason === 'expired') return 'Sesi kamu berakhir karena masa berlaku login habis. Silakan masuk kembali.';
+  if (reason === 'logged_out') return 'Kamu sudah keluar dari akun ini.';
+  return '';
+});
 
 /**
  * Return the user to the page that triggered the login, but only allow
@@ -241,14 +253,21 @@ async function handleLogin() {
   if (isSubmitting.value) return;
   isSubmitting.value = true;
   try {
-    const ok = await form.submit((values) =>
+    const result = await form.submit((values) =>
       authStore.login({
         identifier: values.identifier,
         password: values.password,
         role: selectedRole.value,
       }),
     );
-    if (ok) await redirectRole(selectedRole.value);
+
+    if (result?.requires_email_verification) {
+      saveVerification(result);
+      await router.push(verificationRoute(result));
+      return;
+    }
+
+    if (result?.token) await redirectRole(result.user?.role || selectedRole.value);
   } catch {
     // Errors surfaced via form.submitError
   } finally {
@@ -269,6 +288,7 @@ const googleError = ref('');
 const GOOGLE_ERROR_MESSAGES = {
   google_failed: 'Login Google dibatalkan atau akun tidak diizinkan.',
   google_not_configured: 'Login Google belum dikonfigurasi di server.',
+  email_verification_failed: 'Verifikasi email gagal dimulai. Coba masuk kembali.',
 };
 
 /**

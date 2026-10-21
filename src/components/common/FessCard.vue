@@ -9,7 +9,13 @@
         @click="navigateToAuthor(post)"
       >
         <div class="avatar-circle" :style="{ background: post.avatarBg || '#252a3a' }">
-          <img v-if="post.avatarImg" :src="post.avatarImg" alt="" class="avatar-img" />
+          <img
+            v-if="post.avatarImg && !avatarFailed"
+            :src="post.avatarImg"
+            alt=""
+            class="avatar-img"
+            @error="avatarFailed = true"
+          />
           <span v-else-if="post.avatarText" class="avatar-initial">{{ post.avatarText }}</span>
           <UserRound v-else :size="15" class="avatar-icon" />
         </div>
@@ -630,6 +636,15 @@ const statusBadgeClass = computed(() => {
 /* 1. LIKE STATE */
 const isLiked = ref(props.post.isLiked || false);
 const likesCount = ref(props.post.likes ?? 0);
+
+/** Jika URL/data-URI avatar rusak, tampilkan inisial alih-alih gambar kosong. */
+const avatarFailed = ref(false);
+watch(
+  () => props.post?.avatarImg,
+  () => {
+    avatarFailed.value = false;
+  }
+);
 
 function toggleLike() {
   isLiked.value = !isLiked.value;

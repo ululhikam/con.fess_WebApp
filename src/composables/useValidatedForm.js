@@ -102,7 +102,8 @@ export function useValidatedForm(schema, options = {}) {
 
   /**
    * @param {(values: object) => Promise<any>|any} handler
-   * @returns {Promise<boolean>} whether the submit succeeded
+   * @returns {Promise<boolean|any>} handler result, or `true` when it returns nothing.
+   *   Callers that only need success/failure can keep using it as a boolean.
    */
   async function submit(handler) {
     submitError.value = null;
@@ -112,9 +113,9 @@ export function useValidatedForm(schema, options = {}) {
 
     submitting.value = true;
     try {
-      await handler({ ...values });
+      const result = await handler({ ...values });
       if (clearOnSuccess) reset();
-      return true;
+      return result === undefined ? true : result;
     } catch (err) {
       submitError.value = err?.message || 'Terjadi kesalahan. Coba lagi.';
       return false;

@@ -60,7 +60,6 @@
           v-model="form.email"
           label="Alamat Email"
           type="email"
-          placeholder="nama@email.com"
           autocomplete="email"
           required
           :error="errors.email"
@@ -73,7 +72,6 @@
           v-model="form.password"
           label="Kata Sandi"
           type="password"
-          placeholder="Minimal 8 karakter"
           autocomplete="new-password"
           required
           :error="errors.password"
@@ -102,7 +100,6 @@
           v-model="form.confirmPassword"
           label="Konfirmasi Kata Sandi"
           type="password"
-          placeholder="Ketik ulang kata sandi Anda"
           autocomplete="new-password"
           required
           :error="errors.confirmPassword"
@@ -178,7 +175,7 @@
         <!-- Foto Profil Avatar Selector -->
         <div class="user-avatar-picker-group">
           <div class="user-avatar-picker-head">
-            <label class="form-label mb-0">Pilih / Upload Foto Profil</label>
+            <label class="form-label mb-0">Foto Profil (opsional)</label>
             <label class="btn-upload-file-pill">
               <Upload :size="12" />
               <span>Upload Gambar</span>
@@ -193,7 +190,14 @@
 
           <div class="user-avatar-center mt-2">
             <div class="user-avatar-ring">
-              <img :src="form.avatar" alt="Preview Foto Profil" class="user-avatar-img" />
+              <img
+                v-if="form.avatar && !avatarError"
+                :src="form.avatar"
+                alt="Preview Foto Profil"
+                class="user-avatar-img"
+                @error="avatarError = true"
+              />
+              <span v-else class="user-avatar-initials" aria-hidden="true">{{ avatarInitials }}</span>
             </div>
           </div>
 
@@ -204,7 +208,7 @@
               type="button"
               class="btn-avatar-preset"
               :class="{ active: form.avatar === preset }"
-              @click="form.avatar = preset"
+              @click="selectAvatarPreset(preset)"
             >
               <img :src="preset" :alt="`Pilihan Avatar ${i+1}`" />
             </button>
@@ -216,7 +220,6 @@
           id="user-full-name"
           v-model="form.name"
           label="Nama Lengkap / Nama Panggilan"
-          placeholder="contoh: Alex Pratama"
           autocomplete="name"
           required
           :error="errors.name"
@@ -228,7 +231,6 @@
           id="user-handle"
           v-model="form.handle"
           label="Username / Handle Pengguna"
-          placeholder="contoh: @alex_reader"
           autocomplete="username"
           required
           :hint="handleHint"
@@ -244,7 +246,6 @@
             v-model="form.bio"
             rows="2"
             class="form-textarea"
-            placeholder="Tulis bio singkat tentang minat, kepribadian, atau hobi Anda..."
           ></textarea>
         </div>
 
@@ -262,7 +263,7 @@
           <button type="submit" class="btn-submit-user" :disabled="isSubmitting">
             <Loader2 v-if="isSubmitting" class="spin" :size="16" aria-hidden="true" />
             <template v-else>
-              <span>SELESAI &amp; MASUK KE HOME</span>
+              <span>SELESAI &amp; VERIFIKASI EMAIL</span>
               <ArrowRight :size="15" aria-hidden="true" />
             </template>
           </button>
@@ -302,13 +303,15 @@ import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
 import { googleAuthUrl } from '../api';
+import { avatarPreset, fileToAvatarDataUrl, isAvatarImage } from '../utils/avatar';
+import { saveVerification, verificationRoute } from '../utils/emailVerification';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 
 const currentStep = ref(1);
-const agreeTerms = ref(true);
+const agreeTerms = ref(false);
 const termsError = ref('');
 const isSubmitting = ref(false);
 
@@ -318,32 +321,48 @@ const USER_STEPS = [
 ];
 
 const USER_AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+  avatarPreset('#2563eb', '#7c3aed', 'A'),
+  avatarPreset('#0f766e', '#22c55e', 'B'),
+  avatarPreset('#be123c', '#f97316', 'C'),
+  avatarPreset('#7c3aed', '#ec4899', 'D'),
+  avatarPreset('#1d4ed8', '#0ea5e9', 'E'),
+  avatarPreset('#b45309', '#facc15', 'F'),
 ];
 
 const form = reactive({
   email: '',
   password: '',
   confirmPassword: '',
-  name: 'Alex Pratama',
-  handle: '@alex_reader',
-  avatar: USER_AVATAR_PRESETS[0],
-  bio: 'Secret sender & casual reader di Fess n Curious.',
+  name: '',
+  handle: '',
+  avatar: '',
+  bio: '',
 });
 
-function handleAvatarFileSelect(e) {
+const avatarError = ref(false);
+
+const avatarInitials = computed(() => {
+  const source = form.name || form.handle?.replace(/^@/, '') || 'U';
+  return source.trim().slice(0, 2).toUpperCase() || 'U';
+});
+
+async function handleAvatarFileSelect(e) {
   const file = e.target.files?.[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    form.avatar = event.target.result;
-  };
-  reader.readAsDataURL(file);
+  errors.submit = '';
+  try {
+    form.avatar = await fileToAvatarDataUrl(file);
+    avatarError.value = false;
+  } catch (err) {
+    errors.submit = err?.message || 'Gagal memproses foto profil.';
+  } finally {
+    e.target.value = '';
+  }
+}
+
+function selectAvatarPreset(preset) {
+  form.avatar = preset;
+  avatarError.value = false;
 }
 
 const errors = reactive({
@@ -475,16 +494,22 @@ async function handleCompleteRegister() {
 
   try {
     const cleanHandle = form.handle.startsWith('@') ? form.handle : `@${form.handle}`;
-    await authStore.registerUser({
+    const result = await authStore.registerUser({
       username: form.name.trim(),
       handle: cleanHandle.trim(),
       email: form.email.trim(),
       password: form.password,
-      avatar: /^https?:\/\//.test(form.avatar || '') ? form.avatar : null,
+      avatar: isAvatarImage(form.avatar) ? form.avatar : null,
       bio: form.bio.trim(),
     });
 
-    // Langsung diarahkan ke home/feed
+    if (result?.requires_email_verification) {
+      saveVerification(result);
+      await router.push(verificationRoute(result));
+      return;
+    }
+
+    // Fallback jika backend sudah mengembalikan sesi langsung.
     await router.push(safeRedirect() ?? '/feed');
   } catch (err) {
     errors.submit = err.message || 'Terjadi kesalahan saat pendaftaran';
@@ -704,6 +729,19 @@ async function handleCompleteRegister() {
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-surface);
+}
+
+.user-avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-surface);
+  color: var(--brand-blue);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
 .avatar-preset-chips {
