@@ -1258,6 +1258,78 @@ const showInstagramModal = ref(false);
 const igPostLoading = ref(false);
 const igPostData = ref(null);
 
+/**
+ * Polling ringan status IG selama masih processing/pending. Endpoint khusus
+ * ini tidak memuat komentar, jadi badge bisa berubah tanpa refresh halaman.
+ */
+const IG_STATUS_POLL_MS = 3500;
+const IG_STATUS_POLL_MAX_MS = 5 * 60_000;
+let igStatusPollTimer = null;
+let igStatusPolling = false;
+let igStatusPollStartedAt = 0;
+
+function stopIgStatusPoll() {
+  if (igStatusPollTimer) {
+    clearInterval(igStatusPollTimer);
+    igStatusPollTimer = null;
+  }
+}
+
+async function pollIgStatus() {
+  if (igStatusPolling || document.hidden) return;
+
+  const postId = props.post?.id;
+  if (!postId || !['processing', 'pending'].includes(props.post?.igStatus)) {
+    stopIgStatusPoll();
+    return;
+  }
+  if (Date.now() - igStatusPollStartedAt > IG_STATUS_POLL_MAX_MS) {
+    stopIgStatusPoll();
+    return;
+  }
+
+  igStatusPolling = true;
+  try {
+    const res = await api.getFessIgStatus(String(postId));
+    const data = res?.data || res;
+    if (!data || String(data.id) !== String(props.post?.id)) return;
+
+    if (data.ig_status) props.post.igStatus = data.ig_status;
+    if (typeof data.posted_to_ig === 'boolean') props.post.postedToIg = data.posted_to_ig;
+    if (data.ig_attempts != null) props.post.igAttempts = Number(data.ig_attempts) || 0;
+    if (data.ig_updated_at !== undefined) props.post.igUpdatedAt = data.ig_updated_at;
+    // Detail error hanya dikirim backend untuk admin pengelola base.
+    if (Object.prototype.hasOwnProperty.call(data, 'ig_error')) {
+      props.post.igError = data.ig_error || null;
+    }
+  } catch {
+    // Biarkan interval berikutnya mencoba lagi.
+  } finally {
+    igStatusPolling = false;
+    if (!['processing', 'pending'].includes(props.post?.igStatus)) {
+      stopIgStatusPoll();
+    }
+  }
+}
+
+function startIgStatusPoll() {
+  if (igStatusPollTimer) return;
+  igStatusPollStartedAt = Date.now();
+  igStatusPollTimer = setInterval(pollIgStatus, IG_STATUS_POLL_MS);
+}
+
+watch(
+  () => [props.post?.id, props.post?.igStatus, props.post?.postedToIg],
+  ([id, status, posted], [previousId] = []) => {
+    if (id !== previousId) stopIgStatusPoll();
+    if (!posted && ['processing', 'pending'].includes(status)) startIgStatusPoll();
+    else stopIgStatusPoll();
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(stopIgStatusPoll);
+
 /** Daftar gambar card hasil render (1 gambar = feed biasa, >1 = carousel). */
 const igCardUrls = computed(() => {
   const raw = igPostData.value?.image_urls || igPostData.value?.imageUrls || [];

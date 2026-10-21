@@ -55,6 +55,7 @@ export const api = {
   /* FESSES */
   getFesses: (params) => client.get('/fesses', { params }),
   getFess: (id) => client.get(`/fesses/${id}`),
+  getFessIgStatus: (id) => client.get(`/fesses/${id}/instagram-status`),
   createFess: (payload) => client.post('/fesses', payload),
   voteFess: (id, type) => client.post(`/fesses/${id}/vote`, { type }),
   approveFess: (id) => client.post(`/fesses/${id}/approve`),
