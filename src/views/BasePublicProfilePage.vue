@@ -581,6 +581,10 @@ async function loadBase() {
     fessesError.value = null;
   }
 
+  // Profil dan daftar fess tidak saling bergantung. Jalankan bersamaan agar
+  // pengguna tidak menunggu GET /bases/:handle selesai sebelum fess dimuat.
+  loadBaseFesses(requestId, !cachedFesses, handle);
+
   try {
     const res = await api.getBase(handle);
     if (requestId !== baseRequestId) return;
@@ -588,7 +592,6 @@ async function loadBase() {
     baseData.value = mapped;
     profileCache.set(cacheKey, mapped);
     document.title = `${mapped.name} (${mapped.handle}) · Fess n Curious`;
-    loadBaseFesses(requestId, !cachedFesses);
   } catch (e) {
     if (requestId !== baseRequestId) return;
     if (!cachedBase) {
@@ -600,8 +603,8 @@ async function loadBase() {
   }
 }
 
-async function loadBaseFesses(requestId = baseRequestId, showLoading = true) {
-  const handle = apiHandle(baseData.value?.handle);
+async function loadBaseFesses(requestId = baseRequestId, showLoading = true, handleOverride = '') {
+  const handle = apiHandle(handleOverride || baseData.value?.handle || cleanHandle.value);
   if (!handle) return;
   const cacheKey = handle.toLowerCase();
 

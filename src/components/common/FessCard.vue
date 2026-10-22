@@ -1301,7 +1301,8 @@ const igPostData = ref(null);
  * Polling ringan status IG selama masih processing/pending. Endpoint khusus
  * ini tidak memuat komentar, jadi badge bisa berubah tanpa refresh halaman.
  */
-const IG_STATUS_POLL_MS = 3500;
+// 8 detik: beberapa kartu processing berbagi rate limit 60 req/menit/IP.
+const IG_STATUS_POLL_MS = 8000;
 const IG_STATUS_POLL_MAX_MS = 5 * 60_000;
 let igStatusPollTimer = null;
 let igStatusPolling = false;

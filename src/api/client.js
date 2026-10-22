@@ -35,9 +35,14 @@ function buildUrl(base, path, params) {
   return url.toString();
 }
 
-/** Default headers for every request. */
-function defaultHeaders(token) {
-  const h = { 'Content-Type': 'application/json' };
+/**
+ * Default headers for every request.
+ * `Content-Type: application/json` hanya dikirim bila memang ada body.
+ * Header itu memicu CORS preflight pada GET; tanpa body, preflight tidak perlu.
+ */
+function defaultHeaders(token, hasBody = false) {
+  const h = { Accept: 'application/json' };
+  if (hasBody) h['Content-Type'] = 'application/json';
   if (token) h.Authorization = `Bearer ${token}`;
   return h;
 }
@@ -85,15 +90,17 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
     const { params, data, headers: extraHeaders = {}, signal, raw = false } = options;
     const token = getToken();
     const url = buildUrl(baseUrl, path, params);
+    const methodUpper = method.toUpperCase();
+    const hasBody = data !== undefined;
 
     const res = await fetch(url, {
-      method: method.toUpperCase(),
-      headers: { ...defaultHeaders(token), ...extraHeaders },
-      body: data !== undefined ? JSON.stringify(data) : undefined,
+      method: methodUpper,
+      headers: { ...defaultHeaders(token, hasBody), ...extraHeaders },
+      body: hasBody ? JSON.stringify(data) : undefined,
       signal,
       credentials: 'include',
       // Reuse TCP/TLS connections across sequential requests (GET only)
-      keepalive: method.toUpperCase() === 'GET',
+      keepalive: methodUpper === 'GET',
     });
 
     if (!res.ok) {

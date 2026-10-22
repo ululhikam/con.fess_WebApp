@@ -44,7 +44,6 @@ import { useRouter } from 'vue-router';
 import AppStateView from './components/ui/AppStateView.vue';
 import AppDialogHost from './components/ui/AppDialogHost.vue';
 import AppToastHost from './components/ui/AppToastHost.vue';
-import { useBases } from './composables/useBases';
 import { toast } from './composables/useToast';
 import { useAuthStore } from './stores/authStore';
 import { saveVerification } from './utils/emailVerification';
@@ -125,13 +124,8 @@ onMounted(() => {
    */
   authStore.startSessionWatch();
 
-  /**
-   * Warm caches as early as possible so every page finds data already loaded.
-   * Both fetches are silent (no loading spinner) and errors are swallowed —
-   * pages handle their own loading/error states.
-   */
-  const { ensureLoaded } = useBases();
-  ensureLoaded().catch(() => {});
+  // Direktori base dimuat oleh halaman yang benar-benar membutuhkannya
+  // (feed, landing, admin, composer) lewat cache modul useBases.
 });
 
 

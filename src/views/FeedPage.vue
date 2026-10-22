@@ -162,6 +162,15 @@ const {
 const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
 const { followedHandles, isFollowing, toggleFollowBase, syncFollowing } = useFollowBase();
 
+let followingSynced = false;
+function ensureFollowingSynced() {
+  if (followingSynced || !authStore.isAuthenticated) return;
+  followingSynced = true;
+  syncFollowing().catch(() => {
+    followingSynced = false;
+  });
+}
+
 async function handleToggleFollow(handle) {
   const name = String(handle || '').startsWith('@') ? String(handle) : `@${handle}`;
   if (!authStore.isAuthenticated) {
@@ -239,6 +248,9 @@ useVisibilityRefresh(() => {
 
 function onNavChange(key) {
   activeNav.value = key;
+  // Daftar base yang diikuti hanya dibutuhkan di tab pencarian/profil.
+  // Muat saat tab itu dibuka, bukan menambah satu request di awal feed.
+  if (key !== 'home') ensureFollowingSynced();
   router.replace({
     query: key === 'home' ? {} : { ...route.query, tab: key },
   });
@@ -363,7 +375,8 @@ onMounted(() => {
   // feed lama langsung tampil dan refresh terjadi senyap di belakang.
   ensureFeedLoaded().catch(() => {});
   ensureBasesLoaded().catch(() => {});
-  syncFollowing();
+  // Jika app dibuka langsung di tab non-home, status follow langsung disiapkan.
+  if (activeNav.value !== 'home') ensureFollowingSynced();
   notif.startPolling();
 
   // Background polling setiap 25 detik untuk update kilat ala Instagram/X
