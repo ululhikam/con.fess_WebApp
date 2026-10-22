@@ -13,16 +13,6 @@
       </button>
     </Transition>
 
-    <!-- Global Feed Toast Notification -->
-    <Transition name="toast-slide">
-      <div v-if="toastMessage" class="feed-toast" role="status">
-        <CheckCircle2 v-if="toastType === 'success'" :size="16" class="toast-icon success" />
-        <Clock v-else-if="toastType === 'pending'" :size="16" class="toast-icon pending" />
-        <AlertCircle v-else :size="16" class="toast-icon error" />
-        <span>{{ toastMessage }}</span>
-      </div>
-    </Transition>
-
     <main class="app-main-centered-stage">
       <div class="centered-content-wrapper">
         <!-- Tab memakai KeepAlive: state (daftar, notifikasi, hasil pencarian)
@@ -59,7 +49,7 @@
             :categories="FEED_CATEGORIES"
             :loading="loading"
             :is-following="isFollowing"
-            @toggle-follow="toggleFollowBase"
+            @toggle-follow="handleToggleFollow"
           />
 
           <ActivityTab
@@ -113,8 +103,9 @@
  */
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { ArrowUp, CheckCircle2, Clock, AlertCircle } from 'lucide-vue-next';
+import { ArrowUp } from 'lucide-vue-next';
 import { api } from '../api';
+import { toast } from '../composables/useToast';
 
 import BottomNavBar from '../components/layout/BottomNavBar.vue';
 import FeedHomeTab from '../components/feed/FeedHomeTab.vue';
@@ -170,6 +161,23 @@ const {
 } = useFeedPosts();
 const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
 const { followedHandles, isFollowing, toggleFollowBase, syncFollowing } = useFollowBase();
+
+async function handleToggleFollow(handle) {
+  const name = String(handle || '').startsWith('@') ? String(handle) : `@${handle}`;
+  if (!authStore.isAuthenticated) {
+    toast.info('Masuk dulu untuk mengikuti base ini.');
+    router.push({ path: '/login', query: { redirect: route.fullPath } });
+    return;
+  }
+  try {
+    const nowFollowing = await toggleFollowBase(name);
+    toast.success(
+      nowFollowing ? `Berhasil mengikuti ${name}` : `Berhenti mengikuti ${name}`,
+    );
+  } catch {
+    toast.error('Gagal memperbarui status ikuti. Coba lagi.');
+  }
+}
 
 /** Adapter: FessCard emits a payload object, toggleLike takes an id. */
 function handleLike(payload) {
@@ -280,17 +288,8 @@ function loadMoreHome() {
 }
 
 /* ---------- global toast notification ---------- */
-const toastMessage = ref('');
-const toastType = ref('success');
-let toastTimer = null;
-
-function showFeedToast(msg, type = 'success', duration = 3500) {
-  clearTimeout(toastTimer);
-  toastMessage.value = msg;
-  toastType.value = type;
-  toastTimer = setTimeout(() => {
-    toastMessage.value = '';
-  }, duration);
+function showFeedToast(message, type = 'success', duration) {
+  toast.show(message, { type, duration });
 }
 
 // Respon otomatis saat user kembali dari halaman Buat Fess
@@ -373,7 +372,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(autoPollTimer);
-  clearTimeout(toastTimer);
   notif.stopPolling();
 });
 
@@ -468,41 +466,6 @@ async function handleLogout() {
   box-shadow: 0 6px 24px rgba(0, 85, 255, 0.65);
 }
 
-/* FEED TOAST */
-.feed-toast {
-  position: fixed;
-  bottom: 96px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 300;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 90vw;
-  width: max-content;
-  padding: 11px 18px;
-  background: var(--shell-card, #131722);
-  border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.12));
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  color: var(--shell-text, #fff);
-  font-size: 13px;
-  font-weight: 600;
-  backdrop-filter: blur(12px);
-}
-
-.toast-icon.success {
-  color: #10b981;
-}
-
-.toast-icon.pending {
-  color: #f59e0b;
-}
-
-.toast-icon.error {
-  color: #ef4444;
-}
-
 /* TRANSITIONS */
 .fade-slide-down-enter-active,
 .fade-slide-down-leave-active {
@@ -514,13 +477,4 @@ async function handleLogout() {
   transform: translateX(-50%) translateY(-14px);
 }
 
-.toast-slide-enter-active,
-.toast-slide-leave-active {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.toast-slide-enter-from,
-.toast-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(14px);
-}
 </style>

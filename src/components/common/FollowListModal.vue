@@ -121,6 +121,7 @@
 import { ref, computed, watch } from 'vue';
 import { X, Search, Users, UserCheck } from 'lucide-vue-next';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { useFollowBase } from '../../composables/useFollowBase';
 
 const props = defineProps({
@@ -254,9 +255,11 @@ async function unfollow(item) {
     if (!nowFollowing) {
       bases.value = bases.value.filter((b) => b.id !== item.id);
       emit('changed');
+      toast.success(`Berhenti mengikuti ${item.handle}`);
     }
   } catch (e) {
     error.value = 'Gagal berhenti mengikuti. Periksa koneksi lalu coba lagi.';
+    toast.error(error.value);
   } finally {
     busyId.value = null;
   }

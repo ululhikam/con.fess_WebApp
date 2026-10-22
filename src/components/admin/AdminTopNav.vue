@@ -61,6 +61,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { Shield, ShieldAlert, LayoutDashboard, LogOut } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
+import { toast } from '../../composables/useToast';
 
 defineProps({
   /** 'base-admin' | 'super-admin' — which pill is highlighted. */
@@ -73,8 +74,9 @@ const router = useRouter();
 
 const isSuperAdmin = computed(() => authStore.isSuperAdmin);
 
-function logout() {
-  authStore.logout();
+async function logout() {
+  await authStore.logout();
+  toast.success('Kamu telah keluar.');
   router.push('/login');
 }
 </script>

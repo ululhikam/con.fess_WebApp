@@ -11,6 +11,7 @@
 
 import { ref, computed } from 'vue';
 import { api } from '../api';
+import { toast } from './useToast';
 import { mapFessToPost } from '../utils/fessMapper';
 
 /** Rows per page — smaller first load = faster time-to-interactive. */
@@ -241,6 +242,7 @@ export function useFeedPosts() {
       // Rollback on failure
       post.isLiked = wasLiked;
       post.likes += post.isLiked ? 1 : -1;
+      toast.error('Gagal menyimpan like. Coba lagi.');
       throw e;
     }
   }

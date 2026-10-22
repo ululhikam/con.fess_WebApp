@@ -436,14 +436,6 @@
       @openCompose="handleSendFess"
     />
 
-    <!-- Toast Notification -->
-    <Transition name="fade-toast">
-      <div v-if="toastMessage" class="public-toast-bubble">
-        <CheckCircle2 :size="16" class="toast-icon" />
-        <span>{{ toastMessage }}</span>
-      </div>
-    </Transition>
-
     <!-- MODAL DAFTAR FOLLOWER / FOLLOWING (komponen bersama — data real dari server) -->
     <FollowListModal
       v-if="isBaseOwner"
@@ -467,7 +459,6 @@ import {
   ShieldAlert,
   Share2,
   Instagram,
-  CheckCircle2,
   UserPlus,
   UserCheck,
   Send,
@@ -486,7 +477,9 @@ import FollowListModal from '../components/common/FollowListModal.vue';
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
 import { api } from '../api';
+import { toast } from '../composables/useToast';
 import { mapBase } from '../composables/useBases';
+import { copyText } from '../utils/clipboard';
 import { mapFessToPost } from '../utils/fessMapper';
 import { useAuthStore } from '../stores/authStore';
 import { useFollowBase } from '../composables/useFollowBase';
@@ -497,8 +490,6 @@ const authStore = useAuthStore();
 const { isFollowing, toggleFollowBase, syncFollowing } = useFollowBase();
 
 const activeTab = ref('posts');
-const toastMessage = ref('');
-let toastTimer = null;
 
 // Follow Modal State — daftar pengikut & following dimuat oleh komponen
 // FollowListModal dari endpoint real (GET /bases/:handle/followers,
@@ -666,13 +657,18 @@ const isBaseFollowed = computed(() =>
 async function handleToggleFollow() {
   const handle = baseData.value?.handle;
   if (!handle) return;
+  if (!authStore.isAuthenticated) {
+    toast.info('Masuk dulu untuk mengikuti base ini.');
+    router.push({ path: '/login', query: { redirect: route.fullPath } });
+    return;
+  }
   try {
     const nowFollowing = await toggleFollowBase(handle);
-    showToast(
+    toast.success(
       nowFollowing ? `Berhasil mengikuti ${handle}` : `Berhenti mengikuti ${handle}`,
     );
   } catch (e) {
-    showToast('Gagal memperbarui status ikuti. Coba lagi.');
+    toast.error('Gagal memperbarui status ikuti. Coba lagi.');
   }
 }
 
@@ -736,29 +732,21 @@ async function handleShare() {
   }
 
   try {
-    await navigator.clipboard.writeText(url);
-    showToast('Tautan profil base berhasil disalin!');
+    await copyText(url);
+    toast.success('Tautan profil base berhasil disalin!');
   } catch (err) {
-    showToast('Tautan: ' + url);
+    toast.error(`Gagal menyalin tautan. Salin manual: ${url}`, { duration: 8000 });
   }
 }
 
 async function copyHandle() {
   if (!baseData.value) return;
   try {
-    await navigator.clipboard.writeText(baseData.value.handle);
-    showToast(`Handle ${baseData.value.handle} berhasil disalin!`);
+    await copyText(baseData.value.handle);
+    toast.success(`Handle ${baseData.value.handle} berhasil disalin!`);
   } catch (err) {
-    showToast(baseData.value.handle);
+    toast.error(`Gagal menyalin handle: ${baseData.value.handle}`);
   }
-}
-
-function showToast(msg) {
-  toastMessage.value = msg;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toastMessage.value = '';
-  }, 2800);
 }
 
 // Like post — optimistic, reconciled with POST /fesses/:id/vote
@@ -785,6 +773,7 @@ async function handleLikePost({ id, isLiked }) {
       item.isLiked = previous.isLiked;
       item.likes = previous.likes;
     }
+    toast.error('Gagal menyimpan like. Coba lagi.');
   }
 }
 
@@ -1693,42 +1682,6 @@ function handleBottomNavChange(tabKey) {
   max-width: 380px;
   margin: 0;
   line-height: 1.5;
-}
-
-/* TOAST BUBBLE */
-.public-toast-bubble {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 120;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 30px;
-  background: rgba(15, 23, 42, 0.95);
-  color: #f1f5f9;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-}
-
-.toast-icon {
-  color: #10b981;
-}
-
-.fade-toast-enter-active,
-.fade-toast-leave-active {
-  transition: all 0.25s ease;
-}
-
-.fade-toast-enter-from,
-.fade-toast-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 10px);
 }
 
 @media (max-width: 640px) {

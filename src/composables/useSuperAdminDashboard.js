@@ -13,6 +13,7 @@
 
 import { ref, computed, watch, onScopeDispose } from 'vue';
 import { api } from '../api';
+import { toast } from './useToast';
 import { formatNumber } from '../utils/format';
 
 /**
@@ -210,8 +211,10 @@ export function useSuperAdminDashboard() {
     row.on = !row.on;
     try {
       await persistControls(rows.value);
+      toast.success(`${row.title} ${row.on ? 'diaktifkan' : 'dinonaktifkan'}.`);
     } catch {
       row.on = !row.on; // rollback on failure
+      toast.error(`Gagal memperbarui ${row.title.toLowerCase()}. Coba lagi.`);
     }
   }
 
@@ -224,7 +227,9 @@ export function useSuperAdminDashboard() {
       if (!health.value || Number(next) === Number(saved)) return;
       clearTimeout(rateTimer);
       rateTimer = setTimeout(() => {
-        persistControls(rows.value).catch(() => {});
+        persistControls(rows.value)
+          .then(() => toast.success('Batas rate limit tersimpan.', { duration: 2000 }))
+          .catch(() => toast.error('Gagal menyimpan batas rate limit. Coba lagi.'));
       }, 700);
     },
   );

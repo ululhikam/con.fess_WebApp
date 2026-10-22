@@ -30,7 +30,7 @@
           :categories="FEED_CATEGORIES"
           :loading="basesLoading"
           :is-following="isFollowing"
-          @toggle-follow="toggleFollowBase"
+          @toggle-follow="handleToggleFollow"
         />
 
         <!-- 3. NOTIF: Notifikasi Pengelola Base (Sama persis dengan Notif User Biasa) -->
@@ -175,6 +175,7 @@ import { useBases } from '../composables/useBases';
 import { useInfiniteScroll } from '../composables/useInfiniteScroll';
 import { useVisibilityRefresh } from '../composables/useVisibilityRefresh';
 import { alertDialog, confirmDialog } from '../composables/useAppDialog';
+import { toast } from '../composables/useToast';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 
@@ -185,6 +186,18 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const { isFollowing, toggleFollowBase } = useFollowBase();
+
+async function handleToggleFollow(handle) {
+  const name = String(handle || '').startsWith('@') ? String(handle) : `@${handle}`;
+  try {
+    const nowFollowing = await toggleFollowBase(name);
+    toast.success(
+      nowFollowing ? `Berhasil mengikuti ${name}` : `Berhenti mengikuti ${name}`,
+    );
+  } catch {
+    toast.error('Gagal memperbarui status ikuti. Coba lagi.');
+  }
+}
 
 const initialTab = route.query.tab;
 const activeNav = ref(
@@ -310,21 +323,27 @@ async function handleTakeDownFess(id) {
     await reloadHomeFeed();
 
     if (result?.instagram?.status === 'failed') {
+      const message =
+        'Fess sudah dihapus dari FnC, tetapi postingan Instagram belum terhapus otomatis. ' +
+        'Hapus manual dari aplikasi Instagram.' +
+        (result.instagram.detail ? `\n\nDetail: ${result.instagram.detail}` : '');
       await alertDialog({
         title: 'Fess Dihapus, Instagram Belum',
-        message:
-          'Fess sudah dihapus dari FnC, tetapi postingan Instagram belum terhapus otomatis. ' +
-          'Hapus manual dari aplikasi Instagram.' +
-          (result.instagram.detail ? `\n\nDetail: ${result.instagram.detail}` : ''),
+        message,
         variant: 'danger',
       });
+      toast.warning(message, { duration: 8000 });
+    } else {
+      toast.success('Fess berhasil dihapus.');
     }
   } catch (e) {
+    const message = e?.message || 'Gagal melakukan take down. Coba lagi.';
     await alertDialog({
       title: 'Take Down Gagal',
-      message: e?.message || 'Gagal melakukan take down. Coba lagi.',
+      message,
       variant: 'danger',
     });
+    toast.error(message);
   }
 }
 
@@ -444,10 +463,12 @@ async function markAllAdminNotificationsRead() {
   markingAllNotifsRead.value = true;
   try {
     await api.markAllNotificationsRead();
+    toast.success('Semua notifikasi ditandai sudah dibaca.');
   } catch {
     notifItems.value.forEach((n, idx) => {
       n.unread = prev[idx];
     });
+    toast.error('Gagal menandai notifikasi. Coba lagi.');
   } finally {
     markingAllNotifsRead.value = false;
   }
@@ -461,9 +482,11 @@ async function deleteAdminNotification(notif) {
   notifTotal.value = Math.max(0, notifTotal.value - 1);
   try {
     await api.deleteNotification(notif.id);
+    toast.success('Notifikasi dihapus.');
   } catch {
     notifItems.value.splice(idx, 0, removed);
     notifTotal.value += 1;
+    toast.error('Gagal menghapus notifikasi. Coba lagi.');
   }
 }
 

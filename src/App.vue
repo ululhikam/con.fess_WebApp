@@ -32,6 +32,9 @@
 
     <!-- Dialog global bertema app — pengganti alert()/confirm() bawaan browser -->
     <AppDialogHost />
+
+    <!-- Toast global: feedback aksi, selalu di tengah atas layar -->
+    <AppToastHost />
   </div>
 </template>
 
@@ -40,7 +43,9 @@ import { ref, onMounted, onErrorCaptured, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AppStateView from './components/ui/AppStateView.vue';
 import AppDialogHost from './components/ui/AppDialogHost.vue';
+import AppToastHost from './components/ui/AppToastHost.vue';
 import { useBases } from './composables/useBases';
+import { toast } from './composables/useToast';
 import { useAuthStore } from './stores/authStore';
 import { saveVerification } from './utils/emailVerification';
 
@@ -56,7 +61,13 @@ function goToLogin(reason = 'expired') {
 
 function handleSessionEnded(event) {
   authStore.clearSession();
-  goToLogin(event?.detail?.reason || 'expired');
+  const reason = event?.detail?.reason || 'expired';
+  toast.info(
+    reason === 'logged_out'
+      ? 'Kamu sudah keluar dari akun ini.'
+      : 'Sesi kamu berakhir. Silakan masuk kembali.',
+  );
+  goToLogin(reason);
 }
 
 function handleEmailUnverified(event) {
@@ -74,6 +85,7 @@ function handleStorage(event) {
   // yang sedang di halaman verifikasi tidak boleh kehilangan ticket-nya.
   if (event.key === 'fess_token' && !event.newValue && authStore.token) {
     authStore.clearSession();
+    toast.info('Kamu keluar dari akun ini di tab lain.');
     goToLogin('logged_out');
   }
 }

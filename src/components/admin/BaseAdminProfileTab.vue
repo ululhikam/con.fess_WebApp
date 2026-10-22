@@ -649,6 +649,7 @@ import {
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { mapFessToPost } from '../../utils/fessMapper';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { confirmDialog } from '../../composables/useAppDialog';
@@ -916,9 +917,13 @@ async function handleAdminAvatarUpload(e) {
   editError.value = '';
   try {
     const res = await api.uploadAvatar(file);
-    if (res?.url) editForm.value.avatar = res.url;
+    if (res?.url) {
+      editForm.value.avatar = res.url;
+      toast.success('Foto base berhasil diunggah. Simpan perubahan untuk menerapkan.');
+    }
   } catch (err) {
     editError.value = err?.message || 'Upload foto gagal. Coba lagi.';
+    toast.error(editError.value);
   }
 }
 
@@ -971,8 +976,14 @@ async function saveBaseProfile() {
     }
 
     showEditModal.value = false;
+    toast.success(
+      updates.handle
+        ? 'Profil dan handle base berhasil diperbarui.'
+        : 'Profil base berhasil diperbarui.',
+    );
   } catch (err) {
     editError.value = err?.message || 'Gagal menyimpan profil base.';
+    toast.error(editError.value);
     // Cooldown may have been consumed on another device — refresh the lock.
     if (err?.data?.code === 'HANDLE_CHANGE_COOLDOWN') {
       api.getBase(handle).then((fresh) => {
@@ -999,11 +1010,13 @@ async function approveFess(id) {
   try {
     await api.approveFess(id);
     actionNotice.value = `Fess #${id} berhasil disetujui & otomatis diposting ke Instagram Story base!`;
+    toast.success(`Fess #${id} berhasil disetujui.`);
     setTimeout(() => { actionNotice.value = ''; }, 6000);
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
     fesses.value = prevFesses;
     actionError.value = e?.message || 'Gagal menyetujui fess.';
+    toast.error(actionError.value);
   }
 }
 
@@ -1014,10 +1027,12 @@ async function rejectFess(id) {
   fesses.value = fesses.value.filter((f) => f.id !== id);
   try {
     await api.rejectFess(id);
+    toast.success(`Fess #${id} telah ditolak.`);
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
     fesses.value = prevFesses;
     actionError.value = e?.message || 'Gagal menolak fess.';
+    toast.error(actionError.value);
   }
 }
 
@@ -1042,18 +1057,22 @@ async function takeDownFess(id) {
 
     if (result?.instagram?.status === 'deleted') {
       actionNotice.value = 'Fess dan postingan Instagram berhasil dihapus.';
+      toast.success(actionNotice.value);
     } else if (result?.instagram?.status === 'failed') {
       actionNotice.value =
         `Fess berhasil dihapus dari FnC, tetapi postingan Instagram belum terhapus otomatis. ` +
         `Hapus manual dari aplikasi Instagram.${result.instagram.detail ? ` (${result.instagram.detail})` : ''}`;
+      toast.warning(actionNotice.value, { duration: 8000 });
     } else {
       actionNotice.value = 'Fess berhasil dihapus.';
+      toast.success(actionNotice.value);
     }
     setTimeout(() => {
       actionNotice.value = '';
     }, 8000);
   } catch (e) {
     actionError.value = e?.message || 'Gagal melakukan take down.';
+    toast.error(actionError.value);
   }
 }
 
@@ -1089,6 +1108,7 @@ function changeTheme(theme) {
 async function handleAdminLogout() {
   showDrawer.value = false;
   await authStore.logout();
+  toast.success('Kamu telah keluar.');
   router.push('/login');
 }
 </script>

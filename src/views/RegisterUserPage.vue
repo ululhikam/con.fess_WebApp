@@ -302,6 +302,7 @@ import {
 import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../composables/useToast';
 import { googleAuthUrl } from '../api';
 import { avatarPreset, fileToAvatarDataUrl, isAvatarImage } from '../utils/avatar';
 import { saveVerification, verificationRoute } from '../utils/emailVerification';
@@ -355,6 +356,7 @@ async function handleAvatarFileSelect(e) {
     avatarError.value = false;
   } catch (err) {
     errors.submit = err?.message || 'Gagal memproses foto profil.';
+    toast.error(errors.submit);
   } finally {
     e.target.value = '';
   }
@@ -505,14 +507,17 @@ async function handleCompleteRegister() {
 
     if (result?.requires_email_verification) {
       saveVerification(result);
+      toast.success('Pendaftaran berhasil. Cek email untuk kode verifikasi.');
       await router.push(verificationRoute(result));
       return;
     }
 
     // Fallback jika backend sudah mengembalikan sesi langsung.
+    toast.success('Akun berhasil dibuat. Selamat datang!');
     await router.push(safeRedirect() ?? '/feed');
   } catch (err) {
     errors.submit = err.message || 'Terjadi kesalahan saat pendaftaran';
+    toast.error(errors.submit);
   } finally {
     isSubmitting.value = false;
   }

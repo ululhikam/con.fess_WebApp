@@ -169,6 +169,7 @@ import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-vue-next';
 import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useValidatedForm, rules } from '../composables/useValidatedForm';
+import { toast } from '../composables/useToast';
 import { api } from '../api';
 
 const router = useRouter();
@@ -284,6 +285,7 @@ async function handleSendOtp() {
     step.value = 'otp';
     otpForm.reset();
     startResendCooldown();
+    toast.success('Kode OTP sudah dikirim ke email kamu.');
   }
 }
 
@@ -308,6 +310,7 @@ async function handleVerifyOtp() {
     step.value = 'password';
     passForm.reset();
     passwordValue.value = '';
+    toast.success('Kode OTP terverifikasi. Silakan buat kata sandi baru.');
   }
 }
 
@@ -319,8 +322,10 @@ async function handleResendOtp() {
     await api.forgotPassword({ email: String(emailForm.values.email).trim() });
     otpForm.reset();
     startResendCooldown();
+    toast.success('Kode OTP baru sudah dikirim.');
   } catch (err) {
     otpSubmitError.value = err?.message || 'Gagal mengirim ulang kode. Coba lagi.';
+    toast.error(otpSubmitError.value);
   } finally {
     resending.value = false;
   }
@@ -342,6 +347,7 @@ async function handleResetPassword() {
 
   if (ok && saved) {
     step.value = 'done';
+    toast.success('Kata sandi berhasil diubah. Silakan masuk dengan kata sandi baru.');
   }
 }
 </script>

@@ -342,12 +342,6 @@
       </div>
     </footer>
 
-    <!-- TOAST NOTIFICATION -->
-    <div v-if="showToast" class="action-toast">
-      <Check :size="13" />
-      <span>{{ toastMessage }}</span>
-    </div>
-
     <!-- COMMENTS THREAD -->
     <div v-if="showComments" class="comments-section-container">
       <div class="comments-header">
@@ -604,6 +598,8 @@ import {
 import ReportFessModal from './ReportFessModal.vue';
 import MediaViewer from './MediaViewer.vue';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
+import { copyText } from '../../utils/clipboard';
 import { mapFessComment } from '../../utils/fessMapper';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -733,6 +729,7 @@ async function toggleBookmark() {
   if (bookmarkPending.value) return;
 
   if (!authStore.isAuthenticated) {
+    triggerToast('Masuk dulu untuk menyimpan fess ini.', 'info');
     router.push({
       path: '/login',
       query: { redirect: router.currentRoute.value.fullPath },
@@ -762,7 +759,8 @@ async function toggleBookmark() {
         ? 'Sesi kamu berakhir. Masuk lagi untuk menyimpan fess.'
         : next
           ? 'Gagal menyimpan fess. Coba lagi.'
-          : 'Gagal menghapus simpanan. Coba lagi.'
+          : 'Gagal menghapus simpanan. Coba lagi.',
+      'error',
     );
   } finally {
     bookmarkPending.value = false;
@@ -1263,38 +1261,32 @@ watch(allMedia, () => {
   nextTick(() => syncCarouselVideos());
 });
 
-/* 3. SHARE MENU & TOAST */
+/* 3. SHARE MENU */
 const showShareMenu = ref(false);
-const showToast = ref(false);
-const toastMessage = ref('');
-let toastTimer = null;
 
-function triggerToast(msg) {
-  toastMessage.value = msg;
-  showToast.value = true;
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    showToast.value = false;
-  }, 2200);
+function triggerToast(message, type = 'success') {
+  toast.show(message, { type });
 }
 
 function toggleShareMenu() {
   showShareMenu.value = !showShareMenu.value;
 }
 
-function copyFessLink() {
+async function copyFessLink() {
   showShareMenu.value = false;
   const link = `${window.location.origin}/fess/${props.post.id}`;
-  if (navigator?.clipboard?.writeText) {
-    navigator.clipboard.writeText(link).catch(() => {});
+  try {
+    await copyText(link);
+    triggerToast('Tautan fess disalin ke clipboard');
+  } catch {
+    triggerToast('Gagal menyalin tautan. Coba lagi.', 'error');
   }
-  triggerToast('Tautan fess disalin ke clipboard');
   emit('share', { id: props.post.id, platform: 'link' });
 }
 
 function shareToInstagram() {
   if (!canManageInstagram.value) {
-    triggerToast('Hanya admin base yang dapat memposting fess ini ke Instagram.');
+    triggerToast('Hanya admin base yang dapat memposting fess ini ke Instagram.', 'error');
     return;
   }
   showShareMenu.value = false;
@@ -1436,15 +1428,20 @@ async function openInstagramStoryAutoPost() {
     } else if (igPostData.value?.ig_pending) {
       triggerToast(
         'Video sedang diproses Instagram — postingan akan terbit otomatis dalam ±1 menit.',
+        'pending',
       );
     } else if (igPostData.value?.retry_scheduled) {
-      triggerToast('Gagal sementara — sistem mencoba lagi otomatis. Pantau badge status IG.');
+      triggerToast(
+        'Gagal sementara — sistem mencoba lagi otomatis. Pantau badge status IG.',
+        'warning',
+      );
     } else {
       const reason = igPostData.value?.ig_error || igPostData.value?.message;
       triggerToast(
         reason
           ? `Publikasi Instagram gagal: ${reason}`
           : 'Card fess selesai dirender — publikasi Instagram belum berhasil.',
+        'error',
       );
     }
   } catch (err) {
@@ -1454,7 +1451,7 @@ async function openInstagramStoryAutoPost() {
       err?.response?.data?.error?.message ||
       err?.message ||
       'Silakan coba lagi.';
-    triggerToast(`Gagal memposting ke Instagram: ${reason}`);
+    triggerToast(`Gagal memposting ke Instagram: ${reason}`, 'error');
   } finally {
     igPostLoading.value = false;
   }
@@ -1592,8 +1589,9 @@ async function submitComment() {
     replyTarget.value = null;
     await loadComments();
     commentsCount.value = Math.max(commentsCount.value, commentsList.value.length);
+    triggerToast('Komentar berhasil dikirim');
   } catch (e) {
-    triggerToast('Gagal mengirim komentar. Coba lagi.');
+    triggerToast('Gagal mengirim komentar. Coba lagi.', 'error');
   } finally {
     commentsSending.value = false;
   }
@@ -1613,7 +1611,7 @@ async function handleReportSubmitted(payload) {
     triggerToast('Laporan berhasil dikirim ke moderator');
     emit('report', { postId: props.post.id, ...payload });
   } catch {
-    triggerToast('Gagal mengirim laporan. Coba lagi.');
+    triggerToast('Gagal mengirim laporan. Coba lagi.', 'error');
   }
 }
 
@@ -2477,38 +2475,6 @@ function formatCount(num) {
 
 .share-menu-item:hover {
   background: var(--shell-chip);
-}
-
-/* Toast Message */
-.action-toast {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--shell-text);
-  color: var(--shell-bg);
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  font-size: 11.5px;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  animation: toastFade 0.2s ease;
-  z-index: 110;
-  pointer-events: none;
-}
-
-@keyframes toastFade {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -6px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
 }
 
 /* Comments Section */

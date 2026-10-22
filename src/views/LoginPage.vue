@@ -159,6 +159,7 @@ import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { useAuthStore } from '../stores/authStore';
 import { useValidatedForm, rules } from '../composables/useValidatedForm';
+import { toast } from '../composables/useToast';
 import { googleAuthUrl } from '../api';
 import { saveVerification, verificationRoute } from '../utils/emailVerification';
 
@@ -263,13 +264,21 @@ async function handleLogin() {
 
     if (result?.requires_email_verification) {
       saveVerification(result);
+      if (result?.email_sent) {
+        toast.info('Kode verifikasi sudah dikirim ke email kamu.');
+      }
       await router.push(verificationRoute(result));
       return;
     }
 
-    if (result?.token) await redirectRole(result.user?.role || selectedRole.value);
+    if (result?.token) {
+      toast.success('Berhasil masuk. Selamat datang kembali!');
+      await redirectRole(result.user?.role || selectedRole.value);
+    } else if (submitError.value) {
+      toast.error(submitError.value);
+    }
   } catch {
-    // Errors surfaced via form.submitError
+    toast.error(submitError.value || 'Login gagal. Coba lagi.');
   } finally {
     isSubmitting.value = false;
   }
@@ -300,16 +309,19 @@ onMounted(async () => {
 
   if (typeof error === 'string' && error) {
     googleError.value = GOOGLE_ERROR_MESSAGES[error] || decodeURIComponent(error) || 'Login gagal. Coba lagi.';
+    toast.error(googleError.value);
   }
 
   if (typeof token === 'string' && token) {
     isSubmitting.value = true;
     try {
       const user = await authStore.loginWithToken(token);
+      toast.success('Berhasil masuk. Selamat datang kembali!');
       await redirectRole(user?.role || 'User');
     } catch (err) {
       console.error('Login dengan token OAuth gagal:', err);
       googleError.value = 'Sesi login tidak valid. Silakan coba lagi.';
+      toast.error(googleError.value);
       await router.replace({ path: route.path, query: rest });
     } finally {
       isSubmitting.value = false;

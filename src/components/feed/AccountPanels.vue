@@ -374,6 +374,7 @@ import {
 } from 'lucide-vue-next';
 
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { mapFessToPost } from '../../utils/fessMapper';
 import { formatRelativeTime } from '../../utils/format';
 import { useBases } from '../../composables/useBases';
@@ -445,6 +446,7 @@ const currentSession = computed(() => {
 function handleChangePassword() {
   passwordMessage.value =
     'Ubah password belum tersedia dari aplikasi. Hubungi dukungan jika butuh bantuan.';
+  toast.info(passwordMessage.value);
 }
 
 /* ============================================================ MY FESS ============================================================ */
@@ -538,10 +540,13 @@ const filteredFollowing = computed(() => {
 });
 
 async function unfollowBase(handle) {
+  const name = String(handle || '').startsWith('@') ? String(handle) : `@${handle}`;
   try {
-    await toggleFollowBase(handle);
+    const stillFollowing = await toggleFollowBase(name);
+    if (!stillFollowing) toast.success(`Berhenti mengikuti ${name}`);
   } catch {
     // optimistic update already rolled back by the composable
+    toast.error('Gagal memperbarui status ikuti. Coba lagi.');
   }
 }
 

@@ -103,6 +103,7 @@ import { ArrowRight, Loader2, MailCheck, PencilLine } from 'lucide-vue-next';
 import AuthShell from '../components/auth/AuthShell.vue';
 import FormField from '../components/auth/FormField.vue';
 import { api } from '../api';
+import { toast } from '../composables/useToast';
 import { useAuthStore } from '../stores/authStore';
 import { clearVerification, readVerification, saveVerification } from '../utils/emailVerification';
 
@@ -187,6 +188,7 @@ function handleExpiredTicket(err) {
   email.value = '';
   errorMessage.value =
     'Sesi verifikasi sudah kedaluwarsa. Silakan masuk lagi untuk meminta kode baru.';
+  toast.error(errorMessage.value);
   return true;
 }
 
@@ -216,10 +218,12 @@ async function handleVerify() {
     if (!result?.token) throw new Error('Server tidak mengembalikan sesi login. Coba lagi.');
     authStore.setSession(result);
     clearVerification();
+    toast.success('Email berhasil diverifikasi. Selamat datang!');
     await goHome(authStore.user);
   } catch (err) {
     if (!handleExpiredTicket(err)) {
       errorMessage.value = err?.message || 'Verifikasi gagal. Coba lagi.';
+      toast.error(errorMessage.value);
       if (err?.data?.code === 'OTP_EXPIRED') {
         startCountdown(0);
       }
@@ -243,10 +247,13 @@ async function handleResend() {
     notice.value = result?.email_sent
       ? 'Kode OTP baru sudah dikirim. Periksa inbox dan folder spam.'
       : 'Email belum berhasil dikirim. Coba lagi beberapa saat lagi.';
+    if (result?.email_sent) toast.success(notice.value);
+    else toast.warning(notice.value);
     startCountdown(60);
   } catch (err) {
     if (!handleExpiredTicket(err)) {
       errorMessage.value = err?.message || 'Gagal mengirim ulang kode OTP.';
+      toast.error(errorMessage.value);
       if (err?.status === 429) startCountdown(60);
     }
   } finally {
@@ -284,10 +291,12 @@ async function handleChangeEmail() {
     notice.value = result?.email_sent
       ? 'Email berhasil diganti. Kode OTP baru sudah dikirim ke alamat tersebut.'
       : 'Email berhasil diganti. Tunggu sebentar, lalu klik kirim ulang kode untuk mendapat OTP baru.';
+    toast.success(notice.value);
     startCountdown(60);
   } catch (err) {
     if (!handleExpiredTicket(err)) {
       changeError.value = err?.message || 'Gagal mengganti email. Coba lagi.';
+      toast.error(changeError.value);
     }
   } finally {
     changing.value = false;

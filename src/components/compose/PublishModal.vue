@@ -139,6 +139,7 @@ import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
 import { TEMPLATES } from '../../config/templates';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -190,6 +191,7 @@ async function loadPreview() {
     if (reqId !== previewReqId) return;
     previewError.value =
       'Gagal memuat pratinjau hasil render. Pratinjau ringan ditampilkan sebagai cadangan.';
+    toast.warning(previewError.value);
     console.warn('[PublishModal] render pratinjau gagal:', err?.message || err);
   } finally {
     if (reqId === previewReqId) previewLoading.value = false;
@@ -222,6 +224,7 @@ function downloadFirstPage() {
   link.href = src;
   link.download = `fess-${props.form.template}-halaman-1.png`;
   link.click();
+  toast.success('Gambar halaman 1 berhasil diunduh.');
 }
 
 function getBaseName(handle) {

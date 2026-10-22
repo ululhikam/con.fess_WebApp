@@ -208,6 +208,7 @@ import QuoteModal from '../components/compose/QuoteModal.vue';
 
 // Composables & Stores
 import { useAuthStore } from '../stores/authStore';
+import { toast } from '../composables/useToast';
 import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases, mapBase } from '../composables/useBases';
 import { useTopics } from '../composables/useTopics';
@@ -448,6 +449,9 @@ async function saveDraft() {
       isDraft: true,
     };
     localStorage.setItem('fess_draft', JSON.stringify(draft));
+    toast.success('Draf fess disimpan di perangkat ini.');
+  } catch {
+    toast.error('Gagal menyimpan draf. Coba lagi.');
   } finally {
     savingDraft.value = false;
   }
@@ -459,14 +463,17 @@ function openPublishConfirm() {
   if (hasUploadingMedia.value) {
     publishError.value =
       'Foto/video masih dalam proses unggah. Mohon tunggu hingga lingkaran animasi selesai.';
+    toast.warning(publishError.value);
     return;
   }
   if (!form.value.baseHandle) {
     publishError.value = 'Silakan pilih base tujuan confession terlebih dahulu.';
+    toast.error(publishError.value);
     return;
   }
   if (!hasContent.value) {
     publishError.value = 'Silakan tulis isi confession atau lampirkan foto/video.';
+    toast.error(publishError.value);
     return;
   }
 
@@ -488,6 +495,7 @@ async function publishFess() {
     );
     if (hasUnfinishedUpload) {
       publishError.value = 'Mohon tunggu beberapa detik hingga upload media selesai.';
+      toast.warning(publishError.value);
       publishing.value = false;
       return;
     }
@@ -532,8 +540,14 @@ async function publishFess() {
 
     const fessStatus = createdFess?.rawStatus || createdFess?.status || 'pending';
 
-    // Role-aware navigation: Base Admin returns to /base-admin, regular user to /feed
+    // Role-aware navigation: Base Admin returns to /base-admin, regular user to /feed.
+    // User biasa melihat toast dari query `postSuccess` di FeedPage.
     if (authStore.user?.role === 'Base Admin') {
+      if (fessStatus === 'pending') {
+        toast.pending('Fess terkirim dan masuk antrean moderasi base.');
+      } else {
+        toast.success('Fess berhasil diterbitkan.');
+      }
       router.push('/base-admin');
     } else {
       router.push({ path: '/feed', query: { postSuccess: fessStatus } });
@@ -542,6 +556,7 @@ async function publishFess() {
     console.error('Publish failed:', error);
     publishError.value =
       error?.message || 'Gagal mengirim fess. Pastikan format konten valid dan coba lagi.';
+    toast.error(publishError.value);
   } finally {
     publishing.value = false;
     showPublishModal.value = false;

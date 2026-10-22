@@ -846,6 +846,7 @@ import {
 } from 'lucide-vue-next';
 
 import { api, instagramAuthUrl } from '../../api';
+import { toast } from '../../composables/useToast';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import { useAuthStore } from '../../stores/authStore';
@@ -978,8 +979,10 @@ async function toggleConnection(conn) {
     connectionNotice.value = conn.connected
       ? `${platformLabel(conn.id)} berhasil diputuskan.`
       : `${platformLabel(conn.id)} berhasil dihubungkan.`;
+    toast.success(connectionNotice.value);
   } catch (e) {
     connectionNotice.value = e?.message || 'Gagal memperbarui koneksi.';
+    toast.error(connectionNotice.value);
   } finally {
     connectionBusy.value = null;
   }
@@ -1046,14 +1049,17 @@ async function submitPayout() {
 
   if (!amount || amount <= 0) {
     payoutError.value = 'Masukkan nominal penarikan yang valid.';
+    toast.error(payoutError.value);
     return;
   }
   if (amount > (treasury.value?.balance ?? 0)) {
     payoutError.value = 'Nominal melebihi saldo yang tersedia.';
+    toast.error(payoutError.value);
     return;
   }
   if (!payoutForm.destination.trim()) {
     payoutError.value = 'Isi tujuan transfer terlebih dahulu.';
+    toast.error(payoutError.value);
     return;
   }
 
@@ -1064,11 +1070,13 @@ async function submitPayout() {
       destination: payoutForm.destination.trim(),
     });
     payoutMessage.value = res?.message || 'Permintaan payout berhasil diajukan.';
+    toast.success(payoutMessage.value);
     payoutForm.amount = '';
     payoutForm.destination = '';
     await loadTreasury();
   } catch (e) {
     payoutError.value = e?.message || 'Gagal mengajukan payout.';
+    toast.error(payoutError.value);
   } finally {
     isSubmittingPayout.value = false;
   }
@@ -1184,6 +1192,7 @@ async function saveModerationSettings() {
   if (isSavingModeration.value) return;
   if (!baseHandle.value) {
     moderationError.value = 'Base tidak ditemukan untuk akun ini.';
+    toast.error(moderationError.value);
     return;
   }
 
@@ -1200,8 +1209,10 @@ async function saveModerationSettings() {
       syncModerationForm(updated);
     }
     moderationMessage.value = 'Pengaturan moderasi & filter kata tersimpan.';
+    toast.success(moderationMessage.value);
   } catch (e) {
     moderationError.value = e?.message || 'Gagal menyimpan pengaturan moderasi.';
+    toast.error(moderationError.value);
   } finally {
     isSavingModeration.value = false;
   }
@@ -1252,6 +1263,7 @@ watch(
     } catch {
       // Storage not available (private mode) — preferences stay in-memory.
     }
+    toast.success('Preferensi notifikasi disimpan.', { duration: 1800 });
   },
   { deep: true },
 );

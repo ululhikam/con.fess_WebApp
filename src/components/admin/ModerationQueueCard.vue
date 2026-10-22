@@ -23,11 +23,11 @@
           <AdminButton
             v-if="fess.status !== 'approved'"
             variant="approve"
-            @click="approve(fess.id)"
+            @click="handleApprove(fess.id)"
           >
             Setujui
           </AdminButton>
-          <AdminButton v-if="fess.status !== 'rejected'" variant="reject" @click="hide(fess.id)">
+          <AdminButton v-if="fess.status !== 'rejected'" variant="reject" @click="handleHide(fess.id)">
             Tolak
           </AdminButton>
           <AdminButton variant="export" @click="exportCanvas(fess)">Export Canvas</AdminButton>
@@ -48,6 +48,14 @@ import AdminStatusChip from './AdminStatusChip.vue';
 import { useFessModeration } from '../../composables/useAdminDashboard';
 
 const { fesses, approve, hide, exportCanvas } = useFessModeration();
+
+function handleApprove(id) {
+  approve(id).catch(() => {});
+}
+
+function handleHide(id) {
+  hide(id).catch(() => {});
+}
 </script>
 
 <style scoped>

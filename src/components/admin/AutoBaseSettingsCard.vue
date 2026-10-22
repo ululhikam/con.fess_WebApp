@@ -32,6 +32,7 @@ import AdminButton from './AdminButton.vue';
 import AdminTextField from './AdminTextField.vue';
 import { useBaseSettings, BASE_SETTINGS_FIELDS } from '../../composables/useAdminDashboard';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 
 const props = defineProps({
   fields: { type: Array, default: () => BASE_SETTINGS_FIELDS },
@@ -49,6 +50,7 @@ async function save() {
   if (!props.handle) {
     status.message = 'Base tujuan belum ditentukan.';
     status.error = true;
+    toast.error(status.message);
     return;
   }
 
@@ -62,9 +64,11 @@ async function save() {
     });
     status.message = 'Pengaturan base tersimpan.';
     status.error = false;
+    toast.success(status.message);
   } catch (e) {
     status.message = e?.message || 'Gagal menyimpan pengaturan base.';
     status.error = true;
+    toast.error(status.message);
   } finally {
     saving.value = false;
   }

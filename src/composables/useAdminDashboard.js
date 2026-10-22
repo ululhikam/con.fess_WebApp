@@ -15,6 +15,7 @@ import { ref, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../api';
+import { toast } from './useToast';
 import { mapFessToPost } from '../utils/fessMapper';
 
 /** Tab definitions (UI copy). */
@@ -191,9 +192,11 @@ export function useFessModeration(options = {}) {
     fesses.value = fesses.value.filter((f) => f.id !== id);
     try {
       await api.approveFess(id);
+      toast.success(`Fess #${id} berhasil disetujui.`);
       await reload();
     } catch (e) {
       fesses.value = prev;
+      toast.error(e?.message || 'Gagal menyetujui fess. Coba lagi.');
       throw e;
     }
   }
@@ -204,9 +207,11 @@ export function useFessModeration(options = {}) {
     fesses.value = fesses.value.filter((f) => f.id !== id);
     try {
       await api.rejectFess(id);
+      toast.success(`Fess #${id} telah ditolak.`);
       await reload();
     } catch (e) {
       fesses.value = prev;
+      toast.error(e?.message || 'Gagal menolak fess. Coba lagi.');
       throw e;
     }
   }
@@ -244,9 +249,22 @@ export function useFessModeration(options = {}) {
   async function retryInstagram(fess) {
     const id = typeof fess === 'object' && fess !== null ? fess.id : fess;
     const template = CANVAS_TEMPLATES.includes(fess?.template) ? fess.template : 'default';
-    const res = await api.postFessToInstagram(String(id), { template, aspect: 'portrait' });
-    await reload();
-    return res;
+    try {
+      const res = await api.postFessToInstagram(String(id), { template, aspect: 'portrait' });
+      const data = res?.data || res;
+      if (data?.meta_published) {
+        toast.success('Posting Instagram berhasil diterbitkan.');
+      } else if (data?.ig_pending) {
+        toast.pending('Video sedang diproses Instagram. Postingan akan terbit otomatis.');
+      } else {
+        toast.error(data?.ig_error || 'Posting ke Instagram belum berhasil.');
+      }
+      await reload();
+      return res;
+    } catch (e) {
+      toast.error(e?.message || 'Gagal memposting ke Instagram. Coba lagi.');
+      throw e;
+    }
   }
 
   return {

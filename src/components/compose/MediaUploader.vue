@@ -183,6 +183,7 @@ import { ref, computed, reactive } from 'vue';
 import { Image, Upload, X, Plus, AlertCircle, Film, Check, RotateCcw } from 'lucide-vue-next';
 
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { normalizeVideoFile } from '../../utils/videoNormalizer';
 
 const props = defineProps({
@@ -275,6 +276,7 @@ function onFileSelect(e) {
     // Jangan pernah gagal diam-diam: error tak terduga tetap terlihat user.
     console.error('[MediaUploader] Gagal memproses file:', err);
     error.value = `Gagal memproses file: ${err?.message || err}`;
+    toast.error(error.value);
   } finally {
     e.target.value = ''; // Reset for same file re-selection
   }
@@ -285,6 +287,7 @@ function handleFiles(files) {
   const remainingSlots = props.maxFiles - mediaFiles.value.length;
   if (remainingSlots <= 0) {
     error.value = `Maksimal ${props.maxFiles} file`;
+    toast.warning(error.value);
     return;
   }
 
@@ -333,11 +336,13 @@ function validateFile(file) {
 
   if (!isImageMime && !isVideoMime && !isValidExt) {
     error.value = `Format tidak didukung: ${file.name}. Gunakan JPG, PNG, WebP, GIF, MP4, WebM, MOV`;
+    toast.error(error.value);
     return false;
   }
 
   if (file.size > maxSize) {
     error.value = `File terlalu besar: ${file.name} (maks ${props.maxSizeMB}MB)`;
+    toast.error(error.value);
     return false;
   }
 
@@ -437,6 +442,7 @@ async function uploadItem(targetItem, originalFile = null) {
     st.failed = true;
     st.errorMessage = 'File tidak ditemukan di memori';
     error.value = `File ${targetItem.name} tidak ditemukan. Silakan pilih kembali file.`;
+    toast.error(error.value);
     return;
   }
 
@@ -599,6 +605,10 @@ async function uploadItem(targetItem, originalFile = null) {
 
     mediaFiles.value = updated;
     emit('change', updated);
+    toast.success(
+      `${targetItem.type === 'video' ? 'Video' : 'Foto'} berhasil diunggah.`,
+      { duration: 2000 },
+    );
   } catch (e) {
     if (abortController.signal.aborted) return;
 
@@ -625,6 +635,7 @@ async function uploadItem(targetItem, originalFile = null) {
     emit('change', updated);
 
     error.value = `Gagal mengunggah ${targetItem.name}: ${errMsg}`;
+    toast.error(error.value);
   } finally {
     activeControllers.delete(targetItem.id);
   }

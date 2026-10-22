@@ -125,6 +125,7 @@ import {
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { formatRelativeTime, truncate } from '../../utils/format';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { useVisibilityRefresh } from '../../composables/useVisibilityRefresh';
@@ -312,11 +313,13 @@ async function markAllRead() {
   markingAllRead.value = true;
   try {
     await api.markAllNotificationsRead();
+    toast.success('Semua notifikasi ditandai sudah dibaca.');
   } catch {
     notifications.value.forEach((n, idx) => {
       n.unread = prev[idx];
     });
     notifStore.fetchUnreadCount(true);
+    toast.error('Gagal menandai notifikasi. Coba lagi.');
   } finally {
     markingAllRead.value = false;
   }
@@ -330,9 +333,11 @@ async function deleteNotification(notif) {
   notifTotal.value = Math.max(0, notifTotal.value - 1);
   try {
     await api.deleteNotification(notif.id);
+    toast.success('Notifikasi dihapus.');
   } catch {
     notifications.value.splice(idx, 0, removed);
     notifTotal.value += 1;
+    toast.error('Gagal menghapus notifikasi. Coba lagi.');
   }
 }
 

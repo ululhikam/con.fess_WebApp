@@ -66,13 +66,6 @@
       </div>
     </main>
 
-    <!-- Toast Notification -->
-    <Transition name="fade-toast">
-      <div v-if="toastMessage" class="detail-toast-bubble">
-        <CheckCircle2 :size="16" class="toast-icon" />
-        <span>{{ toastMessage }}</span>
-      </div>
-    </Transition>
   </div>
 </template>
 
@@ -86,11 +79,13 @@
  */
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronLeft, Share2, CheckCircle2 } from 'lucide-vue-next';
+import { ChevronLeft, Share2 } from 'lucide-vue-next';
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
 import FessCard from '../components/common/FessCard.vue';
 import { api } from '../api';
+import { toast } from '../composables/useToast';
+import { copyText } from '../utils/clipboard';
 import { mapFessToPost } from '../utils/fessMapper';
 
 const route = useRoute();
@@ -169,6 +164,7 @@ async function handleLike({ id, isLiked }) {
   } catch {
     item.isLiked = previous.isLiked;
     item.likes = previous.likes;
+    toast.error('Gagal menyimpan like. Coba lagi.');
   }
 }
 
@@ -179,17 +175,6 @@ function handleBack() {
   } else {
     router.push('/feed');
   }
-}
-
-const toastMessage = ref('');
-let toastTimer = null;
-
-function showToast(msg) {
-  toastMessage.value = msg;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toastMessage.value = '';
-  }, 2400);
 }
 
 async function shareFessLink() {
@@ -207,10 +192,10 @@ async function shareFessLink() {
   }
 
   try {
-    await navigator.clipboard.writeText(link);
-    showToast('Tautan fess disalin ke clipboard');
+    await copyText(link);
+    toast.success('Tautan fess disalin ke clipboard');
   } catch {
-    showToast(link);
+    toast.error(`Gagal menyalin tautan. Salin manual: ${link}`, { duration: 8000 });
   }
 }
 </script>
@@ -323,42 +308,4 @@ async function shareFessLink() {
   margin: 0 auto;
 }
 
-/* TOAST BUBBLE */
-.detail-toast-bubble {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 120;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 30px;
-  background: rgba(15, 23, 42, 0.95);
-  color: #f1f5f9;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  max-width: calc(100vw - 32px);
-  word-break: break-all;
-}
-
-.toast-icon {
-  color: #10b981;
-  flex-shrink: 0;
-}
-
-.fade-toast-enter-active,
-.fade-toast-leave-active {
-  transition: all 0.25s ease;
-}
-
-.fade-toast-enter-from,
-.fade-toast-leave-to {
-  opacity: 0;
-  transform: translate(-50%, 10px);
-}
 </style>

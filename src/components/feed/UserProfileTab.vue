@@ -763,6 +763,7 @@ import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import FessCard from '../common/FessCard.vue';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { mapFessToPost } from '../../utils/fessMapper';
 import { formatNumber } from '../../utils/format';
 import { mapBase } from '../../composables/useBases';
@@ -890,9 +891,12 @@ async function handleAvatarFileSelect(e) {
   if (!file) return;
   try {
     const res = await api.uploadAvatar(file);
-    if (res?.url) editForm.value.avatar = res.url;
-  } catch {
-    // upload failed — keep the current avatar
+    if (res?.url) {
+      editForm.value.avatar = res.url;
+      toast.success('Foto profil berhasil diunggah. Simpan perubahan untuk menerapkan.');
+    }
+  } catch (err) {
+    toast.error(err?.message || 'Gagal mengunggah foto profil. Coba lagi.');
   }
 }
 
@@ -918,8 +922,10 @@ async function saveProfile() {
 
     await authStore.updateProfile(updates);
     showEditModal.value = false;
+    toast.success('Profil berhasil diperbarui.');
   } catch (err) {
     profileSaveError.value = err?.message || 'Gagal menyimpan profil. Coba lagi.';
+    toast.error(profileSaveError.value);
     // If another device changed the handle, refresh the cooldown metadata so
     // the field locks and the explanation appears immediately.
     if (err?.data?.code === 'HANDLE_CHANGE_COOLDOWN') {
@@ -1052,6 +1058,7 @@ async function handlePostLikeInList(listRef, payload) {
   } catch {
     item.isLiked = wasLiked;
     item.likes = prevLikes;
+    toast.error('Gagal menyimpan like. Coba lagi.');
   }
 }
 
@@ -1262,18 +1269,20 @@ const followedBasesCount = computed(() =>
 );
 
 async function handleUnfollow(handle) {
+  const target = String(handle).startsWith('@') ? String(handle) : `@${handle}`;
   try {
-    const stillFollowing = await toggleFollowBase(handle);
+    const stillFollowing = await toggleFollowBase(target);
     if (!stillFollowing) {
-      const target = String(handle).startsWith('@') ? String(handle) : `@${handle}`;
       const before = followingBases.value.length;
       followingBases.value = followingBases.value.filter((b) => b.handle !== target);
       if (followingBases.value.length < before) {
         followingQueryTotal.value = Math.max(0, followingQueryTotal.value - 1);
       }
+      toast.success(`Berhenti mengikuti ${target}`);
     }
   } catch {
     // the composable already rolled back the optimistic update
+    toast.error('Gagal memperbarui status ikuti. Coba lagi.');
   }
 }
 
@@ -1354,6 +1363,7 @@ function openSettingsSubPanel(panelKey) {
 
 function confirmLogout() {
   showSettingsDrawer.value = false;
+  toast.success('Kamu telah keluar.');
   emit('logout');
 }
 </script>

@@ -52,11 +52,11 @@
               fess.canManageInstagram === true && fess.igStatus === 'failed' && !fess.postedToIg
             "
             variant="export"
-            @click="retryInstagram(fess)"
+            @click="handleRetryInstagram(fess)"
           >
             Retry IG
           </AdminButton>
-          <AdminButton variant="reject" @click="hide(fess.id)">Sembunyikan</AdminButton>
+          <AdminButton variant="reject" @click="handleHide(fess.id)">Sembunyikan</AdminButton>
         </div>
       </li>
     </ul>
@@ -77,6 +77,14 @@ import { useFessModeration } from '../../composables/useAdminDashboard';
 const contentSearch = ref('');
 
 const { fesses, hide, exportCanvas, retryInstagram } = useFessModeration({ status: 'published' });
+
+function handleHide(id) {
+  hide(id).catch(() => {});
+}
+
+function handleRetryInstagram(fess) {
+  retryInstagram(fess).catch(() => {});
+}
 </script>
 
 <style scoped>

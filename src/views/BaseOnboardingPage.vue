@@ -300,6 +300,7 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '../stores/authStore';
 import { api, instagramAuthUrl } from '../api';
+import { toast } from '../composables/useToast';
 import { useBases } from '../composables/useBases';
 import { confirmDialog } from '../composables/useAppDialog';
 
@@ -404,9 +405,13 @@ async function handleAvatarUpload(e) {
   errorMessage.value = '';
   try {
     const res = await api.uploadAvatar(file);
-    if (res?.url) form.avatar = res.url;
+    if (res?.url) {
+      form.avatar = res.url;
+      toast.success('Foto base berhasil diunggah.');
+    }
   } catch (err) {
     errorMessage.value = err?.message || 'Upload foto gagal. Coba lagi.';
+    toast.error(errorMessage.value);
   }
 }
 
@@ -482,6 +487,7 @@ async function submitOnboarding() {
   if (err) {
     step.value = 1;
     errorMessage.value = err;
+    toast.error(errorMessage.value);
     return;
   }
 
@@ -517,9 +523,11 @@ async function submitOnboarding() {
     // Refresh the session (managed_bases) + base directory, then enter the portal.
     await authStore.fetchMe();
     fetchBases().catch(() => {});
+    toast.success('Base berhasil dibuat. Selamat datang!');
     router.push('/base-admin');
   } catch (e) {
     errorMessage.value = e?.message || 'Gagal membuat base. Coba lagi.';
+    toast.error(errorMessage.value);
   } finally {
     isSubmitting.value = false;
   }
@@ -531,6 +539,7 @@ async function handleLogout() {
     authStore.clearSession();
     api.logout().catch(() => {});
   } finally {
+    toast.success('Kamu telah keluar.');
     window.location.href = '/login';
   }
 }
@@ -572,6 +581,7 @@ onMounted(async () => {
 
   if (query.error) {
     errorMessage.value = decodeURIComponent(String(query.error));
+    toast.error(errorMessage.value);
     sessionStorage.removeItem(DRAFT_KEY);
   } else if (query.ig_connected === 'true') {
     igConnected.value = true;
@@ -580,6 +590,7 @@ onMounted(async () => {
       form.igAccount = igUser.startsWith('@') ? igUser : `@${igUser}`;
     }
     igSuccessMessage.value = `Akun Instagram ${form.igAccount} berhasil terhubung via Meta OAuth!`;
+    toast.success(igSuccessMessage.value);
     if (hadDraft) step.value = 3;
     sessionStorage.removeItem(DRAFT_KEY);
   }
