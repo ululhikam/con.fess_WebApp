@@ -93,6 +93,7 @@ export function mapFessToPost(f) {
     downvotes: f.downvotes ?? 0,
     isLiked: (f.user_vote ?? f.userVote) === 'up',
     userVote: f.user_vote ?? f.userVote ?? null,
+    isSaved: Boolean(f.is_saved ?? f.isSaved ?? false),
     commentsCount: f.comments_count ?? f.commentsCount ?? 0,
     comments: Array.isArray(f.comments) ? f.comments.map(mapFessComment) : [],
     // UI badges use 'approved' for published content.

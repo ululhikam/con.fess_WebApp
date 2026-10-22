@@ -58,6 +58,8 @@ export const api = {
   getFessIgStatus: (id) => client.get(`/fesses/${id}/instagram-status`),
   createFess: (payload) => client.post('/fesses', payload),
   voteFess: (id, type) => client.post(`/fesses/${id}/vote`, { type }),
+  bookmarkFess: (id) => client.post(`/fesses/${id}/bookmark`),
+  unbookmarkFess: (id) => client.delete(`/fesses/${id}/bookmark`),
   approveFess: (id) => client.post(`/fesses/${id}/approve`),
   rejectFess: (id) => client.post(`/fesses/${id}/reject`),
   reportFess: (id, payload) => client.post(`/fesses/${id}/report`, payload),
@@ -80,6 +82,7 @@ export const api = {
   getProfile: (userId) => client.get(`/users/${userId}`),
   updateProfile: (data) => client.patch('/users/me', data),
   getMyFesses: (params) => client.get('/users/me/fesses', { params }),
+  getMyBookmarks: (params) => client.get('/users/me/bookmarks', { params }),
   getMyFollowing: (params) => client.get('/users/me/following', { params }),
 
   /* UPLOAD */

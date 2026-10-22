@@ -1028,15 +1028,30 @@ async function rejectFess(id) {
 async function takeDownFess(id) {
   const confirmed = await confirmDialog({
     title: 'Take Down Fess',
-    message: 'Take down fess ini? Fess akan dihapus dan tidak bisa dikembalikan.',
+    message:
+      'Take down fess ini? Fess akan dihapus dari FnC dan postingan Instagram-nya juga akan dicoba dihapus. Tindakan ini tidak bisa dikembalikan.',
     confirmLabel: 'Take Down',
     variant: 'danger',
   });
   if (!confirmed) return;
   actionError.value = '';
+  actionNotice.value = '';
   try {
-    await api.deleteFess(id);
+    const result = await api.deleteFess(id);
     await Promise.all([loadFesses(), loadStats()]);
+
+    if (result?.instagram?.status === 'deleted') {
+      actionNotice.value = 'Fess dan postingan Instagram berhasil dihapus.';
+    } else if (result?.instagram?.status === 'failed') {
+      actionNotice.value =
+        `Fess berhasil dihapus dari FnC, tetapi postingan Instagram belum terhapus otomatis. ` +
+        `Hapus manual dari aplikasi Instagram.${result.instagram.detail ? ` (${result.instagram.detail})` : ''}`;
+    } else {
+      actionNotice.value = 'Fess berhasil dihapus.';
+    }
+    setTimeout(() => {
+      actionNotice.value = '';
+    }, 8000);
   } catch (e) {
     actionError.value = e?.message || 'Gagal melakukan take down.';
   }

@@ -300,6 +300,8 @@
         class="action-btn action-btn--bookmark"
         :class="{ saved: isSaved }"
         :title="isSaved ? 'Hapus Simpanan' : 'Simpan'"
+        :disabled="bookmarkPending"
+        :aria-busy="bookmarkPending"
         @click="toggleBookmark"
       >
         <Bookmark :size="17" :fill="isSaved ? 'currentColor' : 'none'" />
@@ -419,11 +421,11 @@
 
     <!-- REPORT MODAL DIALOG -->
     <ReportFessModal
-      v-if="showReportModal"
-      :post-id="post.id"
-      :base-handle="post.handle || post.senderHandle"
+      :show="showReportModal"
+      :fess-id="post.id"
+      :fess-handle="post.handle || post.senderHandle"
       @close="showReportModal = false"
-      @submit="handleReportSubmitted"
+      @submitted="handleReportSubmitted"
     />
 
     <!-- PENAMPIL MEDIA GAYA X / THREADS (foto + video menyatu) -->
@@ -716,12 +718,55 @@ function toggleLike() {
 }
 
 /* 2. BOOKMARK STATE */
-const isSaved = ref(props.post.isSaved || false);
+const isSaved = ref(Boolean(props.post.isSaved));
+const bookmarkPending = ref(false);
 
-function toggleBookmark() {
-  isSaved.value = !isSaved.value;
-  triggerToast(isSaved.value ? 'Fess disimpan ke tab tersimpan' : 'Fess dihapus dari simpanan');
-  emit('bookmark', { id: props.post.id, isSaved: isSaved.value });
+// Sinkronkan kartu saat daftar induk di-refresh (mis. tab Tersimpan).
+watch(
+  () => props.post?.isSaved,
+  (value) => {
+    isSaved.value = Boolean(value);
+  }
+);
+
+async function toggleBookmark() {
+  if (bookmarkPending.value) return;
+
+  if (!authStore.isAuthenticated) {
+    router.push({
+      path: '/login',
+      query: { redirect: router.currentRoute.value.fullPath },
+    });
+    return;
+  }
+
+  const next = !isSaved.value;
+  const previous = isSaved.value;
+  isSaved.value = next;
+  bookmarkPending.value = true;
+
+  try {
+    if (next) {
+      await api.bookmarkFess(props.post.id);
+    } else {
+      await api.unbookmarkFess(props.post.id);
+    }
+    triggerToast(
+      next ? 'Fess disimpan ke tab Tersimpan' : 'Fess dihapus dari simpanan'
+    );
+    emit('bookmark', { id: props.post.id, isSaved: next });
+  } catch (err) {
+    isSaved.value = previous;
+    triggerToast(
+      err?.status === 401
+        ? 'Sesi kamu berakhir. Masuk lagi untuk menyimpan fess.'
+        : next
+          ? 'Gagal menyimpan fess. Coba lagi.'
+          : 'Gagal menghapus simpanan. Coba lagi.'
+    );
+  } finally {
+    bookmarkPending.value = false;
+  }
 }
 
 /* MEDIA HANDLING (PHOTOS & VIDEOS — kolase menyatu ala X/Threads) */
@@ -1994,6 +2039,11 @@ function formatCount(num) {
 .action-btn:hover {
   color: var(--shell-text);
   background: var(--shell-chip);
+}
+
+.action-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .action-btn.liked {

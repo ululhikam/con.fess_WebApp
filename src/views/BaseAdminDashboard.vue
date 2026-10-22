@@ -299,14 +299,26 @@ async function handleTakeDownFess(id) {
   if (!id) return;
   const confirmed = await confirmDialog({
     title: 'Take Down Fess',
-    message: 'Take down fess ini? Fess akan dihapus dari feed dan tidak bisa dikembalikan.',
+    message:
+      'Take down fess ini? Fess akan dihapus dari feed dan postingan Instagram-nya juga akan dicoba dihapus. Tindakan ini tidak bisa dikembalikan.',
     confirmLabel: 'Take Down',
     variant: 'danger',
   });
   if (!confirmed) return;
   try {
-    await api.deleteFess(id);
+    const result = await api.deleteFess(id);
     await reloadHomeFeed();
+
+    if (result?.instagram?.status === 'failed') {
+      await alertDialog({
+        title: 'Fess Dihapus, Instagram Belum',
+        message:
+          'Fess sudah dihapus dari FnC, tetapi postingan Instagram belum terhapus otomatis. ' +
+          'Hapus manual dari aplikasi Instagram.' +
+          (result.instagram.detail ? `\n\nDetail: ${result.instagram.detail}` : ''),
+        variant: 'danger',
+      });
+    }
   } catch (e) {
     await alertDialog({
       title: 'Take Down Gagal',

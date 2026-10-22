@@ -86,7 +86,7 @@
       </div>
     </div>
 
-    <!-- 3 SUB-TABS (IG Profile Tabs: Fess Saya, Base yang Diikuti, Saldo & Top Up) -->
+    <!-- 4 SUB-TABS (IG Profile Tabs: Fess Saya, Tersimpan, Base yang Diikuti, Saldo & Top Up) -->
     <div class="ig-nav-tabs" role="tablist" aria-label="Tab Profil">
       <button
         type="button"
@@ -98,6 +98,18 @@
       >
         <MessageSquare :size="18" />
         <span>Fess Saya</span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        :aria-selected="activeSubTab === 'saved'"
+        class="ig-tab-btn"
+        :class="{ active: activeSubTab === 'saved' }"
+        @click="activeSubTab = 'saved'"
+      >
+        <Bookmark :size="18" />
+        <span>Tersimpan</span>
       </button>
 
       <button
@@ -221,7 +233,61 @@
         </template>
       </div>
 
-      <!-- TAB 2: BASE YANG DIIKUTI -->
+      <!-- TAB 2: FESS TERSIMPAN -->
+      <div v-else-if="activeSubTab === 'saved'" class="tab-pane-fade">
+        <div class="tab-pane-header">
+          <span class="tab-pane-title">Fess Tersimpan ({{ savedTotal }})</span>
+        </div>
+
+        <ContentSkeleton
+          v-if="savedLoading && !savedFesses.length"
+          type="list"
+          :count="3"
+          label="Memuat fess tersimpan…"
+        />
+
+        <AppStateView
+          v-else-if="savedError && !savedFesses.length"
+          variant="error"
+          title="Fess tersimpan gagal dimuat"
+          description="Terjadi kesalahan saat mengambil daftar simpananmu. Coba muat ulang."
+          action-label="Coba lagi"
+          @action="loadSavedFesses"
+        />
+
+        <template v-else>
+          <div v-if="savedFesses.length" class="my-fess-list">
+            <FessCard
+              v-for="item in savedFesses"
+              :key="item.id"
+              :post="item"
+              @like="handleSavedLike"
+              @bookmark="handleSavedBookmark"
+            />
+
+            <div ref="savedSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+            <p v-if="savedLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+            <button
+              v-else-if="savedLoadMoreError"
+              type="button"
+              class="feed-load-retry"
+              @click="loadMoreSavedFesses"
+            >
+              Coba lagi memuat
+            </button>
+          </div>
+
+          <div v-else class="empty-tab-state">
+            <Bookmark :size="40" class="empty-tab-icon" />
+            <p class="empty-tab-title">Belum ada fess tersimpan</p>
+            <p class="empty-tab-sub">
+              Tekan ikon simpan di kartu fess untuk menyimpannya ke sini.
+            </p>
+          </div>
+        </template>
+      </div>
+
+      <!-- TAB 3: BASE YANG DIIKUTI -->
       <div v-else-if="activeSubTab === 'following'" class="tab-pane-fade">
         <div class="tab-pane-header">
           <span class="tab-pane-title">Komunitas Base Diikuti ({{ followedBasesCount }})</span>
@@ -663,7 +729,7 @@
  * 2. Hamburger button opens Settings: Tampilan (theme), Notif, Bantuan, Ketentuan Layanan,
  *    Kebijakan Privasi, Keamanan & Ganti Password, Logout.
  * 3. Centered profile photo, "Edit Profil" button, Name/Username and bio below it.
- * 4. 3 interactive sub-tabs: Fess Saya, Base yang Diikuti, Saldo & Top Up.
+ * 4. 4 interactive sub-tabs: Fess Saya, Tersimpan, Base yang Diikuti, Saldo & Top Up.
  * 5. Pinned bottom navbar stays active and visible.
  */
 import { ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue';
@@ -682,6 +748,7 @@ import {
   LogOut,
   Coins,
   MessageSquare,
+  Bookmark,
   Star,
   CreditCard,
   Plus,
@@ -784,7 +851,7 @@ const handleCooldownPeriodDays = computed(
 );
 
 /* ---------- Sub Tabs State ---------- */
-const activeSubTab = ref('fess'); // 'fess' | 'following' | 'saldo'
+const activeSubTab = ref('fess'); // 'fess' | 'saved' | 'following' | 'saldo'
 
 /* ---------- Drawers & Modals ---------- */
 const showSettingsDrawer = ref(false);
@@ -964,10 +1031,10 @@ watch([myFessFilter, myFessSort], () => {
   loadMyFesses();
 });
 
-/** Like dari kartu Fess Saya (optimistic, disinkronkan dengan respons vote). */
-async function handleMyFessLike(payload) {
+/** Like dari daftar kartu profil (optimistic, disinkronkan dengan respons vote). */
+async function handlePostLikeInList(listRef, payload) {
   const id = payload && typeof payload === 'object' ? payload.id : payload;
-  const item = myFesses.value.find((p) => String(p.id) === String(id));
+  const item = listRef.value.find((p) => String(p.id) === String(id));
   if (!item) return;
 
   const wasLiked = item.isLiked;
@@ -988,6 +1055,10 @@ async function handleMyFessLike(payload) {
   }
 }
 
+function handleMyFessLike(payload) {
+  return handlePostLikeInList(myFesses, payload);
+}
+
 const myFessCount = computed(() => myFessTotal.value);
 
 useInfiniteScroll(myFessSentinel, {
@@ -1001,7 +1072,95 @@ useInfiniteScroll(myFessSentinel, {
   deps: () => [myFesses.value.length, myFessHasMore.value, activeSubTab.value],
 });
 
-/* ---------- Tab 2: Base yang Diikuti —— GET /users/me/following (search + sort + lazy load) ---------- */
+/* ---------- Tab 2: Fess Tersimpan —— GET /users/me/bookmarks ---------- */
+const SAVED_PAGE_SIZE = 20;
+
+const savedFesses = ref([]);
+const savedLoading = ref(false);
+const savedLoadingMore = ref(false);
+const savedLoadMoreError = ref(null);
+const savedError = ref(null);
+const savedTotal = ref(0);
+const savedSentinel = ref(null);
+let savedPage = 1;
+
+const savedHasMore = computed(() => savedFesses.value.length < savedTotal.value);
+
+function savedParams(page) {
+  return { page, limit: SAVED_PAGE_SIZE };
+}
+
+async function loadSavedFesses() {
+  savedError.value = null;
+  savedLoadMoreError.value = null;
+  if (!savedFesses.value.length) savedLoading.value = true;
+
+  try {
+    const res = await api.getMyBookmarks(savedParams(1));
+    savedFesses.value = (res?.data ?? []).map(mapFessToPost).filter(Boolean);
+    savedTotal.value = res?.total ?? savedFesses.value.length;
+    savedPage = 1;
+  } catch (e) {
+    if (!savedFesses.value.length) savedError.value = e;
+  } finally {
+    savedLoading.value = false;
+  }
+}
+
+async function loadMoreSavedFesses() {
+  if (savedLoading.value || savedLoadingMore.value || !savedHasMore.value) return;
+  savedLoadingMore.value = true;
+  savedLoadMoreError.value = null;
+
+  try {
+    const nextPage = savedPage + 1;
+    const res = await api.getMyBookmarks(savedParams(nextPage));
+    const seen = new Set(savedFesses.value.map((item) => String(item.id)));
+    const extra = (res?.data ?? [])
+      .map(mapFessToPost)
+      .filter((item) => item && !seen.has(String(item.id)));
+    savedFesses.value = [...savedFesses.value, ...extra];
+    savedTotal.value = res?.total ?? savedTotal.value;
+    savedPage = nextPage;
+  } catch (e) {
+    savedLoadMoreError.value = e;
+  } finally {
+    savedLoadingMore.value = false;
+  }
+}
+
+function handleSavedLike(payload) {
+  return handlePostLikeInList(savedFesses, payload);
+}
+
+function handleSavedBookmark(payload) {
+  if (payload?.isSaved !== false) return;
+  const index = savedFesses.value.findIndex((item) => String(item.id) === String(payload.id));
+  if (index === -1) return;
+  savedFesses.value.splice(index, 1);
+  savedTotal.value = Math.max(0, savedTotal.value - 1);
+
+  // Offset halaman berikutnya bergeser setelah satu item dihapus; muat ulang
+  // halaman pertama agar tidak ada fess yang terlewat.
+  if (savedHasMore.value) loadSavedFesses();
+}
+
+watch(activeSubTab, (tab) => {
+  if (tab === 'saved') loadSavedFesses();
+});
+
+useInfiniteScroll(savedSentinel, {
+  onLoad: loadMoreSavedFesses,
+  canLoad: () =>
+    activeSubTab.value === 'saved' &&
+    savedHasMore.value &&
+    !savedLoading.value &&
+    !savedLoadingMore.value &&
+    !savedLoadMoreError.value,
+  deps: () => [savedFesses.value.length, savedHasMore.value, activeSubTab.value],
+});
+
+/* ---------- Tab 3: Base yang Diikuti —— GET /users/me/following (search + sort + lazy load) ---------- */
 const FOLLOWING_PAGE_SIZE = 20;
 const FOLLOWING_SEARCH_DEBOUNCE_MS = 300;
 
@@ -1134,7 +1293,7 @@ onBeforeUnmount(() => {
   clearTimeout(followingSearchTimer);
 });
 
-/* ---------- Tab 3: Saldo (read-only, from the session user) ---------- */
+/* ---------- Tab 4: Saldo (read-only, from the session user) ---------- */
 const balance = computed(() => authStore.user?.balance ?? 0);
 const balanceDisplay = computed(() => formatNumber(balance.value));
 const hasBalance = computed(() => balance.value > 0);
@@ -1174,6 +1333,7 @@ async function refreshFollowingBases() {
 useVisibilityRefresh(() => {
   refreshMyFesses();
   refreshFollowingBases();
+  if (activeSubTab.value === 'saved') loadSavedFesses();
 });
 
 /**
@@ -1183,6 +1343,7 @@ useVisibilityRefresh(() => {
 onActivated(() => {
   if (myFesses.value.length) refreshMyFesses();
   if (followingBases.value.length) refreshFollowingBases();
+  if (activeSubTab.value === 'saved') loadSavedFesses();
 });
 
 /* ---------- Settings Panel Navigation ---------- */
@@ -1432,7 +1593,7 @@ function confirmLogout() {
   background: var(--shell-border);
 }
 
-/* ---------- 3 SUB-TABS (IG Style) ---------- */
+/* ---------- 4 SUB-TABS (IG Style) ---------- */
 .ig-nav-tabs {
   display: flex;
   align-items: center;
@@ -1467,6 +1628,15 @@ function confirmLogout() {
 .ig-tab-btn.active {
   color: var(--shell-active);
   border-bottom-color: var(--shell-active);
+}
+
+@media (max-width: 560px) {
+  .ig-tab-btn {
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    padding: 10px 4px;
+  }
 }
 
 /* ---------- TAB CONTENT AREA ---------- */
@@ -1673,7 +1843,7 @@ function confirmLogout() {
   font-weight: 700;
 }
 
-/* Tab 2: Following List */
+/* Tab 3: Following List */
 .following-search-box {
   position: relative;
   display: flex;
@@ -1786,7 +1956,7 @@ function confirmLogout() {
   color: #ef4444;
 }
 
-/* Tab 3: Saldo & Top Up */
+/* Tab 4: Saldo & Top Up */
 .balance-ctf-card {
   background: linear-gradient(135deg, var(--brand-blue) 0%, var(--shell-sub-accent) 100%);
   color: #fff;
