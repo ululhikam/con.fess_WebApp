@@ -506,6 +506,42 @@
             />
           </div>
 
+          <!-- Handle base: editable only when the 7-day cooldown has passed -->
+          <div class="form-group mt-3">
+            <div class="form-label-row">
+              <label for="edit-base-handle" class="form-label">Username / Handle Base</label>
+              <span v-if="!canChangeBaseHandle" class="handle-lock-chip">
+                <Clock :size="12" />
+                <span>Terkunci</span>
+              </span>
+            </div>
+            <input
+              id="edit-base-handle"
+              v-model="editForm.handle"
+              type="text"
+              class="form-input"
+              placeholder="@handlebase"
+              maxlength="21"
+              autocomplete="username"
+              required
+              :disabled="!canChangeBaseHandle"
+            />
+            <span v-if="canChangeBaseHandle" class="form-hint">
+              Handle base bisa diganti 1 kali setiap {{ handleCooldownPeriodDays }} hari. Setelah
+              disimpan, handle baru terkunci selama {{ handleCooldownPeriodDays }} hari.
+            </span>
+            <div v-else class="handle-cooldown-note">
+              <Clock :size="14" />
+              <span>
+                Handle base sudah diganti{{
+                  handleChangedLabel ? ` pada ${handleChangedLabel}` : ''
+                }}. Handle dapat diubah lagi pada
+                <strong>{{ handleAvailableLabel }}</strong>
+                ({{ handleCooldownDays }} hari lagi).
+              </span>
+            </div>
+          </div>
+
           <div class="form-group mt-3">
             <label for="edit-base-bio" class="form-label">Bio Base</label>
             <textarea
@@ -640,7 +676,9 @@ const fesses = ref([]);
 const actionError = ref('');
 const actionNotice = ref('');
 
-const managedHandle = computed(() => authStore.user?.managedBases?.[0] || null);
+const managedHandle = computed(
+  () => base.value?.handle || authStore.user?.managedBases?.[0] || null
+);
 
 const baseName = computed(() => base.value?.name || authStore.user?.username || 'Base');
 const baseHandle = computed(
@@ -657,6 +695,56 @@ const baseAvatarUrl = computed(() => {
 const igAccount = computed(() => base.value?.ig_account || '');
 const followersCount = computed(() => base.value?.followers_count ?? 0);
 const fessCount = computed(() => base.value?.fess_count ?? 0);
+
+/* ---------- Handle base cooldown (mirrors backend: 1x / 7 hari) ---------- */
+const HANDLE_COOLDOWN_DAY_MS = 24 * 60 * 60 * 1000;
+
+const baseHandleChangeAvailableAt = computed(() => {
+  const raw = base.value?.handle_change_available_at;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+});
+
+const canChangeBaseHandle = computed(() => {
+  const availableAt = baseHandleChangeAvailableAt.value;
+  return !availableAt || Date.now() >= availableAt.getTime();
+});
+
+const handleChangedLabel = computed(() => {
+  const raw = base.value?.handle_changed_at;
+  if (!raw) return '';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+});
+
+const handleAvailableLabel = computed(() => {
+  const availableAt = baseHandleChangeAvailableAt.value;
+  if (!availableAt) return '';
+  return availableAt.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+});
+
+const handleCooldownDays = computed(() => {
+  const availableAt = baseHandleChangeAvailableAt.value;
+  if (!availableAt) return 0;
+  return Math.max(
+    1,
+    Math.ceil((availableAt.getTime() - Date.now()) / HANDLE_COOLDOWN_DAY_MS)
+  );
+});
+
+const handleCooldownPeriodDays = computed(
+  () => Number(base.value?.handle_change_cooldown_days) || 7
+);
 
 /* ---------- Modal daftar Follower / Following (data real) ---------- */
 const showFollowModal = ref(false);
@@ -800,7 +888,13 @@ async function loadProfile() {
 }
 
 /* ---------- Edit profil base (PATCH /bases/:handle/settings) ---------- */
-const editForm = ref({ name: '', bio: '', avatar: '', postMode: 'moderated' });
+const editForm = ref({
+  name: '',
+  handle: '',
+  bio: '',
+  avatar: '',
+  postMode: 'moderated',
+});
 const editError = ref('');
 const isSavingProfile = ref(false);
 
@@ -808,6 +902,7 @@ function openEditProfile() {
   editError.value = '';
   editForm.value = {
     name: baseName.value,
+    handle: baseHandle.value,
     bio: baseBio.value,
     avatar: baseAvatarUrl.value || '',
     postMode: base.value?.post_mode || 'moderated',
@@ -830,18 +925,60 @@ async function handleAdminAvatarUpload(e) {
 async function saveBaseProfile() {
   const handle = managedHandle.value;
   if (!handle) return;
+
+  const cleanHandle = editForm.value.handle.trim().startsWith('@')
+    ? editForm.value.handle.trim()
+    : `@${editForm.value.handle.trim()}`;
+
   isSavingProfile.value = true;
   editError.value = '';
   try {
-    base.value = await api.updateBaseSettings(handle, {
+    const updates = {
       name: editForm.value.name.trim(),
       bio: editForm.value.bio.trim(),
       avatar: editForm.value.avatar || null,
       postMode: editForm.value.postMode,
-    });
+    };
+
+    // Only send handle when it actually changed and the cooldown has passed.
+    // The backend remains the source of truth.
+    if (canChangeBaseHandle.value && cleanHandle !== baseHandle.value) {
+      updates.handle = cleanHandle;
+    }
+
+    const updated = await api.updateBaseSettings(handle, updates);
+    base.value = { ...base.value, ...updated };
+
+    if (updates.handle) {
+      // Refresh the session's managed_bases so other admin screens use the
+      // new handle too. Fall back to a local patch if /auth/me is unavailable.
+      try {
+        await authStore.fetchMe();
+      } catch {
+        if (authStore.user) {
+          authStore.user = {
+            ...authStore.user,
+            managedBases: (authStore.user.managedBases || []).map((managed) =>
+              String(managed).replace(/^@/, '').toLowerCase() ===
+              String(handle).replace(/^@/, '').toLowerCase()
+                ? cleanHandle
+                : managed
+            ),
+          };
+        }
+      }
+      await Promise.all([loadFesses(), loadStats(), loadMyFollowingCount()]);
+    }
+
     showEditModal.value = false;
   } catch (err) {
     editError.value = err?.message || 'Gagal menyimpan profil base.';
+    // Cooldown may have been consumed on another device — refresh the lock.
+    if (err?.data?.code === 'HANDLE_CHANGE_COOLDOWN') {
+      api.getBase(handle).then((fresh) => {
+        base.value = { ...base.value, ...fresh };
+      }).catch(() => {});
+    }
   } finally {
     isSavingProfile.value = false;
   }
@@ -1776,6 +1913,55 @@ async function handleAdminLogout() {
   color: var(--shell-text-muted);
 }
 
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.handle-lock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning-text, #b45309);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.form-hint {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--shell-text-muted);
+}
+
+.handle-cooldown-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-text, #b45309);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.handle-cooldown-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.handle-cooldown-note strong {
+  font-weight: 900;
+}
+
 .form-input,
 .form-textarea {
   width: 100%;
@@ -1793,6 +1979,12 @@ async function handleAdminLogout() {
 .form-input:focus,
 .form-textarea:focus {
   border-color: var(--shell-sub-accent);
+}
+
+.form-input:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  background: var(--shell-chip);
 }
 
 /* Mode posting fess (moderasi vs auto post + NLP) */
