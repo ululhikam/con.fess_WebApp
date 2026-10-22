@@ -9,31 +9,7 @@
           :class="`is-${item.type}`"
           role="status"
         >
-          <span class="app-toast-icon" aria-hidden="true">
-            <component
-              :is="iconFor(item.type)"
-              :size="17"
-              :class="{ 'is-spinning': item.type === 'pending' }"
-            />
-          </span>
-
           <p class="app-toast-message">{{ item.message }}</p>
-
-          <button
-            type="button"
-            class="app-toast-close"
-            aria-label="Tutup notifikasi"
-            @click="toast.dismiss(item.id)"
-          >
-            <X :size="14" />
-          </button>
-
-          <span
-            v-if="item.duration"
-            class="app-toast-progress"
-            :style="{ animationDuration: `${item.duration}ms` }"
-            aria-hidden="true"
-          />
         </div>
       </TransitionGroup>
     </div>
@@ -41,20 +17,7 @@
 </template>
 
 <script setup>
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, Loader2, X } from 'lucide-vue-next';
-import { toast, toastItems } from '../../composables/useToast';
-
-const ICONS = {
-  success: CheckCircle2,
-  error: AlertCircle,
-  warning: AlertTriangle,
-  info: Info,
-  pending: Loader2,
-};
-
-function iconFor(type) {
-  return ICONS[type] || CheckCircle2;
-}
+import { toastItems } from '../../composables/useToast';
 </script>
 
 <style scoped>
@@ -75,53 +38,31 @@ function iconFor(type) {
 .app-toast {
   position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  padding: 10px 14px;
+  margin-inline: auto;
+  padding: 10px 16px;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: 9999px;
   background: var(--bg-raised);
   color: var(--text-main);
   box-shadow: 0 10px 24px var(--shadow-color);
   pointer-events: auto;
+  min-height: 44px;
 }
 
-.app-toast-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  margin-top: 2px;
-  border-radius: 50%;
+html[data-theme='dark'] .app-toast {
+  background: #ffffff;
+  color: #111827;
+  border-color: #e5e7eb;
 }
 
-.app-toast.is-success .app-toast-icon {
-  background: rgba(34, 197, 94, 0.10);
-  color: var(--success-text);
-}
-
-.app-toast.is-error .app-toast-icon {
-  background: rgba(239, 68, 68, 0.10);
-  color: var(--danger-text);
-}
-
-.app-toast.is-warning .app-toast-icon {
-  background: rgba(245, 158, 11, 0.10);
-  color: var(--warning-text);
-}
-
-.app-toast.is-info .app-toast-icon {
-  background: rgba(0, 56, 255, 0.08);
-  color: var(--brand-blue);
-}
-
-.app-toast.is-pending .app-toast-icon {
-  background: rgba(245, 158, 11, 0.10);
-  color: var(--warning-text);
+html[data-theme='light'] .app-toast {
+  background: #1f2937;
+  color: #ffffff;
+  border-color: #374151;
 }
 
 .app-toast-message {
@@ -131,95 +72,51 @@ function iconFor(type) {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.5;
-  color: var(--text-main);
+  text-align: center;
   overflow-wrap: anywhere;
 }
 
-.app-toast-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  margin-top: 2px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+/* Animasi masuk: circle jatuh dari atas layar (tengah horizontal), lalu melebar ke kiri-kanan */
+.app-toast-enter-from {
+  opacity: 0;
+  transform: translateY(-150%) scale(0.5);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
 }
 
-.app-toast-close:hover {
-  background: var(--bg-inset);
-  color: var(--text-main);
+.app-toast-enter-active {
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 0.4s ease,
+    width 0.4s ease,
+    height 0.4s ease;
 }
 
-.app-toast-close:focus-visible {
-  outline: 2px solid var(--brand-blue);
-  outline-offset: 1px;
+.app-toast-enter-to {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  border-radius: 9999px;
+  width: 100%;
+  height: auto;
 }
 
-.app-toast-progress {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  transform-origin: left;
-  background: currentColor;
-  opacity: 0.25;
-  animation: app-toast-countdown linear forwards;
+/* Animasi keluar */
+.app-toast-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
-.app-toast.is-success .app-toast-progress {
-  color: var(--success-text);
-}
-
-.app-toast.is-error .app-toast-progress {
-  color: var(--danger-text);
-}
-
-.app-toast.is-warning .app-toast-progress,
-.app-toast.is-pending .app-toast-progress {
-  color: var(--warning-text);
-}
-
-.app-toast.is-info .app-toast-progress {
-  color: var(--brand-blue);
-}
-
-.is-spinning {
-  animation: app-toast-spin 0.9s linear infinite;
-}
-
-@keyframes app-toast-countdown {
-  from {
-    transform: scaleX(1);
-  }
-  to {
-    transform: scaleX(0);
-  }
-}
-
-@keyframes app-toast-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.app-toast-enter-active,
 .app-toast-leave-active {
   transition:
     opacity 0.2s ease,
-    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.app-toast-enter-from,
 .app-toast-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.98);
+  transform: translateY(-20px) scale(0.95);
 }
 
 .app-toast-move {
@@ -246,15 +143,6 @@ function iconFor(type) {
   .app-toast-leave-active,
   .app-toast-move {
     transition-duration: 0.01ms;
-  }
-
-  .app-toast-progress {
-    animation: none;
-    opacity: 0.3;
-  }
-
-  .is-spinning {
-    animation-duration: 2.4s;
   }
 }
 </style>
