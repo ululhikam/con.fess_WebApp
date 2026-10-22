@@ -37,7 +37,10 @@
             </span>
           </div>
           <p class="fess-body text-xs leading-relaxed">{{ fess.content }}</p>
-          <p v-if="fess.igStatus === 'failed' && fess.igError" class="ig-admin-error">
+          <p
+            v-if="fess.igStatus === 'failed' && fess.igError && fess.canManageInstagram === true"
+            class="ig-admin-error"
+          >
             {{ fess.igError }}
           </p>
         </div>
@@ -45,7 +48,9 @@
         <div class="flex gap-2 flex-wrap">
           <AdminButton variant="export" @click="exportCanvas(fess)">Canvas Card</AdminButton>
           <AdminButton
-            v-if="fess.igStatus === 'failed' && !fess.postedToIg"
+            v-if="
+              fess.canManageInstagram === true && fess.igStatus === 'failed' && !fess.postedToIg
+            "
             variant="export"
             @click="retryInstagram(fess)"
           >

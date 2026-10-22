@@ -101,6 +101,9 @@ export function mapFessToPost(f) {
     postedToIg: f.posted_to_ig ?? f.postedToIg ?? false,
     igStatus: f.ig_status ?? f.igStatus ?? 'idle',
     igError: f.ig_error ?? f.igError ?? null,
+    // Otorisasi Instagram dari server. `undefined` = payload lama / endpoint
+    // yang tidak menghitung izin; komponen akan memakai cek kepemilikan lokal.
+    canManageInstagram: f.can_manage_instagram ?? f.canManageInstagram ?? undefined,
     igAttempts: f.ig_attempts ?? f.igAttempts ?? 0,
     igUpdatedAt: f.ig_updated_at ?? f.igUpdatedAt ?? null,
     media: Array.isArray(f.media) ? f.media : [],

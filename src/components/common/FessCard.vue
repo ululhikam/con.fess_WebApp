@@ -47,7 +47,7 @@
           v-else-if="post.igStatus === 'failed'"
           class="badge-subtle badge-ig-failed"
           :title="
-            isAdmin && post.igError
+            canManageInstagram && post.igError
               ? post.igError
               : 'Publikasi Instagram gagal — hubungi admin base untuk mencoba lagi.'
           "
@@ -74,7 +74,7 @@
 
         <!-- Indikasi filter NLP (mode auto post) — hanya terlihat admin base -->
         <span
-          v-if="isAdmin && post.autoFlagged"
+          v-if="isAdmin && isManagedBasePost && post.autoFlagged"
           class="badge-subtle badge-nlp"
           :title="`Terindikasi filter NLP: ${post.flagReason || 'konten negatif'}`"
         >
@@ -201,9 +201,9 @@
       </div>
     </div>
 
-    <!-- Detail kegagalan auto-post Instagram — KHUSUS admin base/Super Admin. -->
+    <!-- Detail kegagalan auto-post Instagram — KHUSUS admin pengelola base. -->
     <div
-      v-if="isAdmin && post.igStatus === 'failed' && post.igError"
+      v-if="canManageInstagram && post.igStatus === 'failed' && post.igError"
       class="ig-failure-banner"
       role="alert"
     >
@@ -307,7 +307,7 @@
       </button>
 
       <!-- 5. ADMIN MODERASI & AUTO-POST -->
-      <div v-if="isAdmin" class="admin-quick-actions">
+      <div v-if="isAdmin && isManagedBasePost" class="admin-quick-actions">
         <template v-if="post.status === 'pending'">
           <button
             type="button"
@@ -677,6 +677,9 @@ const canManageInstagram = computed(
   () =>
     props.isAdmin &&
     isManagedBasePost.value &&
+    // Flag dari server bersifat otoritatif. `undefined` berarti payload lama
+    // (mis. endpoint non-admin), jadi cek kepemilikan lokal tetap dipakai.
+    props.post?.canManageInstagram !== false &&
     ['approved', 'published'].includes(props.post?.status) &&
     !props.post?.postedToIg,
 );
