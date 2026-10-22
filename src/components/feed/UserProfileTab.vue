@@ -853,6 +853,11 @@ async function saveProfile() {
     showEditModal.value = false;
   } catch (err) {
     profileSaveError.value = err?.message || 'Gagal menyimpan profil. Coba lagi.';
+    // If another device changed the handle, refresh the cooldown metadata so
+    // the field locks and the explanation appears immediately.
+    if (err?.data?.code === 'HANDLE_CHANGE_COOLDOWN') {
+      authStore.fetchMe().catch(() => {});
+    }
   } finally {
     isSavingProfile.value = false;
   }
