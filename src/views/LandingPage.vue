@@ -39,9 +39,15 @@ import SiteFooter from '../components/landing/SiteFooter.vue';
 
 import { useLanding } from '../composables/useLanding';
 import { useAsyncData } from '../composables/useAsyncData';
+import { useBases } from '../composables/useBases';
 
 /* Shared page behaviour (sticky nav + FAQ accordion). */
 const { isScrolled, openFaq, toggleFaq } = useLanding();
+
+/* Mulai fetch direktori lebih awal agar kartu Base sudah siap saat section
+   komunitas muncul setelah skeleton hero selesai. */
+const { ensureLoaded: ensureBasesLoaded } = useBases();
+ensureBasesLoaded().catch(() => {});
 
 /* Stand-in initial fetch — short delay so the skeleton is visible without
    slowing a marketing page down. Swap the fetcher for a real request. */
