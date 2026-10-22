@@ -26,16 +26,15 @@
       </div>
 
       <div class="header-right-group">
-        <!-- Tag / Topic asli dari database (bukan label default palsu) -->
+        <!-- Label topik: topik pilihan user, atau "Confession" sebagai default. -->
         <span
-          v-if="post.topicLabel || post.tag"
           :class="[
             'tag-badge',
             post.topic === 'tanya' || post.tag === 'Tanya' ? 'tag-tanya' : 'tag-cerita',
           ]"
         >
           <Pin :size="11" />
-          <span>{{ post.topicLabel || post.tag }}</span>
+          <span>{{ post.topicLabel || post.tag || 'Confession' }}</span>
         </span>
 
         <!-- Status publikasi Instagram (terlihat semua user; detail hanya admin) -->

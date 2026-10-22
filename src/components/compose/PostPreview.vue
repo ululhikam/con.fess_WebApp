@@ -33,13 +33,14 @@
           <strong class="post-card__handle">{{ baseHandle }}</strong>
           <span class="post-card__name">{{ baseInfo.name }}</span>
         </span>
-        <span class="post-card__brand">Fess n Curious</span>
+        <!-- Label topik menggantikan badge "Confession" yang lama; brand tetap
+             tampil di footer. -->
+        <span class="post-card__brand post-card__brand--topic">{{ topicLabel }}</span>
       </header>
 
-      <!-- Topic + song strip -->
-      <div v-if="topicLabel || song" class="post-card__meta">
-        <span v-if="topicLabel" class="post-card__chip">{{ topicLabel }}</span>
-        <span v-if="song" class="post-card__chip post-card__chip--song">
+      <!-- Song strip -->
+      <div v-if="song" class="post-card__meta">
+        <span class="post-card__chip post-card__chip--song">
           <Music :size="12" />
           {{ song.title }} — {{ song.artist }}
         </span>
@@ -197,7 +198,8 @@ const baseAvatarImage = computed(() =>
 const baseAvatar = computed(() => (baseAvatarImage.value ? '' : baseInfo.value.initials));
 
 const topicLabel = computed(() => {
-  if (!props.topic) return '';
+  // Tanpa topik, kartu tetap menampilkan label default "Confession".
+  if (!props.topic) return 'Confession';
   return getTopicById(props.topic)?.label || props.topic;
 });
 
@@ -520,6 +522,11 @@ const footerRight = computed(() =>
   letter-spacing: 0.6px;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.post-card__brand--topic {
+  text-transform: none;
+  letter-spacing: 0.2px;
 }
 
 /* ---- meta chips ---- */
