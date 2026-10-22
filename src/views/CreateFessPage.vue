@@ -643,25 +643,6 @@ onMounted(async () => {
   }
 });
 
-// Auto-save draft
-let autoSaveTimer = null;
-watch(
-  () => [
-    form.value.content,
-    form.value.media,
-    form.value.carouselOrder,
-    form.value.topic,
-    form.value.scheduledAt,
-    form.value.song,
-    form.value.template,
-  ],
-  () => {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(saveDraft, 3000);
-  },
-  { deep: true },
-);
-
 watch(
   () => route.query.quoteId,
   (newId) => {
@@ -681,10 +662,6 @@ watch(
     }
   },
 );
-
-onUnmounted(() => {
-  clearTimeout(autoSaveTimer);
-});
 
 // Handle keyboard shortcuts
 function handleKeydown(e) {

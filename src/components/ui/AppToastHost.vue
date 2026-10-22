@@ -67,8 +67,8 @@ function iconFor(type) {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
-  width: min(440px, calc(100vw - 24px));
+  gap: 10px;
+  width: min(460px, calc(100vw - 32px));
   pointer-events: none;
 }
 
@@ -78,13 +78,13 @@ function iconFor(type) {
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  padding: 11px 10px 11px 13px;
+  padding: 10px 14px;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--bg-raised);
   color: var(--text-main);
-  box-shadow: 0 14px 34px var(--shadow-color);
+  box-shadow: 0 10px 24px var(--shadow-color);
   pointer-events: auto;
 }
 
@@ -93,44 +93,45 @@ function iconFor(type) {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 27px;
-  height: 27px;
-  margin-top: 1px;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
   border-radius: 50%;
 }
 
 .app-toast.is-success .app-toast-icon {
-  background: rgba(34, 197, 94, 0.14);
+  background: rgba(34, 197, 94, 0.10);
   color: var(--success-text);
 }
 
 .app-toast.is-error .app-toast-icon {
-  background: rgba(239, 68, 68, 0.14);
+  background: rgba(239, 68, 68, 0.10);
   color: var(--danger-text);
 }
 
 .app-toast.is-warning .app-toast-icon {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.10);
   color: var(--warning-text);
 }
 
 .app-toast.is-info .app-toast-icon {
-  background: rgba(0, 56, 255, 0.12);
+  background: rgba(0, 56, 255, 0.08);
   color: var(--brand-blue);
 }
 
 .app-toast.is-pending .app-toast-icon {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.10);
   color: var(--warning-text);
 }
 
 .app-toast-message {
   flex: 1;
   min-width: 0;
-  margin: 3px 0 0;
+  margin: 0;
   font-size: 13px;
-  font-weight: 600;
-  line-height: 1.45;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-main);
   overflow-wrap: anywhere;
 }
 
@@ -139,17 +140,15 @@ function iconFor(type) {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 25px;
-  height: 25px;
-  margin-top: 1px;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 6px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .app-toast-close:hover {
@@ -170,7 +169,7 @@ function iconFor(type) {
   height: 2px;
   transform-origin: left;
   background: currentColor;
-  opacity: 0.34;
+  opacity: 0.25;
   animation: app-toast-countdown linear forwards;
 }
 
@@ -230,11 +229,11 @@ function iconFor(type) {
 @media (max-width: 480px) {
   .app-toast-viewport {
     top: calc(10px + env(safe-area-inset-top, 0px));
-    width: calc(100vw - 20px);
+    width: calc(100vw - 24px);
   }
 
   .app-toast {
-    padding: 10px 9px 10px 12px;
+    padding: 9px 12px;
   }
 
   .app-toast-message {
