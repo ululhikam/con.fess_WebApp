@@ -61,7 +61,13 @@
               <div>
                 <div class="font-bold text-sm">{{ conn.name }}</div>
                 <div class="text-xs text-muted">
-                  {{ conn.connected && conn.account_handle ? 'Akun: ' + conn.account_handle : 'Belum terhubung' }}
+                  {{
+                    conn.connected
+                      ? conn.account_handle
+                        ? 'Akun: ' + conn.account_handle
+                        : 'Akun tertaut'
+                      : 'Belum terhubung'
+                  }}
                 </div>
                 <div
                   v-if="connectionTokenInfo(conn).text"
@@ -82,17 +88,15 @@
               </span>
             </div>
 
-            <div class="form-group mt-3">
-              <label class="text-xs font-bold text-muted">
-                Akun / Channel {{ platformLabel(conn.id) }}:
-              </label>
-              <input
-                v-model="connectionHandles[conn.id]"
-                type="text"
-                class="admin-input-control text-xs mt-1"
-                :placeholder="conn.id === 'telegram' ? 'https://t.me/channel_base' : '@username_ig_base'"
-              />
+            <div v-if="conn.connected" class="connection-account-static">
+              <span class="connection-account-label">Akun tertaut</span>
+              <span class="connection-account-value">
+                {{ conn.account_handle || 'Terhubung' }}
+              </span>
             </div>
+            <p v-else class="connection-connect-hint">
+              Klik tombol di bawah untuk menautkan akun {{ platformLabel(conn.id) }}.
+            </p>
 
             <div class="mt-3 flex items-center justify-end gap-2 flex-wrap">
               <button
@@ -105,6 +109,7 @@
                 <span>Login Meta OAuth (Auto Post)</span>
               </button>
               <button
+                v-else
                 type="button"
                 class="btn-test-action"
                 :disabled="connectionBusy === conn.id"
@@ -115,7 +120,7 @@
                     ? 'Memproses…'
                     : conn.connected
                       ? 'Putuskan Koneksi'
-                      : 'Simpan Handle'
+                      : `Hubungkan ${platformLabel(conn.id)}`
                 }}
               </button>
             </div>
@@ -885,7 +890,6 @@ const panelTitle = computed(() => {
 const connections = ref([]);
 const connectionsLoading = ref(false);
 const connectionsError = ref(null);
-const connectionHandles = reactive({});
 const connectionBusy = ref(null);
 const connectionNotice = ref('');
 
@@ -942,11 +946,6 @@ async function loadConnections() {
   try {
     const res = await api.getPlatformConnections();
     connections.value = res?.data || [];
-    for (const conn of connections.value) {
-      if (connectionHandles[conn.id] === undefined) {
-        connectionHandles[conn.id] = conn.account_handle || '';
-      }
-    }
   } catch (e) {
     connectionsError.value = e;
   } finally {
@@ -974,7 +973,6 @@ async function toggleConnection(conn) {
   try {
     await api.togglePlatformConnection(conn.id, {
       action: conn.connected ? 'disconnect' : 'connect',
-      account_handle: (connectionHandles[conn.id] || '').trim() || undefined,
     });
     await loadConnections();
     connectionNotice.value = conn.connected
@@ -1399,6 +1397,43 @@ watch(
 
 .connection-token-info {
   line-height: 1.45;
+}
+
+.connection-account-static {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  background: var(--shell-card);
+}
+
+.connection-account-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--shell-text-muted);
+}
+
+.connection-account-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--shell-text);
+}
+
+.connection-connect-hint {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--shell-text-muted);
 }
 
 .connection-token-info.is-warn {

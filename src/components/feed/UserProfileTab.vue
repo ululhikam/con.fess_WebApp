@@ -587,18 +587,39 @@
             />
           </div>
 
-          <!-- Handle (read-only: PATCH /users/me does not accept handle changes) -->
+          <!-- Handle: editable only when the 7-day cooldown has passed -->
           <div class="form-group mt-3">
-            <label for="edit-handle" class="form-label">Username / Handle</label>
+            <div class="form-label-row">
+              <label for="edit-handle" class="form-label">Username / Handle</label>
+              <span v-if="!canChangeHandle" class="handle-lock-chip">
+                <Clock :size="12" />
+                <span>Terkunci</span>
+              </span>
+            </div>
             <input
               id="edit-handle"
               v-model="editForm.handle"
               type="text"
               class="form-input"
               placeholder="@username"
-              disabled
+              maxlength="21"
+              autocomplete="username"
+              :disabled="!canChangeHandle"
             />
-            <span class="form-hint">Handle tidak dapat diubah saat ini.</span>
+            <span v-if="canChangeHandle" class="form-hint">
+              Handle bisa diganti 1 kali setiap {{ handleCooldownPeriodDays }} hari. Setelah
+              disimpan, handle baru terkunci selama {{ handleCooldownPeriodDays }} hari.
+            </span>
+            <div v-else class="handle-cooldown-note">
+              <Clock :size="14" />
+              <span>
+                Kamu sudah mengganti handle{{
+                  handleChangedLabel ? ` pada ${handleChangedLabel}` : ''
+                }}. Handle dapat diubah lagi pada
+                <strong>{{ handleAvailableLabel }}</strong>
+                ({{ handleCooldownDays }} hari lagi).
+              </span>
+            </div>
           </div>
 
           <!-- Bio -->
@@ -667,6 +688,7 @@ import {
   Search,
   ChevronRight,
   Upload,
+  Clock,
 } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
 import { useRouter } from 'vue-router';
@@ -711,6 +733,56 @@ const userHandle = computed(() => authStore.user?.handle || '@anon_user');
 const userBio = computed(() => authStore.user?.bio || '');
 const userAvatar = computed(() => authStore.user?.avatar || '');
 
+/* ---------- Handle change cooldown (mirrors backend: 1x / 7 hari) ---------- */
+const HANDLE_COOLDOWN_DAY_MS = 24 * 60 * 60 * 1000;
+
+const handleChangeAvailableAt = computed(() => {
+  const raw = authStore.user?.handleChangeAvailableAt;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+});
+
+const canChangeHandle = computed(() => {
+  const availableAt = handleChangeAvailableAt.value;
+  return !availableAt || Date.now() >= availableAt.getTime();
+});
+
+const handleChangedLabel = computed(() => {
+  const raw = authStore.user?.handleChangedAt;
+  if (!raw) return '';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+});
+
+const handleAvailableLabel = computed(() => {
+  const availableAt = handleChangeAvailableAt.value;
+  if (!availableAt) return '';
+  return availableAt.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+});
+
+const handleCooldownDays = computed(() => {
+  const availableAt = handleChangeAvailableAt.value;
+  if (!availableAt) return 0;
+  return Math.max(
+    1,
+    Math.ceil((availableAt.getTime() - Date.now()) / HANDLE_COOLDOWN_DAY_MS)
+  );
+});
+
+const handleCooldownPeriodDays = computed(
+  () => Number(authStore.user?.handleChangeCooldownDays) || 7
+);
+
 /* ---------- Sub Tabs State ---------- */
 const activeSubTab = ref('fess'); // 'fess' | 'following' | 'saldo'
 
@@ -736,6 +808,7 @@ const editForm = ref({
 });
 
 function openEditModal() {
+  profileSaveError.value = '';
   editForm.value = {
     username: displayName.value,
     handle: userHandle.value,
@@ -764,12 +837,19 @@ async function saveProfile() {
   profileSaveError.value = '';
   isSavingProfile.value = true;
   try {
-    await authStore.updateProfile({
+    const updates = {
       username: editForm.value.username.trim(),
-      handle: cleanHandle.trim(),
       bio: editForm.value.bio.trim(),
       avatar: editForm.value.avatar || null,
-    });
+    };
+
+    // Only send handle when it actually changed and the cooldown has passed.
+    // The backend still enforces the cooldown as the source of truth.
+    if (canChangeHandle.value && cleanHandle.trim() !== userHandle.value) {
+      updates.handle = cleanHandle.trim();
+    }
+
+    await authStore.updateProfile(updates);
     showEditModal.value = false;
   } catch (err) {
     profileSaveError.value = err?.message || 'Gagal menyimpan profil. Coba lagi.';
@@ -2300,6 +2380,55 @@ function confirmLogout() {
   gap: 4px;
 }
 
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.handle-lock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning-text, #b45309);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.form-hint {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--shell-text-muted);
+}
+
+.handle-cooldown-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-text, #b45309);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.handle-cooldown-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.handle-cooldown-note strong {
+  font-weight: 900;
+}
+
 .form-label {
   font-size: 11.5px;
   font-weight: 800;
@@ -2323,6 +2452,12 @@ function confirmLogout() {
 .form-input:focus,
 .form-textarea:focus {
   border-color: var(--shell-active);
+}
+
+.form-input:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  background: var(--shell-chip);
 }
 
 .edit-modal-footer {

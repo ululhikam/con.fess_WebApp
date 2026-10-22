@@ -24,6 +24,10 @@ const readToken = () => localStorage.getItem('fess_token');
  */
 function normalizeUser(user) {
   if (!user) return null;
+  const handleChangeAvailableAt =
+    user.handle_change_available_at ?? user.handleChangeAvailableAt ?? null;
+  const handleChangeCooldownDays =
+    user.handle_change_cooldown_days ?? user.handleChangeCooldownDays ?? 7;
   return {
     ...user,
     emailVerified: Boolean(user.email_verified ?? user.emailVerified),
@@ -34,6 +38,13 @@ function normalizeUser(user) {
     fessCount: user.fess_count ?? user.fessCount ?? 0,
     balance: user.balance ?? 0,
     createdAt: user.created_at ?? user.createdAt ?? null,
+    handleChangedAt: user.handle_changed_at ?? user.handleChangedAt ?? null,
+    handleChangeAvailableAt,
+    handleChangeCooldownDays,
+    canChangeHandle:
+      user.can_change_handle ??
+      user.canChangeHandle ??
+      (!handleChangeAvailableAt || Date.now() >= Number(handleChangeAvailableAt)),
   };
 }
 
