@@ -212,7 +212,11 @@
           <div v-else class="empty-tab-state">
             <MessageSquare :size="40" class="empty-tab-icon" />
             <p class="empty-tab-title">
-              {{ myFessFilter === 'semua' ? 'Belum ada fess terkirim' : 'Tidak ada fess dengan status ini' }}
+              {{
+                myFessFilter === 'semua'
+                  ? 'Belum ada fess terkirim'
+                  : 'Tidak ada fess dengan status ini'
+              }}
             </p>
             <p class="empty-tab-sub">
               {{
@@ -280,9 +284,7 @@
           <div v-else class="empty-tab-state">
             <Bookmark :size="40" class="empty-tab-icon" />
             <p class="empty-tab-title">Belum ada fess tersimpan</p>
-            <p class="empty-tab-sub">
-              Tekan ikon simpan di kartu fess untuk menyimpannya ke sini.
-            </p>
+            <p class="empty-tab-sub">Tekan ikon simpan di kartu fess untuk menyimpannya ke sini.</p>
           </div>
         </template>
       </div>
@@ -329,11 +331,7 @@
           </div>
 
           <div v-if="followingBases.length" class="following-list">
-            <div
-              v-for="base in followingBases"
-              :key="base.handle"
-              class="following-card"
-            >
+            <div v-for="base in followingBases" :key="base.handle" class="following-card">
               <div
                 class="following-info-col"
                 @click="goToBase(base.handle)"
@@ -347,11 +345,7 @@
                   <div class="following-handle">{{ base.handle }} • {{ base.members }}</div>
                 </div>
               </div>
-              <button
-                type="button"
-                class="btn-unfollow"
-                @click="handleUnfollow(base.handle)"
-              >
+              <button type="button" class="btn-unfollow" @click="handleUnfollow(base.handle)">
                 Mengikuti
               </button>
             </div>
@@ -387,37 +381,7 @@
 
       <!-- TAB 3: SALDO & TOP UP -->
       <div v-else-if="activeSubTab === 'saldo'" class="tab-pane-fade">
-        <!-- Saldo Hero Card (read-only: balance comes from the session user) -->
-        <div class="balance-ctf-card">
-          <div class="balance-ctf-header">
-            <div>
-              <div class="balance-ctf-label">SALDO AKUN KAMU</div>
-              <div class="balance-ctf-val">
-                <Coins :size="32" class="balance-ctf-icon" />
-                <span>{{ balanceDisplay }}</span>
-                <span class="balance-ctf-unit">CTF</span>
-              </div>
-            </div>
-            <div v-if="hasBalance" class="balance-ctf-status">
-              <span class="ctf-status-pill">Status: Aktif</span>
-            </div>
-          </div>
-          <p class="balance-ctf-note">
-            1 CTF = 1 kali kirim confession reguler tanpa antrian.
-          </p>
-        </div>
-
-        <div class="empty-tab-state mt-6">
-          <CreditCard :size="40" class="empty-tab-icon" />
-          <p class="empty-tab-title">Top Up Belum Tersedia</p>
-          <p class="empty-tab-sub">
-            {{
-              hasBalance
-                ? 'Saldo di atas diambil langsung dari akunmu. Fitur pembelian CTF belum tersedia saat ini.'
-                : 'Saldo dan top up CTF belum tersedia pada akunmu saat ini.'
-            }}
-          </p>
-        </div>
+        <TopUpFlow />
       </div>
     </div>
 
@@ -504,11 +468,7 @@
             </button>
 
             <!-- 3. Bantuan -->
-            <button
-              type="button"
-              class="settings-menu-item"
-              @click="openSettingsSubPanel('help')"
-            >
+            <button type="button" class="settings-menu-item" @click="openSettingsSubPanel('help')">
               <div class="row-info">
                 <HelpCircle :size="18" class="row-icon" />
                 <div>
@@ -520,11 +480,7 @@
             </button>
 
             <!-- 4. Ketentuan Layanan -->
-            <button
-              type="button"
-              class="settings-menu-item"
-              @click="openSettingsSubPanel('terms')"
-            >
+            <button type="button" class="settings-menu-item" @click="openSettingsSubPanel('terms')">
               <div class="row-info">
                 <ScrollText :size="18" class="row-icon" />
                 <div>
@@ -613,7 +569,10 @@
             <div class="edit-avatar-controls">
               <div class="avatar-controls-top">
                 <span class="edit-avatar-label">Foto Profil:</span>
-                <label class="btn-upload-avatar-chip" :class="{ 'is-uploading': isUploadingAvatar }">
+                <label
+                  class="btn-upload-avatar-chip"
+                  :class="{ 'is-uploading': isUploadingAvatar }"
+                >
                   <Upload :size="12" />
                   <span>{{ isUploadingAvatar ? 'Mengunggah…' : 'Upload Foto' }}</span>
                   <input
@@ -634,7 +593,7 @@
                   :class="{ selected: editForm.avatar === preset }"
                   @click="editForm.avatar = preset"
                 >
-                  <img :src="preset" :alt="`Avatar ${i+1}`" />
+                  <img :src="preset" :alt="`Avatar ${i + 1}`" />
                 </button>
               </div>
             </div>
@@ -703,13 +662,7 @@
           <p v-if="profileSaveError" class="form-error">{{ profileSaveError }}</p>
 
           <div class="edit-modal-footer mt-5">
-            <button
-              type="button"
-              class="btn-cancel"
-              @click="showEditModal = false"
-            >
-              Batal
-            </button>
+            <button type="button" class="btn-cancel" @click="showEditModal = false">Batal</button>
             <button type="submit" class="btn-save" :disabled="isSavingProfile">
               {{ isSavingProfile ? 'Menyimpan…' : 'Simpan Perubahan' }}
             </button>
@@ -746,7 +699,6 @@ import {
   Shield,
   KeyRound,
   LogOut,
-  Coins,
   MessageSquare,
   Bookmark,
   Star,
@@ -762,6 +714,7 @@ import { useRouter } from 'vue-router';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import FessCard from '../common/FessCard.vue';
+import TopUpFlow from '../payments/TopUpFlow.vue';
 import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 import { mapFessToPost } from '../../utils/fessMapper';
@@ -778,12 +731,7 @@ const props = defineProps({
 
 const notif = useNotifications();
 
-const emit = defineEmits([
-  'setTheme',
-  'logout',
-  'openCompose',
-  'openSubPanel',
-]);
+const emit = defineEmits(['setTheme', 'logout', 'openCompose', 'openSubPanel']);
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -841,14 +789,11 @@ const handleAvailableLabel = computed(() => {
 const handleCooldownDays = computed(() => {
   const availableAt = handleChangeAvailableAt.value;
   if (!availableAt) return 0;
-  return Math.max(
-    1,
-    Math.ceil((availableAt.getTime() - Date.now()) / HANDLE_COOLDOWN_DAY_MS)
-  );
+  return Math.max(1, Math.ceil((availableAt.getTime() - Date.now()) / HANDLE_COOLDOWN_DAY_MS));
 });
 
 const handleCooldownPeriodDays = computed(
-  () => Number(authStore.user?.handleChangeCooldownDays) || 7
+  () => Number(authStore.user?.handleChangeCooldownDays) || 7,
 );
 
 /* ---------- Sub Tabs State ---------- */
@@ -1019,9 +964,7 @@ async function loadMoreMyFesses() {
     const nextPage = myFessPage + 1;
     const res = await api.getMyFesses(myFessParams(nextPage));
     const seen = new Set(myFesses.value.map((p) => String(p.id)));
-    const extra = (res?.data ?? [])
-      .map(mapFessToPost)
-      .filter((p) => p && !seen.has(String(p.id)));
+    const extra = (res?.data ?? []).map(mapFessToPost).filter((p) => p && !seen.has(String(p.id)));
     myFesses.value = [...myFesses.value, ...extra];
     myFessQueryTotal.value = res?.total ?? myFessQueryTotal.value;
     myFessPage = nextPage;
@@ -1184,9 +1127,7 @@ const followingSentinel = ref(null);
 let followingPage = 1;
 let followingSearchTimer = null;
 
-const followingHasMore = computed(
-  () => followingBases.value.length < followingQueryTotal.value,
-);
+const followingHasMore = computed(() => followingBases.value.length < followingQueryTotal.value);
 
 function followingParams(page) {
   return {
@@ -1238,9 +1179,7 @@ async function loadMoreFollowing() {
     const nextPage = followingPage + 1;
     const res = await api.getMyFollowing(followingParams(nextPage));
     const seen = new Set(followingBases.value.map((b) => b.handle));
-    const extra = (res?.data ?? [])
-      .map(mapBase)
-      .filter((b) => b && !seen.has(b.handle));
+    const extra = (res?.data ?? []).map(mapBase).filter((b) => b && !seen.has(b.handle));
     followingBases.value = [...followingBases.value, ...extra];
     followingQueryTotal.value = res?.total ?? followingQueryTotal.value;
     followingPage = nextPage;
@@ -1302,10 +1241,9 @@ onBeforeUnmount(() => {
   clearTimeout(followingSearchTimer);
 });
 
-/* ---------- Tab 4: Saldo (read-only, from the session user) ---------- */
+/* ---------- Tab 4: Saldo (from the authoritative CTF wallet) ---------- */
 const balance = computed(() => authStore.user?.balance ?? 0);
 const balanceDisplay = computed(() => formatNumber(balance.value));
-const hasBalance = computed(() => balance.value > 0);
 
 /* ---------- initial load ---------- */
 onMounted(() => {
@@ -1418,7 +1356,9 @@ function confirmLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 
 .btn-hamburger:hover {
@@ -1446,7 +1386,12 @@ function confirmLogout() {
   height: 96px;
   border-radius: 50%;
   padding: 3px;
-  background: linear-gradient(135deg, var(--lime-primary) 0%, var(--shell-accent) 50%, var(--shell-sub-accent) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--lime-primary) 0%,
+    var(--shell-accent) 50%,
+    var(--shell-sub-accent) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1544,7 +1489,9 @@ function confirmLogout() {
   font-weight: 800;
   color: var(--shell-text);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn-edit-profile:hover {
@@ -1659,8 +1606,14 @@ function confirmLogout() {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tab-pane-header {
@@ -1732,7 +1685,9 @@ function confirmLogout() {
   font-size: 12.5px;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .tab-filter-row .segmented-btn.active {
@@ -2246,8 +2201,12 @@ function confirmLogout() {
 }
 
 @keyframes fadeInOverlay {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .settings-drawer-panel {
@@ -2263,8 +2222,12 @@ function confirmLogout() {
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .drawer-header {
@@ -2545,7 +2508,9 @@ function confirmLogout() {
   overflow: hidden;
   cursor: pointer;
   background: none;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn-preset-avatar img {

@@ -1,9 +1,20 @@
 <template>
   <!-- Full-screen panel slide-in overlay -->
-  <div class="account-panel" :class="{ open: modelValue !== null }" role="dialog" aria-modal="true" :aria-label="panelTitle">
+  <div
+    class="account-panel"
+    :class="{ open: modelValue !== null }"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="panelTitle"
+  >
     <!-- Header -->
     <div class="panel-header">
-      <button type="button" class="panel-back-btn" :aria-label="`Tutup ${panelTitle}`" @click="$emit('update:modelValue', null)">
+      <button
+        type="button"
+        class="panel-back-btn"
+        :aria-label="`Tutup ${panelTitle}`"
+        @click="$emit('update:modelValue', null)"
+      >
         <ChevronLeft :size="20" />
       </button>
       <span class="panel-header-title">{{ panelTitle }}</span>
@@ -14,21 +25,7 @@
     <div class="panel-body">
       <!-- TOP UP / SALDO -->
       <template v-if="modelValue === 'topup'">
-        <div class="balance-hero-card">
-          <div class="balance-hero-label">Saldo CTF Kamu</div>
-          <div class="balance-hero-amount">
-            <Coins :size="28" class="balance-coin-icon" />
-            <span>{{ balance.toLocaleString() }}</span>
-            <span class="balance-unit">CTF</span>
-          </div>
-        </div>
-
-        <div class="section-label mt-6 mb-3">Top Up Saldo</div>
-        <div class="empty-state">
-          <Wallet :size="40" class="empty-icon" />
-          <p>Top up belum tersedia</p>
-          <p>Pengisian saldo CTF akan segera hadir di aplikasi.</p>
-        </div>
+        <TopUpFlow />
       </template>
 
       <!-- KEAMANAN AKUN -->
@@ -50,7 +47,11 @@
           <div class="settings-divider" />
           <div class="settings-row">
             <span class="settings-row-label">Password</span>
-            <button type="button" class="settings-link-btn" @click="showChangePassword = !showChangePassword">
+            <button
+              type="button"
+              class="settings-link-btn"
+              @click="showChangePassword = !showChangePassword"
+            >
               Ubah Password
             </button>
           </div>
@@ -60,17 +61,34 @@
           <div v-if="showChangePassword" class="change-password-form mb-4">
             <div class="form-group">
               <label class="form-label">Password Lama</label>
-              <input v-model="passwords.old" type="password" class="form-input" placeholder="••••••••" />
+              <input
+                v-model="passwords.old"
+                type="password"
+                class="form-input"
+                placeholder="••••••••"
+              />
             </div>
             <div class="form-group">
               <label class="form-label">Password Baru</label>
-              <input v-model="passwords.new" type="password" class="form-input" placeholder="Min 8 karakter" />
+              <input
+                v-model="passwords.new"
+                type="password"
+                class="form-input"
+                placeholder="Min 8 karakter"
+              />
             </div>
             <div class="form-group">
               <label class="form-label">Konfirmasi Password Baru</label>
-              <input v-model="passwords.confirm" type="password" class="form-input" placeholder="Ulangi password baru" />
+              <input
+                v-model="passwords.confirm"
+                type="password"
+                class="form-input"
+                placeholder="Ulangi password baru"
+              />
             </div>
-            <button type="button" class="btn-save-primary" @click="handleChangePassword">Simpan Password</button>
+            <button type="button" class="btn-save-primary" @click="handleChangePassword">
+              Simpan Password
+            </button>
             <p v-if="passwordMessage" class="form-hint mt-2">{{ passwordMessage }}</p>
           </div>
         </transition>
@@ -83,7 +101,9 @@
             </div>
             <div class="session-info">
               <div class="session-device">{{ currentSession.device }}</div>
-              <div class="session-meta">{{ currentSession.location }} · {{ currentSession.time }}</div>
+              <div class="session-meta">
+                {{ currentSession.location }} · {{ currentSession.time }}
+              </div>
             </div>
             <span class="session-current-badge">Aktif</span>
           </div>
@@ -100,7 +120,11 @@
           <div class="settings-divider" />
           <div class="settings-row">
             <span class="settings-row-label">Notifikasi Login</span>
-            <div class="toggle-switch" :class="{ on: loginNotif }" @click="loginNotif = !loginNotif">
+            <div
+              class="toggle-switch"
+              :class="{ on: loginNotif }"
+              @click="loginNotif = !loginNotif"
+            >
               <span class="toggle-thumb" />
             </div>
           </div>
@@ -128,13 +152,17 @@
         </div>
         <div v-else-if="myFessError" class="empty-state">
           <p>Gagal memuat fess kamu.</p>
-          <button type="button" class="btn-save-primary mt-2" @click="loadMyFesses">Coba lagi</button>
+          <button type="button" class="btn-save-primary mt-2" @click="loadMyFesses">
+            Coba lagi
+          </button>
         </div>
         <div v-else class="my-fess-list">
           <div v-for="fess in filteredMyFess" :key="fess.id" class="my-fess-card">
             <div class="my-fess-header">
               <span class="my-fess-base">{{ fess.base }}</span>
-              <span class="my-fess-status-badge" :class="fess.status">{{ STATUS_LABELS[fess.status] }}</span>
+              <span class="my-fess-status-badge" :class="fess.status">{{
+                STATUS_LABELS[fess.status]
+              }}</span>
             </div>
             <p class="my-fess-content">{{ fess.content }}</p>
             <div class="my-fess-footer">
@@ -156,7 +184,12 @@
       <template v-else-if="modelValue === 'following'">
         <div class="following-search-wrap mb-4">
           <Search :size="16" class="following-search-icon" />
-          <input v-model="followSearch" type="text" class="following-search-input" placeholder="Cari base yang diikuti..." />
+          <input
+            v-model="followSearch"
+            type="text"
+            class="following-search-input"
+            placeholder="Cari base yang diikuti..."
+          />
         </div>
 
         <div class="section-label mb-3">{{ filteredFollowing.length }} Base Diikuti</div>
@@ -165,7 +198,9 @@
         </div>
         <div v-else-if="followingError" class="empty-state">
           <p>Gagal memuat daftar base.</p>
-          <button type="button" class="btn-save-primary mt-2" @click="loadFollowing">Coba lagi</button>
+          <button type="button" class="btn-save-primary mt-2" @click="loadFollowing">
+            Coba lagi
+          </button>
         </div>
         <div v-else class="following-list">
           <div v-for="base in filteredFollowing" :key="base.handle" class="following-card">
@@ -176,7 +211,9 @@
               <div class="following-name">{{ base.name }}</div>
               <div class="following-handle">{{ base.handle }} · {{ base.members }} anggota</div>
             </div>
-            <button type="button" class="btn-unfollow" @click="unfollowBase(base.handle)">Berhenti</button>
+            <button type="button" class="btn-unfollow" @click="unfollowBase(base.handle)">
+              Berhenti
+            </button>
           </div>
           <div v-if="filteredFollowing.length === 0" class="empty-state">
             <Star :size="40" class="empty-icon" />
@@ -209,10 +246,17 @@
         </div>
         <div v-else-if="notifError" class="empty-state">
           <p>Gagal memuat notifikasi.</p>
-          <button type="button" class="btn-save-primary mt-2" @click="loadNotifications">Coba lagi</button>
+          <button type="button" class="btn-save-primary mt-2" @click="loadNotifications">
+            Coba lagi
+          </button>
         </div>
         <div v-else-if="recentNotifs.length" class="notif-list">
-          <div v-for="n in recentNotifs" :key="n.id" class="notif-card" :class="{ unread: !n.read }">
+          <div
+            v-for="n in recentNotifs"
+            :key="n.id"
+            class="notif-card"
+            :class="{ unread: !n.read }"
+          >
             <div class="notif-icon-wrap" :class="n.type">
               <component :is="n.icon" :size="16" />
             </div>
@@ -285,7 +329,9 @@
         <div class="report-hero mb-5">
           <Flag :size="32" class="report-hero-icon" />
           <h2 class="report-hero-title">Laporkan Pelanggaran</h2>
-          <p class="report-hero-sub">Bantu kami menjaga komunitas Fess n Curious tetap aman dan sehat.</p>
+          <p class="report-hero-sub">
+            Bantu kami menjaga komunitas Fess n Curious tetap aman dan sehat.
+          </p>
         </div>
 
         <div class="form-group mb-3">
@@ -307,15 +353,30 @@
 
         <div class="form-group mb-3">
           <label class="form-label">Link / ID Konten yang Dilaporkan</label>
-          <input v-model="reportLink" type="text" class="form-input" placeholder="Contoh: /fess/12345 atau @handle_user" />
+          <input
+            v-model="reportLink"
+            type="text"
+            class="form-input"
+            placeholder="Contoh: /fess/12345 atau @handle_user"
+          />
         </div>
 
         <div class="form-group mb-4">
           <label class="form-label">Keterangan Tambahan</label>
-          <textarea v-model="reportDesc" class="form-textarea" rows="4" placeholder="Jelaskan secara singkat mengapa konten ini melanggar aturan..." />
+          <textarea
+            v-model="reportDesc"
+            class="form-textarea"
+            rows="4"
+            placeholder="Jelaskan secara singkat mengapa konten ini melanggar aturan..."
+          />
         </div>
 
-        <button type="button" class="btn-save-primary" :disabled="!reportType" @click="handleReport">
+        <button
+          type="button"
+          class="btn-save-primary"
+          :disabled="!reportType"
+          @click="handleReport"
+        >
           <Flag :size="16" />
           Kirim Laporan
         </button>
@@ -367,10 +428,27 @@
  */
 import { ref, computed, reactive, watch } from 'vue';
 import {
-  ChevronLeft, ChevronDown, Coins, ShieldCheck, PenLine, Star, ThumbsUp,
-  MessageCircle, Search, Bell, HelpCircle, Flag, ScrollText, Shield, Info,
-  Mail, ExternalLink, Laptop, Wallet, AlertTriangle,
-  UserX, Volume2, Bot,
+  ChevronLeft,
+  ChevronDown,
+  ShieldCheck,
+  PenLine,
+  Star,
+  ThumbsUp,
+  MessageCircle,
+  Search,
+  Bell,
+  HelpCircle,
+  Flag,
+  ScrollText,
+  Shield,
+  Info,
+  Mail,
+  ExternalLink,
+  Laptop,
+  AlertTriangle,
+  UserX,
+  Volume2,
+  Bot,
 } from 'lucide-vue-next';
 
 import { api } from '../../api';
@@ -380,6 +458,7 @@ import { formatRelativeTime } from '../../utils/format';
 import { useBases } from '../../composables/useBases';
 import { useFollowBase } from '../../composables/useFollowBase';
 import { TERMS_SECTIONS, PRIVACY_SECTIONS, LEGAL_LAST_UPDATED } from '../../data/legal';
+import TopUpFlow from '../payments/TopUpFlow.vue';
 
 const props = defineProps({
   modelValue: { type: String, default: null },
@@ -403,8 +482,8 @@ const PANEL_TITLES = {
 const panelTitle = computed(() => PANEL_TITLES[props.modelValue] ?? '');
 
 /* ============================================================ TOP UP ============================================================ */
-/** Read-only balance straight from the session user (no top-up API yet). */
-const balance = computed(() => props.user?.balance ?? 0);
+// Top-up data and payment instructions are managed by TopUpFlow so the
+// profile tab and the slide-in panel always use the same secure flow.
 
 /* ============================================================ SECURITY ============================================================ */
 const showChangePassword = ref(false);
@@ -609,11 +688,36 @@ watch(
 
 /* ============================================================ HELP ============================================================ */
 const FAQS = reactive([
-  { id: 1, q: 'Apa itu CTF dan bagaimana cara mendapatkannya?', a: 'CTF (Coin to Fess) adalah mata uang virtual di Fess n Curious. Kamu bisa mendapatkan CTF dengan top up, mendapat reward dari fess populer, atau dari program referral.', open: false },
-  { id: 2, q: 'Apakah identitas saya aman saat mengirim fess?', a: 'Ya, Fess n Curious menggunakan sistem anonymisasi berlapis. Handle kamu tidak pernah ditampilkan di feed publik. Setiap thread menggunakan alias yang berbeda-beda.', open: false },
-  { id: 3, q: 'Berapa lama proses moderasi fess?', a: 'Rata-rata fess dimoderasi dalam 15-30 menit. Pada jam sibuk (18.00-22.00 WIB) bisa memakan waktu hingga 2 jam.', open: false },
-  { id: 4, q: 'Bagaimana cara membuat Base Confess sendiri?', a: 'Daftar akun Base Confess di /register/base, lalu lengkapi profil base kamu. Tim kami akan memverifikasi dalam 1x24 jam setelah pengajuan.', open: false },
-  { id: 5, q: 'Apakah saya bisa menghapus fess yang sudah terkirim?', a: 'Fess yang sudah disetujui dan dipublikasikan tidak bisa dihapus langsung. Kamu bisa mengajukan permintaan hapus melalui menu Laporkan Pelanggaran dengan pilih "Hapus Konten Saya".', open: false },
+  {
+    id: 1,
+    q: 'Apa itu CTF dan bagaimana cara mendapatkannya?',
+    a: 'CTF (Coin to Fess) adalah mata uang virtual di Fess n Curious. Kamu bisa mendapatkan CTF dengan top up, mendapat reward dari fess populer, atau dari program referral.',
+    open: false,
+  },
+  {
+    id: 2,
+    q: 'Apakah identitas saya aman saat mengirim fess?',
+    a: 'Ya, Fess n Curious menggunakan sistem anonymisasi berlapis. Handle kamu tidak pernah ditampilkan di feed publik. Setiap thread menggunakan alias yang berbeda-beda.',
+    open: false,
+  },
+  {
+    id: 3,
+    q: 'Berapa lama proses moderasi fess?',
+    a: 'Rata-rata fess dimoderasi dalam 15-30 menit. Pada jam sibuk (18.00-22.00 WIB) bisa memakan waktu hingga 2 jam.',
+    open: false,
+  },
+  {
+    id: 4,
+    q: 'Bagaimana cara membuat Base Confess sendiri?',
+    a: 'Daftar akun Base Confess di /register/base, lalu lengkapi profil base kamu. Tim kami akan memverifikasi dalam 1x24 jam setelah pengajuan.',
+    open: false,
+  },
+  {
+    id: 5,
+    q: 'Apakah saya bisa menghapus fess yang sudah terkirim?',
+    a: 'Fess yang sudah disetujui dan dipublikasikan tidak bisa dihapus langsung. Kamu bisa mengajukan permintaan hapus melalui menu Laporkan Pelanggaran dengan pilih "Hapus Konten Saya".',
+    open: false,
+  },
 ]);
 
 /* ============================================================ REPORT ============================================================ */
@@ -638,7 +742,6 @@ function handleReport() {
 }
 
 /* TERMS & PRIVACY — konten dipindah ke src/data/legal.js (satu sumber data). */
-
 </script>
 
 <style scoped>
@@ -812,7 +915,7 @@ function handleReport() {
   border-radius: 50%;
   background: #fff;
   transition: transform 0.2s ease;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .toggle-switch.on .toggle-thumb {
@@ -835,7 +938,9 @@ function handleReport() {
   font-size: 14px;
   font-weight: 900;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .btn-save-primary:hover:not(:disabled) {
@@ -912,13 +1017,13 @@ function handleReport() {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12) 0%, transparent 60%);
+  background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 60%);
 }
 
 .balance-hero-label {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   letter-spacing: 0.8px;
   text-transform: uppercase;
   position: relative;
@@ -947,14 +1052,14 @@ function handleReport() {
 .balance-unit {
   font-size: 16px;
   font-weight: 800;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   align-self: flex-end;
   margin-bottom: 4px;
 }
 
 .balance-hero-sub {
   font-size: 12px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255, 0.6);
   position: relative;
 }
 
@@ -1019,7 +1124,7 @@ function handleReport() {
   font-size: 10px;
   font-weight: 700;
   color: var(--shell-accent);
-  background: rgba(186,255,0,0.12);
+  background: rgba(186, 255, 0, 0.12);
   padding: 2px 8px;
   border-radius: 99px;
 }
@@ -1068,7 +1173,7 @@ function handleReport() {
 
 .payment-method-btn.active {
   border-color: var(--shell-accent);
-  background: rgba(186,255,0,0.1);
+  background: rgba(186, 255, 0, 0.1);
   color: var(--shell-accent);
 }
 
@@ -1126,7 +1231,10 @@ function handleReport() {
   color: var(--danger-text);
 }
 
-.tx-info { flex: 1; min-width: 0; }
+.tx-info {
+  flex: 1;
+  min-width: 0;
+}
 
 .tx-desc {
   font-size: 13px;
@@ -1145,8 +1253,12 @@ function handleReport() {
   font-weight: 800;
 }
 
-.tx-amount.in { color: var(--success-text); }
-.tx-amount.out { color: var(--danger-text); }
+.tx-amount.in {
+  color: var(--success-text);
+}
+.tx-amount.out {
+  color: var(--danger-text);
+}
 
 /* ====== SECURITY ====== */
 .security-info-card {
@@ -1159,9 +1271,20 @@ function handleReport() {
   border-radius: 16px;
 }
 
-.security-icon { color: var(--success-text); flex-shrink: 0; }
-.security-title { font-size: 14px; font-weight: 800; color: var(--shell-text); }
-.security-desc { font-size: 12px; color: var(--shell-text-muted); margin-top: 2px; }
+.security-icon {
+  color: var(--success-text);
+  flex-shrink: 0;
+}
+.security-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--shell-text);
+}
+.security-desc {
+  font-size: 12px;
+  color: var(--shell-text-muted);
+  margin-top: 2px;
+}
 
 .change-password-form {
   display: flex;
@@ -1181,7 +1304,9 @@ function handleReport() {
   border-bottom: 1px solid var(--shell-border);
 }
 
-.session-row:last-child { border-bottom: none; }
+.session-row:last-child {
+  border-bottom: none;
+}
 
 .session-icon-wrap {
   width: 36px;
@@ -1262,13 +1387,17 @@ function handleReport() {
 }
 
 .fess-tab-count {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   padding: 1px 7px;
   border-radius: 99px;
   font-size: 11px;
 }
 
-.my-fess-list { display: flex; flex-direction: column; gap: 10px; }
+.my-fess-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .my-fess-card {
   background: var(--shell-card);
@@ -1297,9 +1426,18 @@ function handleReport() {
   border-radius: 99px;
 }
 
-.my-fess-status-badge.approved { background: rgba(34,197,94,0.12); color: var(--success-text); }
-.my-fess-status-badge.pending { background: rgba(245,158,11,0.12); color: var(--warning-text); }
-.my-fess-status-badge.rejected { background: rgba(248,113,113,0.12); color: var(--danger-text); }
+.my-fess-status-badge.approved {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success-text);
+}
+.my-fess-status-badge.pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning-text);
+}
+.my-fess-status-badge.rejected {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--danger-text);
+}
 
 .my-fess-content {
   font-size: 13.5px;
@@ -1318,7 +1456,10 @@ function handleReport() {
   margin-top: 10px;
 }
 
-.my-fess-time { font-size: 11.5px; color: var(--shell-text-muted); }
+.my-fess-time {
+  font-size: 11.5px;
+  color: var(--shell-text-muted);
+}
 
 .my-fess-stats {
   display: flex;
@@ -1363,7 +1504,11 @@ function handleReport() {
   border-color: var(--shell-accent);
 }
 
-.following-list { display: flex; flex-direction: column; gap: 8px; }
+.following-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 .following-card {
   display: flex;
@@ -1388,8 +1533,16 @@ function handleReport() {
   flex-shrink: 0;
 }
 
-.following-name { font-size: 14px; font-weight: 700; color: var(--shell-text); }
-.following-handle { font-size: 11.5px; color: var(--shell-text-muted); margin-top: 2px; }
+.following-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--shell-text);
+}
+.following-handle {
+  font-size: 11.5px;
+  color: var(--shell-text-muted);
+  margin-top: 2px;
+}
 
 .btn-unfollow {
   margin-left: auto;
@@ -1412,7 +1565,11 @@ function handleReport() {
 }
 
 /* ====== NOTIFICATIONS ====== */
-.notif-list { display: flex; flex-direction: column; gap: 8px; }
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 .notif-card {
   display: flex;
@@ -1439,13 +1596,33 @@ function handleReport() {
   flex-shrink: 0;
 }
 
-.notif-icon-wrap.upvote { background: rgba(30,69,251,0.15); color: #60a5fa; }
-.notif-icon-wrap.comment { background: rgba(186,255,0,0.12); color: var(--shell-accent); }
-.notif-icon-wrap.approved { background: rgba(34,197,94,0.12); color: var(--success-text); }
-.notif-icon-wrap.reward { background: rgba(245,158,11,0.12); color: var(--warning-text); }
+.notif-icon-wrap.upvote {
+  background: rgba(30, 69, 251, 0.15);
+  color: #60a5fa;
+}
+.notif-icon-wrap.comment {
+  background: rgba(186, 255, 0, 0.12);
+  color: var(--shell-accent);
+}
+.notif-icon-wrap.approved {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success-text);
+}
+.notif-icon-wrap.reward {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warning-text);
+}
 
-.notif-text { font-size: 13px; line-height: 1.4; color: var(--shell-text); }
-.notif-time { font-size: 11px; color: var(--shell-text-muted); margin-top: 3px; }
+.notif-text {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--shell-text);
+}
+.notif-time {
+  font-size: 11px;
+  color: var(--shell-text-muted);
+  margin-top: 3px;
+}
 
 /* ====== HELP ====== */
 .help-hero {
@@ -1453,11 +1630,27 @@ function handleReport() {
   padding: 8px 0 4px;
 }
 
-.help-hero-icon { color: var(--shell-accent); margin: 0 auto 12px; display: block; }
-.help-hero-title { font-size: 20px; font-weight: 900; color: var(--shell-text); }
-.help-hero-sub { font-size: 13px; color: var(--shell-text-muted); margin-top: 4px; }
+.help-hero-icon {
+  color: var(--shell-accent);
+  margin: 0 auto 12px;
+  display: block;
+}
+.help-hero-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+.help-hero-sub {
+  font-size: 13px;
+  color: var(--shell-text-muted);
+  margin-top: 4px;
+}
 
-.faq-list { display: flex; flex-direction: column; gap: 6px; }
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .faq-item {
   background: var(--shell-card);
@@ -1468,7 +1661,9 @@ function handleReport() {
   transition: border-color 0.2s ease;
 }
 
-.faq-item:hover { border-color: var(--shell-accent); }
+.faq-item:hover {
+  border-color: var(--shell-accent);
+}
 
 .faq-question {
   display: flex;
@@ -1499,7 +1694,11 @@ function handleReport() {
   border-top: 1px solid var(--shell-border);
 }
 
-.contact-cards { display: flex; flex-direction: column; gap: 8px; }
+.contact-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 .contact-card {
   display: flex;
@@ -1513,11 +1712,24 @@ function handleReport() {
   transition: border-color 0.2s ease;
 }
 
-.contact-card:hover { border-color: var(--shell-accent); }
+.contact-card:hover {
+  border-color: var(--shell-accent);
+}
 
-.contact-icon { color: var(--shell-accent); flex-shrink: 0; }
-.contact-title { font-size: 14px; font-weight: 700; color: var(--shell-text); }
-.contact-val { font-size: 12px; color: var(--shell-text-muted); margin-top: 2px; }
+.contact-icon {
+  color: var(--shell-accent);
+  flex-shrink: 0;
+}
+.contact-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--shell-text);
+}
+.contact-val {
+  font-size: 12px;
+  color: var(--shell-text-muted);
+  margin-top: 2px;
+}
 
 /* ====== REPORT ====== */
 .report-hero {
@@ -1525,9 +1737,21 @@ function handleReport() {
   padding: 8px 0 4px;
 }
 
-.report-hero-icon { color: var(--danger-text); margin: 0 auto 12px; display: block; }
-.report-hero-title { font-size: 20px; font-weight: 900; color: var(--shell-text); }
-.report-hero-sub { font-size: 13px; color: var(--shell-text-muted); margin-top: 4px; }
+.report-hero-icon {
+  color: var(--danger-text);
+  margin: 0 auto 12px;
+  display: block;
+}
+.report-hero-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+.report-hero-sub {
+  font-size: 13px;
+  color: var(--shell-text-muted);
+  margin-top: 4px;
+}
 
 .report-type-grid {
   display: grid;
@@ -1554,7 +1778,7 @@ function handleReport() {
 
 .report-type-btn.active {
   border-color: var(--danger-text);
-  background: rgba(248,113,113,0.08);
+  background: rgba(248, 113, 113, 0.08);
   color: var(--danger-text);
 }
 
@@ -1573,11 +1797,27 @@ function handleReport() {
   padding: 8px 0 4px;
 }
 
-.legal-icon { color: var(--shell-accent); margin: 0 auto 12px; display: block; }
-.legal-title { font-size: 20px; font-weight: 900; color: var(--shell-text); }
-.legal-updated { font-size: 12px; color: var(--shell-text-muted); margin-top: 4px; }
+.legal-icon {
+  color: var(--shell-accent);
+  margin: 0 auto 12px;
+  display: block;
+}
+.legal-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--shell-text);
+}
+.legal-updated {
+  font-size: 12px;
+  color: var(--shell-text-muted);
+  margin-top: 4px;
+}
 
-.legal-content { display: flex; flex-direction: column; gap: 20px; }
+.legal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
 .legal-section {
   background: var(--shell-card);
@@ -1600,7 +1840,9 @@ function handleReport() {
   margin-bottom: 8px;
 }
 
-.legal-para:last-child { margin-bottom: 0; }
+.legal-para:last-child {
+  margin-bottom: 0;
+}
 
 /* ====== Empty State ====== */
 .empty-state {

@@ -110,7 +110,7 @@ import {
 } from 'lucide-vue-next';
 
 const ACCOUNT_ITEMS = [
-  { icon: CreditCard, label: 'Saldo & Top Up', sub: '1 CTF - 0 CTF beli', action: 'topup' },
+  { icon: CreditCard, label: 'Saldo & Top Up', sub: 'Mulai Rp5.000', action: 'topup' },
   { icon: UserRound, label: 'Profil & avatar', action: 'profile' },
   { icon: KeyRound, label: 'Keamanan akun', sub: 'Email & password', action: 'security' },
   { icon: PenLine, label: 'Fess saya', action: 'my-fess' },

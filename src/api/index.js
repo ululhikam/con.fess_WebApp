@@ -35,8 +35,7 @@ export const api = {
 
   /* AUTH — verifikasi email akun via OTP (tanpa sesi login) */
   verifyEmail: (payload) => client.post('/auth/email-verification/verify', payload),
-  resendEmailVerification: (payload) =>
-    client.post('/auth/email-verification/resend', payload),
+  resendEmailVerification: (payload) => client.post('/auth/email-verification/resend', payload),
   changeVerificationEmail: (payload) =>
     client.post('/auth/email-verification/change-email', payload),
 
@@ -103,6 +102,16 @@ export const api = {
     return client.upload('/upload/avatar', fd, { onProgress, signal });
   },
 
+  /* PAYMENTS & CTF WALLET */
+  getPaymentPackages: () => client.get('/payments/packages'),
+  getPaymentOrders: (params) => client.get('/payments/orders', { params }),
+  getPaymentOrder: (orderId, params) =>
+    client.get(`/payments/orders/${encodeURIComponent(orderId)}`, { params }),
+  createPaymentOrder: (payload, idempotencyKey) =>
+    client.post('/payments/orders', payload, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }),
+
   /* SONGS & TOPICS */
   getSongs: (params) => client.get('/songs', { params }),
   getTopics: () => client.get('/topics'),
@@ -116,7 +125,8 @@ export const api = {
   getPlatformConnections: () => client.get('/admin/connections'),
   getInstagramInsights: () => client.get('/admin/instagram-insights'),
   getInstagramMediaInsights: () => client.get('/admin/instagram-media-insights'),
-  togglePlatformConnection: (platform, payload) => client.post(`/admin/connections/${platform}`, payload),
+  togglePlatformConnection: (platform, payload) =>
+    client.post(`/admin/connections/${platform}`, payload),
   getTreasury: () => client.get('/admin/treasury'),
   requestPayout: (payload) => client.post('/admin/treasury/payout', payload),
 
@@ -155,4 +165,3 @@ export function instagramAuthUrl({ token = '', base = '', origin = 'connections'
   const qs = params.toString() ? `?${params.toString()}` : '';
   return `${backendUrl}/api/auth/instagram${qs}`;
 }
-

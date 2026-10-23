@@ -84,6 +84,16 @@ const routes = [
     meta: { requiresAuth: true, roles: ['User', 'Base Admin'], title: 'Buat Fess' },
   },
   {
+    path: '/wallet',
+    name: 'Wallet',
+    component: () => import('../views/WalletPage.vue'),
+    meta: {
+      requiresAuth: true,
+      roles: ['User', 'Base Admin', 'Super Admin'],
+      title: 'Dompet CTF',
+    },
+  },
+  {
     path: '/profile',
     name: 'Profile',
     redirect: { path: '/feed', query: { tab: 'profile' } },
@@ -235,7 +245,10 @@ router.beforeEach(async (to, from, next) => {
     if (userRole === 'Super Admin' && to.name !== 'SuperAdmin') {
       return next({ name: 'SuperAdmin' });
     }
-    if (userRole === 'Base Admin' && to.name !== (needsBaseOnboarding ? 'BaseOnboarding' : 'BaseAdmin')) {
+    if (
+      userRole === 'Base Admin' &&
+      to.name !== (needsBaseOnboarding ? 'BaseOnboarding' : 'BaseAdmin')
+    ) {
       return next(needsBaseOnboarding ? { name: 'BaseOnboarding' } : { name: 'BaseAdmin' });
     }
     if (userRole === 'User' && to.name !== 'Feed') {

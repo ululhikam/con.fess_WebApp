@@ -189,11 +189,7 @@
     <!-- KONTEN FESS BASE (real dari GET /bases/:handle/fesses) -->
     <div class="ig-fess-content-area">
       <div v-if="loading" class="fess-cards-stream" aria-hidden="true">
-        <div
-          v-for="n in 2"
-          :key="`fess-skeleton-${n}`"
-          class="skeleton-fess-card"
-        >
+        <div v-for="n in 2" :key="`fess-skeleton-${n}`" class="skeleton-fess-card">
           <span class="sk-block sk-block--meta" />
           <span class="sk-block sk-block--line" />
           <span class="sk-block sk-block--line" />
@@ -207,46 +203,46 @@
         </div>
         <div v-if="actionError" class="state-banner state-banner-error mb-3">{{ actionError }}</div>
         <div v-if="fesses.length" class="fess-cards-stream">
-        <AdminFessCard
-          v-for="item in fesses"
-          :key="item.id"
-          :post="item"
-          :is-admin="true"
-          @approve="approveFess"
-          @reject="rejectFess"
-          @take-down="takeDownFess"
-        />
+          <AdminFessCard
+            v-for="item in fesses"
+            :key="item.id"
+            :post="item"
+            :is-admin="true"
+            @approve="approveFess"
+            @reject="rejectFess"
+            @take-down="takeDownFess"
+          />
 
-        <!-- Lazy load: sentinel + status footer -->
-        <div ref="fessSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
-        <p v-if="fessLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
-        <button
-          v-else-if="fessLoadMoreError"
-          type="button"
-          class="feed-load-retry"
-          @click="loadMoreFesses"
-        >
-          Coba lagi memuat
-        </button>
-      </div>
+          <!-- Lazy load: sentinel + status footer -->
+          <div ref="fessSentinel" class="feed-load-sentinel" aria-hidden="true"></div>
+          <p v-if="fessLoadingMore" class="feed-load-hint">Memuat lebih banyak…</p>
+          <button
+            v-else-if="fessLoadMoreError"
+            type="button"
+            class="feed-load-retry"
+            @click="loadMoreFesses"
+          >
+            Coba lagi memuat
+          </button>
+        </div>
 
-      <div v-else class="empty-fess-box">
-        <MessageSquare :size="36" class="text-muted mb-2" />
-        <p class="font-bold">
-          {{
-            fessFilter === 'reported'
-              ? 'Belum ada fess yang dilaporkan.'
-              : 'Belum ada confession dalam kategori ini.'
-          }}
-        </p>
-        <p class="text-xs text-muted">
-          {{
-            fessFilter === 'reported'
-              ? 'Fess yang dilaporkan anggota akan muncul di sini untuk ditinjau.'
-              : 'Confession baru yang dikirim user ke base ini akan muncul di sini.'
-          }}
-        </p>
-      </div>
+        <div v-else class="empty-fess-box">
+          <MessageSquare :size="36" class="text-muted mb-2" />
+          <p class="font-bold">
+            {{
+              fessFilter === 'reported'
+                ? 'Belum ada fess yang dilaporkan.'
+                : 'Belum ada confession dalam kategori ini.'
+            }}
+          </p>
+          <p class="text-xs text-muted">
+            {{
+              fessFilter === 'reported'
+                ? 'Fess yang dilaporkan anggota akan muncul di sini untuk ditinjau.'
+                : 'Confession baru yang dikirim user ke base ini akan muncul di sini.'
+            }}
+          </p>
+        </div>
       </template>
     </div>
 
@@ -270,11 +266,7 @@
         <div class="drawer-scroll-body">
           <!-- 1. KONEKSI MEDSOS -->
           <div class="menu-section-card">
-            <button
-              type="button"
-              class="menu-row-btn"
-              @click="openModal('medsos')"
-            >
+            <button type="button" class="menu-row-btn" @click="openModal('medsos')">
               <div class="menu-row-left">
                 <Instagram :size="18" class="row-ico-brand" />
                 <div>
@@ -289,6 +281,17 @@
           <!-- 2. BAGIAN KEUANGAN {saldo, pendapatan, penarikan} -->
           <div class="menu-section-card mt-3">
             <div class="section-card-title">Bagian Keuangan</div>
+
+            <button type="button" class="menu-row-btn" @click="router.push('/wallet')">
+              <div class="menu-row-left">
+                <Wallet :size="18" class="row-ico-gold" />
+                <div>
+                  <div class="menu-row-label">Dompet CTF</div>
+                  <div class="menu-row-desc">Saldo untuk kirim fess &amp; top up</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
 
             <button type="button" class="menu-row-btn" @click="openModal('keuangan_saldo')">
               <div class="menu-row-left">
@@ -384,7 +387,14 @@
                 <div>
                   <div class="menu-row-label">Tampilan Tema</div>
                   <div class="menu-row-desc">
-                    Mode: {{ currentTheme === 'system' ? 'Sistem Otomatis' : currentTheme === 'light' ? 'Terang' : 'Gelap' }}
+                    Mode:
+                    {{
+                      currentTheme === 'system'
+                        ? 'Sistem Otomatis'
+                        : currentTheme === 'light'
+                          ? 'Terang'
+                          : 'Gelap'
+                    }}
                   </div>
                 </div>
               </div>
@@ -592,11 +602,7 @@
     </div>
 
     <!-- REAL FULL SLIDE-IN PANELS FOR ALL HAMBURGER ITEMS -->
-    <BaseAdminPanels
-      v-model="activeSubModal"
-      @setTheme="changeTheme"
-      @logout="handleAdminLogout"
-    />
+    <BaseAdminPanels v-model="activeSubModal" @setTheme="changeTheme" @logout="handleAdminLogout" />
 
     <!-- MODAL DAFTAR FOLLOWER / FOLLOWING (data real dari server) -->
     <FollowListModal
@@ -644,6 +650,7 @@ import {
   Upload,
   Zap,
   Flag,
+  Wallet,
 } from 'lucide-vue-next';
 
 import { useAuthStore } from '../../stores/authStore';
@@ -667,7 +674,6 @@ const activeSubModal = ref(null);
 
 const fessFilter = ref('semua');
 
-
 /* ---------- Profil base real (GET /bases/:handle + GET /admin/stats) ---------- */
 const loading = ref(true);
 const error = ref(null);
@@ -678,7 +684,7 @@ const actionError = ref('');
 const actionNotice = ref('');
 
 const managedHandle = computed(
-  () => base.value?.handle || authStore.user?.managedBases?.[0] || null
+  () => base.value?.handle || authStore.user?.managedBases?.[0] || null,
 );
 
 const baseName = computed(() => base.value?.name || authStore.user?.username || 'Base');
@@ -687,7 +693,9 @@ const baseHandle = computed(
 );
 const baseBio = computed(() => base.value?.bio || '');
 const baseInitial = computed(() =>
-  String(base.value?.initial || baseName.value).slice(0, 2).toUpperCase(),
+  String(base.value?.initial || baseName.value)
+    .slice(0, 2)
+    .toUpperCase(),
 );
 const baseAvatarUrl = computed(() => {
   const avatar = base.value?.avatar;
@@ -737,14 +745,11 @@ const handleAvailableLabel = computed(() => {
 const handleCooldownDays = computed(() => {
   const availableAt = baseHandleChangeAvailableAt.value;
   if (!availableAt) return 0;
-  return Math.max(
-    1,
-    Math.ceil((availableAt.getTime() - Date.now()) / HANDLE_COOLDOWN_DAY_MS)
-  );
+  return Math.max(1, Math.ceil((availableAt.getTime() - Date.now()) / HANDLE_COOLDOWN_DAY_MS));
 });
 
 const handleCooldownPeriodDays = computed(
-  () => Number(base.value?.handle_change_cooldown_days) || 7
+  () => Number(base.value?.handle_change_cooldown_days) || 7,
 );
 
 /* ---------- Modal daftar Follower / Following (data real) ---------- */
@@ -754,7 +759,7 @@ const followModalTab = ref('followers');
 const myFollowingCount = ref(authStore.user?.followingCount ?? 0);
 
 const cleanHandle = computed(() =>
-  String(baseHandle.value || managedHandle.value || '').replace(/^@/, '')
+  String(baseHandle.value || managedHandle.value || '').replace(/^@/, ''),
 );
 
 function openFollowModal(tab = 'followers') {
@@ -800,8 +805,7 @@ function mapBaseFess(f) {
 
 function fessParams(page) {
   const isReported = fessFilter.value === 'reported';
-  const status =
-    fessFilter.value === 'semua' || isReported ? undefined : fessFilter.value;
+  const status = fessFilter.value === 'semua' || isReported ? undefined : fessFilter.value;
   return {
     page,
     limit: FESS_PAGE_SIZE,
@@ -836,9 +840,7 @@ async function loadMoreFesses() {
     const nextPage = fessPage + 1;
     const res = await api.getBaseFesses(handle, fessParams(nextPage));
     const seen = new Set(fesses.value.map((f) => String(f.id)));
-    const extra = (res?.data || [])
-      .map(mapBaseFess)
-      .filter((f) => f && !seen.has(String(f.id)));
+    const extra = (res?.data || []).map(mapBaseFess).filter((f) => f && !seen.has(String(f.id)));
     fesses.value = [...fesses.value, ...extra];
     fessQueryTotal.value = res?.total ?? fessQueryTotal.value;
     fessPage = nextPage;
@@ -967,7 +969,7 @@ async function saveBaseProfile() {
               String(managed).replace(/^@/, '').toLowerCase() ===
               String(handle).replace(/^@/, '').toLowerCase()
                 ? cleanHandle
-                : managed
+                : managed,
             ),
           };
         }
@@ -986,9 +988,12 @@ async function saveBaseProfile() {
     toast.error(editError.value);
     // Cooldown may have been consumed on another device — refresh the lock.
     if (err?.data?.code === 'HANDLE_CHANGE_COOLDOWN') {
-      api.getBase(handle).then((fresh) => {
-        base.value = { ...base.value, ...fresh };
-      }).catch(() => {});
+      api
+        .getBase(handle)
+        .then((fresh) => {
+          base.value = { ...base.value, ...fresh };
+        })
+        .catch(() => {});
     }
   } finally {
     isSavingProfile.value = false;
@@ -1011,7 +1016,9 @@ async function approveFess(id) {
     await api.approveFess(id);
     actionNotice.value = `Fess #${id} berhasil disetujui & otomatis diposting ke Instagram Story base!`;
     toast.success(`Fess #${id} berhasil disetujui.`);
-    setTimeout(() => { actionNotice.value = ''; }, 6000);
+    setTimeout(() => {
+      actionNotice.value = '';
+    }, 6000);
     await Promise.all([loadFesses(), loadStats()]);
   } catch (e) {
     fesses.value = prevFesses;
@@ -1767,15 +1774,31 @@ async function handleAdminLogout() {
   color: var(--shell-text-dim);
 }
 
-.row-ico-brand { color: #e1306c; }
-.row-ico-gold { color: #f59e0b; }
-.row-ico-green { color: #10b981; }
-.row-ico-blue { color: #3b82f6; }
-.row-ico-muted { color: var(--shell-text-muted); }
-.row-ico-danger { color: #ef4444; }
+.row-ico-brand {
+  color: #e1306c;
+}
+.row-ico-gold {
+  color: #f59e0b;
+}
+.row-ico-green {
+  color: #10b981;
+}
+.row-ico-blue {
+  color: #3b82f6;
+}
+.row-ico-muted {
+  color: var(--shell-text-muted);
+}
+.row-ico-danger {
+  color: #ef4444;
+}
 
-.danger-row:hover { background: rgba(239, 68, 68, 0.1); }
-.text-danger { color: #ef4444 !important; }
+.danger-row:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+.text-danger {
+  color: #ef4444 !important;
+}
 
 .menu-row-static {
   display: flex;
@@ -2038,7 +2061,9 @@ async function handleAdminLogout() {
   border: 1px solid var(--shell-border);
   background: var(--shell-card);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .post-mode-option.active {
