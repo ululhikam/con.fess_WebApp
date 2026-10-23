@@ -114,6 +114,8 @@ export const api = {
 
   /* ADMIN — platform connections & treasury */
   getPlatformConnections: () => client.get('/admin/connections'),
+  getInstagramInsights: () => client.get('/admin/instagram-insights'),
+  getInstagramMediaInsights: () => client.get('/admin/instagram-media-insights'),
   togglePlatformConnection: (platform, payload) => client.post(`/admin/connections/${platform}`, payload),
   getTreasury: () => client.get('/admin/treasury'),
   requestPayout: (payload) => client.post('/admin/treasury/payout', payload),

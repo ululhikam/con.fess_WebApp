@@ -387,6 +387,11 @@
           <p class="text-xs text-muted mt-4">
             Angka diperbarui otomatis dari aktivitas komunitas base yang kamu kelola.
           </p>
+
+          <InstagramAnalytics
+            section="summary"
+            @open-connections="$emit('update:modelValue', 'medsos')"
+          />
         </template>
       </template>
 
@@ -433,6 +438,11 @@
           <p class="text-xs text-muted mt-4">
             Analitik kata kunci & impresi belum tersedia dari server.
           </p>
+
+          <InstagramAnalytics
+            section="content"
+            @open-connections="$emit('update:modelValue', 'medsos')"
+          />
         </template>
       </template>
 
@@ -647,6 +657,11 @@
           <p class="text-xs text-muted mt-4">
             Daftar pengirim teraktif bersifat anonim dan belum tersedia dari server.
           </p>
+
+          <InstagramAnalytics
+            section="community"
+            @open-connections="$emit('update:modelValue', 'medsos')"
+          />
         </template>
       </template>
 
@@ -849,6 +864,7 @@ import { api, instagramAuthUrl } from '../../api';
 import { toast } from '../../composables/useToast';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
+import InstagramAnalytics from './InstagramAnalytics.vue';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
 import { confirmDialog } from '../../composables/useAppDialog';
