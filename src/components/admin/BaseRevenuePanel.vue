@@ -360,6 +360,9 @@
             KYC diverifikasi oleh Super Admin. Payout tidak dapat diajukan sebelum KYC verified,
             rekening lengkap, dan masa tunggu rekening selesai.
           </p>
+          <p v-if="base?.payout_kyc_note" class="rev-note rev-note--kyc">
+            Catatan KYC: {{ base.payout_kyc_note }}
+          </p>
         </section>
 
         <section class="rev-list-card">
@@ -947,6 +950,15 @@ onMounted(load);
   font-size: 11px;
   line-height: 1.65;
   color: var(--text-muted);
+}
+
+.rev-note--kyc {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--warning-text);
+  background: color-mix(in srgb, var(--warning-text) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning-text) 26%, transparent);
 }
 
 .rev-list-card,

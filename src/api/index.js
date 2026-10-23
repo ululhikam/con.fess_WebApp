@@ -126,14 +126,12 @@ export const api = {
   getModerationQueue: (params) => client.get('/admin/moderation', { params }),
   exportCanvas: (payload) => client.post('/admin/canvas/export', payload),
 
-  /* ADMIN — platform connections & treasury */
+  /* ADMIN - platform connections */
   getPlatformConnections: () => client.get('/admin/connections'),
   getInstagramInsights: () => client.get('/admin/instagram-insights'),
   getInstagramMediaInsights: () => client.get('/admin/instagram-media-insights'),
   togglePlatformConnection: (platform, payload) =>
     client.post(`/admin/connections/${platform}`, payload),
-  getTreasury: () => client.get('/admin/treasury'),
-  requestPayout: (payload) => client.post('/admin/treasury/payout', payload),
 
   /* ADMIN — IDR base revenue & manual payout workflow */
   getBaseRevenue: (params) => client.get('/admin/base-revenue', { params }),
