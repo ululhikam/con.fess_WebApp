@@ -84,9 +84,9 @@
                     <span v-if="!m.available && !hasFollowerFallback(m)" class="ig-mini-note">tidak tersedia</span>
                   </th>
                   <td class="ig-num">{{ formatPeriodCell(m) }}</td>
-                  <td class="ig-num">{{ m.available ? formatNumber(m.last7) : '—' }}</td>
+                  <td class="ig-num">{{ hasComparison(m) ? formatNumber(m.last7) : '—' }}</td>
                   <td class="ig-num">
-                    <span v-if="m.available" class="ig-delta" :class="deltaClass(m)">
+                    <span v-if="hasComparison(m)" class="ig-delta" :class="deltaClass(m)">
                       <component
                         :is="m.change >= 0 ? ArrowUpRight : ArrowDownRight"
                         :size="12"
@@ -99,7 +99,7 @@
                   </td>
                   <td>
                     <svg
-                      v-if="m.available"
+                      v-if="hasTrend(m)"
                       class="ig-spark"
                       viewBox="0 0 80 24"
                       preserveAspectRatio="none"
@@ -114,15 +114,16 @@
             </table>
           </div>
           <p class="ig-note ig-matrix-note">
-            Metrik stok (mis. pengikut) menampilkan posisi 7 hari lalu; metrik aktivitas menampilkan
-            total 7 hari terakhir.
+            Total Pengikut: kolom 7 hari = posisi 7 hari lalu, perubahan = net follow − unfollow.
+            Pengikut Baru: kolom 7 hari = jumlah follow baru (gross), perubahan dibanding 7 hari
+            sebelumnya. Metrik total periode ditandai — pada kolom tren.
           </p>
         </div>
 
         <div class="ig-panel">
           <div class="ig-panel-head">
             <div>
-              <h4 class="ig-panel-title">Tren Jangkauan &amp; Tayangan</h4>
+              <h4 class="ig-panel-title">{{ summaryChartTitle }}</h4>
               <p class="ig-panel-sub">{{ rangeLabel }} · data harian Meta</p>
             </div>
             <div class="ig-legend">
@@ -342,6 +343,11 @@
             </small>
           </div>
           <div class="ig-stat">
+            <span class="ig-stat-label">Pengikut baru</span>
+            <strong class="ig-stat-value">{{ metricDisplay(newFollowersMetric, 'total') }}</strong>
+            <small class="ig-stat-hint">{{ rangeLabel }} · follow baru</small>
+          </div>
+          <div class="ig-stat">
             <span class="ig-stat-label">Kunjungan profil</span>
             <strong class="ig-stat-value">{{ metricDisplay(profileViewsMetric, 'total') }}</strong>
             <small class="ig-stat-hint">{{ rangeLabel }}</small>
@@ -353,18 +359,19 @@
           </div>
         </div>
 
-        <div v-if="followerChart.series.length" class="ig-panel">
+        <div v-if="newFollowersChart.series.length" class="ig-panel">
           <div class="ig-panel-head">
             <div>
-              <h4 class="ig-panel-title">Pertumbuhan Pengikut</h4>
-              <p class="ig-panel-sub">{{ rangeLabel }} · total pengikut harian</p>
+              <h4 class="ig-panel-title">Pengikut Baru per Hari</h4>
+              <p class="ig-panel-sub">{{ rangeLabel }} · follow baru, belum dikurangi unfollow</p>
             </div>
+            <span class="ig-badge">{{ metricDisplay(newFollowersMetric, 'total') }} follow baru</span>
           </div>
           <div class="ig-chart">
             <svg
               :viewBox="`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`"
               role="img"
-              aria-label="Grafik pertumbuhan pengikut Instagram"
+              aria-label="Grafik pengikut baru harian Instagram"
             >
               <defs>
                 <linearGradient id="ig-area-followers" x1="0" y1="0" x2="0" y2="1">
@@ -375,7 +382,7 @@
 
               <g class="ig-grid">
                 <line
-                  v-for="line in followerGridLines"
+                  v-for="line in newFollowersGridLines"
                   :key="`f-grid-${line.y}`"
                   :x1="CHART_PAD_X"
                   :x2="CHART_WIDTH - CHART_PAD_X"
@@ -384,14 +391,26 @@
                 />
               </g>
 
-              <g v-for="s in followerChart.series" :key="`f-series-${s.key}`">
+              <g v-for="s in newFollowersChart.series" :key="`f-series-${s.key}`">
                 <path :d="s.areaPath" fill="url(#ig-area-followers)" />
                 <path :d="s.linePath" fill="none" :stroke="s.color" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
               </g>
 
+              <g class="ig-grid-labels">
+                <text
+                  v-for="label in newFollowersYLabels"
+                  :key="`f-y-${label.y}`"
+                  :x="CHART_WIDTH - CHART_PAD_X"
+                  :y="label.y - 4"
+                  text-anchor="end"
+                >
+                  {{ label.text }}
+                </text>
+              </g>
+
               <g class="ig-axis-labels">
                 <text
-                  v-for="label in followerXLabels"
+                  v-for="label in newFollowersXLabels"
                   :key="`f-x-${label.x}`"
                   :x="label.x"
                   :y="CHART_HEIGHT - 6"
@@ -583,6 +602,7 @@ function metric(name) {
 const summaryMetrics = computed(() => accountData.value?.metrics || []);
 const hasAnyMetric = computed(() => summaryMetrics.value.some((item) => item.available));
 const followerMetric = computed(() => metric('follower_count'));
+const newFollowersMetric = computed(() => metric('new_followers'));
 const profileViewsMetric = computed(() => metric('profile_views'));
 const websiteClicksMetric = computed(() => metric('website_clicks'));
 const profileFollowers = computed(() => {
@@ -609,6 +629,14 @@ function formatPeriodCell(item) {
     return formatNumber(profileFollowers.value);
   }
   return item.available ? formatNumber(periodValue(item)) : '—';
+}
+
+function hasTrend(item) {
+  return Array.isArray(item?.points) && item.points.length > 1;
+}
+
+function hasComparison(item) {
+  return Boolean(item?.available && (hasTrend(item) || item?.changeAvailable));
 }
 
 const followerDisplay = computed(() => {
@@ -657,10 +685,21 @@ const followerGrowthLabel = computed(() => {
       ? 'Belum tersedia'
       : `${formatNumber(profileFollowers.value)} pengikut saat ini`;
   }
+  if (item.changeAvailable === false) {
+    return 'Perubahan 7 hari belum tersedia';
+  }
   const change = item.change || 0;
   const sign = change > 0 ? '+' : '';
   const pct = item.changePct === null ? '' : ` (${sign}${item.changePct.toFixed(1)}%)`;
-  return `${sign}${formatNumber(change)} dalam 7 hari${pct}`;
+  const net30 =
+    item.first !== null && item.first !== item.latest
+      ? item.latest - item.first
+      : null;
+  const suffix =
+    net30 !== null
+      ? ` · ${net30 >= 0 ? '+' : ''}${formatNumber(net30)} dalam 30 hari`
+      : '';
+  return `${sign}${formatNumber(change)} bersih dalam 7 hari${pct}${suffix}`;
 });
 
 /* ============================ Grafik SVG ============================ */
@@ -733,9 +772,15 @@ const summaryChart = computed(() =>
   ])
 );
 
-const followerChart = computed(() =>
+const summaryChartTitle = computed(() =>
+  summaryChart.value.series.some((series) => series.key === 'views')
+    ? 'Tren Jangkauan & Tayangan'
+    : 'Tren Jangkauan'
+);
+
+const newFollowersChart = computed(() =>
   buildChartSeries([
-    { key: 'followers', metric: 'follower_count', label: 'Pengikut', color: '#22c55e' },
+    { key: 'new_followers', metric: 'new_followers', label: 'Pengikut Baru', color: '#22c55e' },
   ])
 );
 
@@ -750,7 +795,17 @@ function buildGridLines(chart) {
 }
 
 const chartGridLines = computed(() => buildGridLines(summaryChart.value));
-const followerGridLines = computed(() => buildGridLines(followerChart.value));
+const newFollowersGridLines = computed(() => buildGridLines(newFollowersChart.value));
+
+const newFollowersYLabels = computed(() => {
+  const max = newFollowersChart.value.max;
+  const innerHeight = CHART_HEIGHT - CHART_PAD_TOP - CHART_PAD_BOTTOM;
+  return [
+    { y: CHART_PAD_TOP, text: compactNumber(max) },
+    { y: CHART_PAD_TOP + innerHeight / 2, text: compactNumber(max / 2) },
+    { y: CHART_PAD_TOP + innerHeight, text: '0' },
+  ];
+});
 
 const chartYLabels = computed(() => {
   const max = summaryChart.value.max;
@@ -778,7 +833,7 @@ function buildXLabels(dates) {
 }
 
 const chartXLabels = computed(() => buildXLabels(summaryChart.value.dates));
-const followerXLabels = computed(() => buildXLabels(followerChart.value.dates));
+const newFollowersXLabels = computed(() => buildXLabels(newFollowersChart.value.dates));
 
 /* ============================ Konten ============================ */
 
@@ -845,12 +900,29 @@ function hbarWidth(group, row) {
   return `${Math.max(3, (row.value / groupMax(group)) * 100).toFixed(1)}%`;
 }
 
+const regionNames = (() => {
+  try {
+    return new Intl.DisplayNames(['id'], { type: 'region' });
+  } catch {
+    return null;
+  }
+})();
+
+function formatCountryLabel(label) {
+  const code = String(label || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return String(label || '');
+  return regionNames?.of(code) || code;
+}
+
 function formatAudienceLabel(metricName, label) {
   if (metricName === 'audience_gender_age') {
     const [gender, range] = String(label).split('.');
     const genderLabel =
       gender === 'F' ? 'Perempuan' : gender === 'M' ? 'Laki-laki' : 'Tidak diketahui';
     return range ? `${genderLabel} ${range}` : genderLabel;
+  }
+  if (metricName === 'audience_country') {
+    return formatCountryLabel(label);
   }
   if (metricName === 'online_followers') {
     return `${String(label).padStart(2, '0')}:00`;
