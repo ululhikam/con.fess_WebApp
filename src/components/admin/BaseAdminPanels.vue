@@ -134,198 +134,28 @@
       </template>
 
       <!-- ========================================================
-           2. BAGIAN KEUANGAN (Saldo, Pendapatan, Penarikan)
+           2. BAGIAN KEUANGAN (Pendapatan IDR & Payout Manual)
            ======================================================== -->
-      <!-- SALDO -->
-      <template v-else-if="modelValue === 'keuangan_saldo'">
-        <ContentSkeleton
-          v-if="treasuryLoading && !treasury"
-          type="list"
-          :count="2"
-          label="Memuat saldo…"
-        />
+      <BaseRevenuePanel
+        v-else-if="modelValue === 'keuangan_saldo'"
+        mode="saldo"
+        :base-handle="baseHandle"
+      />
 
-        <AppStateView
-          v-else-if="treasuryError"
-          variant="error"
-          title="Gagal memuat saldo"
-          description="Tidak bisa mengambil saldo treasury dari server."
-          action-label="Coba lagi"
-          @action="loadTreasury"
-        />
+      <BaseRevenuePanel
+        v-else-if="modelValue === 'keuangan_pendapatan'"
+        mode="pendapatan"
+        :base-handle="baseHandle"
+      />
 
-        <template v-else>
-          <div class="finance-hero-banner">
-            <div class="text-xs uppercase font-bold text-muted">TOTAL SALDO TREASURY BASE</div>
-            <div class="text-3xl font-black mt-1 text-white">
-              {{ (treasury?.balance ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
-            </div>
-            <div class="text-xs text-muted mt-1">
-              Saldo tersedia untuk dicairkan ke rekening bank / e-wallet.
-            </div>
-          </div>
-
-          <div class="finance-breakdown-cards mt-4">
-            <div class="breakdown-card">
-              <span class="bd-label">Saldo Tersedia Ditarik</span>
-              <span class="bd-val text-green-400">
-                {{ (treasury?.balance ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
-              </span>
-            </div>
-            <div class="breakdown-card">
-              <span class="bd-label">Total Pendapatan Terkumpul</span>
-              <span class="bd-val text-amber-400">
-                {{ (treasury?.revenue ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
-              </span>
-            </div>
-          </div>
-
-          <div class="section-title-sm mt-6 mb-3">Arus Kas Treasury</div>
-          <div class="transaction-list">
-            <p class="text-xs text-muted">
-              Riwayat transaksi per-item belum tersedia dari server. Angka di atas dihitung
-              langsung dari data treasury akun base-mu.
-            </p>
-          </div>
-        </template>
-      </template>
-
-      <!-- PENDAPATAN -->
-      <template v-else-if="modelValue === 'keuangan_pendapatan'">
-        <ContentSkeleton
-          v-if="treasuryLoading && !treasury"
-          type="list"
-          :count="1"
-          label="Memuat pendapatan…"
-        />
-
-        <AppStateView
-          v-else-if="treasuryError"
-          variant="error"
-          title="Gagal memuat pendapatan"
-          description="Tidak bisa mengambil data pendapatan dari server."
-          action-label="Coba lagi"
-          @action="loadTreasury"
-        />
-
-        <template v-else>
-          <div class="income-hero-card">
-            <div class="text-xs uppercase font-bold text-muted">TOTAL PENDAPATAN TERKUMPUL</div>
-            <div class="text-3xl font-black mt-1 text-green-400">
-              {{ (treasury?.revenue ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
-            </div>
-            <div class="text-xs text-muted mt-1">
-              Akumulasi dari fess prioritas dan tip untuk base-mu.
-            </div>
-          </div>
-
-          <p class="text-xs text-muted mt-4">
-            Rincian sumber pendapatan per kategori belum tersedia dari server — angka di atas
-            berasal dari data treasury akunmu.
-          </p>
-        </template>
-      </template>
-
-      <!-- PENARIKAN (PAYOUT) -->
-      <template v-else-if="modelValue === 'keuangan_penarikan'">
-        <ContentSkeleton
-          v-if="treasuryLoading && !treasury"
-          type="list"
-          :count="1"
-          label="Memuat saldo…"
-        />
-
-        <AppStateView
-          v-else-if="treasuryError"
-          variant="error"
-          title="Gagal memuat saldo"
-          description="Tidak bisa mengambil saldo treasury dari server."
-          action-label="Coba lagi"
-          @action="loadTreasury"
-        />
-
-        <template v-else>
-          <div class="payout-balance-box">
-            <span class="text-xs text-muted font-bold">Saldo Siap Dicairkan:</span>
-            <span class="text-2xl font-black text-white mt-1">
-              {{ (treasury?.balance ?? 0).toLocaleString('id-ID') }} {{ treasury?.currency || '$CLUB' }}
-            </span>
-          </div>
-
-          <form class="payout-form mt-5" @submit.prevent="submitPayout">
-            <div class="form-group">
-              <label class="form-label">Nominal Penarikan ({{ treasury?.currency || '$CLUB' }})</label>
-              <input
-                v-model="payoutForm.amount"
-                type="number"
-                min="1"
-                :max="treasury?.balance ?? 0"
-                class="admin-input-control"
-                placeholder="contoh: 500"
-                required
-              />
-            </div>
-
-            <div v-if="payoutQuickAmounts.length" class="payout-quick-amounts mt-2">
-              <button
-                v-for="amt in payoutQuickAmounts"
-                :key="amt"
-                type="button"
-                class="quick-amt-btn"
-                @click="payoutForm.amount = amt"
-              >
-                {{ amt.toLocaleString('id-ID') }}
-              </button>
-              <button
-                type="button"
-                class="quick-amt-btn all-in"
-                @click="payoutForm.amount = Math.floor(treasury?.balance ?? 0)"
-              >
-                Semua Saldo
-              </button>
-            </div>
-
-            <div class="form-group mt-4">
-              <label class="form-label">Tujuan Transfer</label>
-              <input
-                v-model="payoutForm.destination"
-                type="text"
-                class="admin-input-control"
-                placeholder="contoh: BCA 8201928190 / GoPay 0812xxxx"
-                required
-              />
-            </div>
-
-            <div class="payout-notes mt-4">
-              <div class="text-xs text-muted flex justify-between">
-                <span>Biaya Administrasi:</span>
-                <span class="font-bold text-green-400">GRATIS</span>
-              </div>
-              <div class="text-xs text-muted flex justify-between mt-1">
-                <span>Estimasi Masuk Rekening:</span>
-                <span class="font-bold">1x24 Jam Kerja</span>
-              </div>
-            </div>
-
-            <button type="submit" class="btn-submit-payout mt-5" :disabled="isSubmittingPayout">
-              <Coins :size="16" />
-              <span>{{ isSubmittingPayout ? 'Memproses Pengajuan...' : 'Ajukan Penarikan Dana' }}</span>
-            </button>
-          </form>
-
-          <div v-if="payoutError" class="alert-error-box mt-4">
-            <span>{{ payoutError }}</span>
-          </div>
-
-          <div v-if="payoutMessage" class="alert-success-box mt-4">
-            <CheckCircle2 :size="16" />
-            <span>{{ payoutMessage }}</span>
-          </div>
-        </template>
-      </template>
-
+      <BaseRevenuePanel
+        v-else-if="modelValue === 'keuangan_penarikan'"
+        mode="penarikan"
+        :base-handle="baseHandle"
+      />
       <!-- ========================================================
-           3. ANALITIK (Ringkasan, Konten, Moderasi, Komunitas)
+           3. ANALITIK
+ (Ringkasan, Konten, Moderasi, Komunitas)
            ======================================================== -->
       <!-- ANALITIK: RINGKASAN -->
       <template v-else-if="modelValue === 'analitik_ringkasan'">
@@ -737,7 +567,7 @@
             <div class="toggle-row mt-3">
               <div>
                 <div class="toggle-title">Pembayaran Tip &amp; Saldo</div>
-                <div class="toggle-desc">Alert saat saldo treasury base bertambah</div>
+                <div class="toggle-desc">Alert saat pendapatan base bertambah</div>
               </div>
               <input v-model="notifSettings.payments" type="checkbox" class="toggle-switch" />
             </div>
@@ -794,7 +624,7 @@
           <p class="legal-p">Dilarang keras menyetujui atau menerbitkan konten bermuatan SARA, pornografi, ancaman kekerasan, doxxing, dan judi online.</p>
 
           <h4 class="legal-section-title mt-4">3. Pembagian Royalti &amp; Saldo</h4>
-          <p class="legal-p">Pendapatan yang bersumber dari fess prioritas dan tip akan dialokasikan 85% untuk treasury base dan 15% untuk biaya operasional platform.</p>
+          <p class="legal-p">Pendapatan base berasal dari fess berbayar yang terbit: Rp80 per fess dalam ledger IDR terpisah, ditahan 7 hari, dan tidak berlaku untuk self-post, masa trial, atau base freeForever. Saldo CTF pengguna tidak dapat dicairkan. Penarikan minimal Rp50.000, membutuhkan KYC dan rekening terdaftar, serta disetujui manual oleh Super Admin. Biaya transfer default Rp6.500 dapat disesuaikan saat approval.</p>
         </div>
       </template>
 
@@ -835,7 +665,7 @@
 /**
  * BaseAdminPanels — Base Admin hamburger drawer modules, now fully API-backed:
  * 1. Koneksi Medsos   → GET/POST /admin/connections
- * 2. Keuangan         → GET /admin/treasury + POST /admin/treasury/payout
+ * 2. Keuangan         GET/POST /admin/base-revenue + rekening & payout manual
  * 3. Analitik         → GET /admin/stats + GET /fesses + GET /bases/:handle
  * 4. Pengaturan       → theme (real), notif lokal, legal copy, info sesi aktual
  */
@@ -847,7 +677,6 @@ import {
   Twitter,
   Send,
   CheckCircle2,
-  Coins,
   TrendingUp,
   BarChart3,
   MessageSquare,
@@ -865,6 +694,7 @@ import { toast } from '../../composables/useToast';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import InstagramAnalytics from './InstagramAnalytics.vue';
+import BaseRevenuePanel from './BaseRevenuePanel.vue';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
 import { confirmDialog } from '../../composables/useAppDialog';
@@ -886,9 +716,9 @@ const baseHandle = computed(
 const panelTitle = computed(() => {
   const map = {
     medsos: 'Koneksi Media Sosial',
-    keuangan_saldo: 'Saldo Treasury Base',
-    keuangan_pendapatan: 'Pendapatan Komunitas',
-    keuangan_penarikan: 'Penarikan Saldo (Payout)',
+    keuangan_saldo: 'Pendapatan Base (IDR)',
+    keuangan_pendapatan: 'Riwayat Pendapatan',
+    keuangan_penarikan: 'Payout & Rekening',
     analitik_ringkasan: 'Ringkasan Analitik Base',
     analitik_konten: 'Analitik Konten Fess',
     analitik_moderasi: 'Moderasi & Filter Kata',
@@ -1025,77 +855,6 @@ async function connectInstagramOAuth() {
   // jatuh ke rewrite SPA di domain frontend (halaman 404), karena browser
   // redirect tidak melewati proxy XHR/Vite.
   window.location.href = instagramAuthUrl({ token, base, origin: 'connections' });
-}
-
-/* 2. Keuangan — real state (GET /admin/treasury + POST /admin/treasury/payout) */
-const treasury = ref(null);
-const treasuryLoading = ref(false);
-const treasuryError = ref(null);
-
-const payoutForm = reactive({
-  amount: '',
-  destination: '',
-});
-
-const isSubmittingPayout = ref(false);
-const payoutMessage = ref('');
-const payoutError = ref('');
-
-const payoutQuickAmounts = computed(() => {
-  const balance = Math.floor(treasury.value?.balance ?? 0);
-  return [100, 500, 1000, 5000].filter((amount) => amount <= balance);
-});
-
-async function loadTreasury() {
-  treasuryLoading.value = true;
-  treasuryError.value = null;
-  try {
-    treasury.value = await api.getTreasury();
-  } catch (e) {
-    treasuryError.value = e;
-  } finally {
-    treasuryLoading.value = false;
-  }
-}
-
-async function submitPayout() {
-  const amount = Number(payoutForm.amount);
-  payoutError.value = '';
-  payoutMessage.value = '';
-
-  if (!amount || amount <= 0) {
-    payoutError.value = 'Masukkan nominal penarikan yang valid.';
-    toast.error(payoutError.value);
-    return;
-  }
-  if (amount > (treasury.value?.balance ?? 0)) {
-    payoutError.value = 'Nominal melebihi saldo yang tersedia.';
-    toast.error(payoutError.value);
-    return;
-  }
-  if (!payoutForm.destination.trim()) {
-    payoutError.value = 'Isi tujuan transfer terlebih dahulu.';
-    toast.error(payoutError.value);
-    return;
-  }
-
-  isSubmittingPayout.value = true;
-  try {
-    const res = await api.requestPayout({
-      amount,
-      destination: payoutForm.destination.trim(),
-    });
-    payoutMessage.value = res?.message || 'Permintaan payout berhasil diajukan.';
-    toast.success(payoutMessage.value);
-    payoutForm.amount = '';
-    payoutForm.destination = '';
-    await loadTreasury();
-  } catch (e) {
-    payoutError.value = e?.message || 'Gagal mengajukan payout.';
-    toast.error(payoutError.value);
-  } finally {
-    isSubmittingPayout.value = false;
-  }
 }
 
 /* 3. Analitik — real state (GET /admin/stats + GET /fesses + GET /bases/:handle) */
@@ -1291,8 +1050,8 @@ const ADMIN_FAQS = [
     a: 'Setiap confession yang Anda setujui akan dikonversi menjadi kartu canvas resolusi tinggi (Feed 1:1 / 4:5) lalu diposting otomatis ke Instagram base Anda via Meta Graph API — carousel bila ada media tambahan, dan Reels untuk video. Kuota Instagram dibatasi 100 publikasi per 24 jam dan dipantau otomatis oleh sistem.',
   },
   {
-    q: 'Berapa lama proses pencairan saldo treasury ke rekening bank?',
-    a: 'Pencairan saldo membutuhkan waktu maksimal 1x24 jam kerja. Transfer dikirim melalui kliring BI-FAST langsung ke rekening bank atau e-wallet terdaftar tanpa biaya admin.',
+    q: 'Bagaimana cara mencairkan pendapatan base?',
+    a: 'Pendapatan base tercatat dalam IDR terpisah dari CTF. Setiap fess berbayar yang terbit memberi Rp80, ditahan 7 hari, lalu masuk saldo tersedia. Penarikan minimal Rp50.000, wajib KYC verified dan rekening terdaftar, lalu disetujui manual oleh Super Admin. Biaya transfer default Rp6.500 dapat disesuaikan saat approval. CTF pengguna tidak pernah bisa dicairkan.',
   },
   {
     q: 'Bagaimana cara mengganti kata sandi atau email admin?',
@@ -1305,7 +1064,6 @@ watch(
   () => props.modelValue,
   (panel) => {
     if (panel === 'medsos') loadConnections();
-    if (panel && panel.startsWith('keuangan')) loadTreasury();
     if (panel && panel.startsWith('analitik')) loadAnalytics();
   },
   { immediate: true },

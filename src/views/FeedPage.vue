@@ -309,18 +309,30 @@ watch(
   () => route.query.postSuccess,
   (status) => {
     if (!status) return;
+    const charged = Number(route.query.charged || 0);
+    const balance = Number(route.query.balance);
+    const chargeText =
+      charged > 0
+        ? ` ${charged} CTF terpakai${Number.isFinite(balance) ? `, sisa ${balance} CTF` : ''}.`
+        : '';
     if (status === 'pending') {
       showFeedToast(
-        'Fess terkirim! Fess tersimpan di antrean moderasi admin base.',
+        `Fess terkirim! Fess tersimpan di antrean moderasi admin base.${chargeText}`,
         'pending',
         5000
       );
     } else {
-      showFeedToast('Fess berhasil diterbitkan dan langsung tayang!', 'success', 3500);
+      showFeedToast(
+        `Fess berhasil diterbitkan dan langsung tayang!${chargeText}`,
+        'success',
+        3500
+      );
     }
     // Bersihkan query param agar refresh tidak memunculkan toast lagi
     const nextQuery = { ...route.query };
     delete nextQuery.postSuccess;
+    delete nextQuery.charged;
+    delete nextQuery.balance;
     router.replace({ query: nextQuery });
   },
   { immediate: true }

@@ -297,8 +297,8 @@
               <div class="menu-row-left">
                 <Coins :size="18" class="row-ico-gold" />
                 <div>
-                  <div class="menu-row-label">Saldo Treasury Base</div>
-                  <div class="menu-row-desc">Kelola saldo &amp; penarikan dana base</div>
+                  <div class="menu-row-label">Pendapatan Base (IDR)</div>
+                  <div class="menu-row-desc">Saldo IDR, hold &amp; status pencairan</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -308,8 +308,8 @@
               <div class="menu-row-left">
                 <TrendingUp :size="18" class="row-ico-green" />
                 <div>
-                  <div class="menu-row-label">Pendapatan Bulan Ini</div>
-                  <div class="menu-row-desc">Rincian pendapatan komunitas base</div>
+                  <div class="menu-row-label">Riwayat Pendapatan</div>
+                  <div class="menu-row-desc">Rp80 per fess berbayar, hold 7 hari</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -319,8 +319,8 @@
               <div class="menu-row-left">
                 <ArrowDownToLine :size="18" class="row-ico-blue" />
                 <div>
-                  <div class="menu-row-label">Penarikan Saldo (Payout)</div>
-                  <div class="menu-row-desc">Tarik saldo ke rekening bank / e-wallet</div>
+                  <div class="menu-row-label">Payout &amp; Rekening</div>
+                  <div class="menu-row-desc">Penarikan manual, rekening &amp; KYC</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -1087,9 +1087,9 @@ async function takeDownFess(id) {
 const subModalTitle = computed(() => {
   const titles = {
     medsos: 'Koneksi Media Sosial',
-    keuangan_saldo: 'Saldo Treasury Base',
-    keuangan_pendapatan: 'Pendapatan Base',
-    keuangan_penarikan: 'Penarikan Saldo (Payout)',
+    keuangan_saldo: 'Pendapatan Base (IDR)',
+    keuangan_pendapatan: 'Riwayat Pendapatan',
+    keuangan_penarikan: 'Payout & Rekening',
     analitik_ringkasan: 'Ringkasan Analitik Base',
     analitik_konten: 'Analitik Konten Fess',
     analitik_moderasi: 'Moderasi & Filter Kata',

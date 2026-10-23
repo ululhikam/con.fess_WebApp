@@ -55,7 +55,12 @@ export const api = {
   getFesses: (params) => client.get('/fesses', { params }),
   getFess: (id) => client.get(`/fesses/${id}`),
   getFessIgStatus: (id) => client.get(`/fesses/${id}/instagram-status`),
-  createFess: (payload) => client.post('/fesses', payload),
+  createFess: (payload, idempotencyKey) =>
+    client.post(
+      '/fesses',
+      payload,
+      idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined,
+    ),
   voteFess: (id, type) => client.post(`/fesses/${id}/vote`, { type }),
   bookmarkFess: (id) => client.post(`/fesses/${id}/bookmark`),
   unbookmarkFess: (id) => client.delete(`/fesses/${id}/bookmark`),
@@ -129,6 +134,19 @@ export const api = {
     client.post(`/admin/connections/${platform}`, payload),
   getTreasury: () => client.get('/admin/treasury'),
   requestPayout: (payload) => client.post('/admin/treasury/payout', payload),
+
+  /* ADMIN — IDR base revenue & manual payout workflow */
+  getBaseRevenue: (params) => client.get('/admin/base-revenue', { params }),
+  getBasePayouts: (params) => client.get('/admin/base-revenue/payouts', { params }),
+  requestBasePayout: (payload, idempotencyKey) =>
+    client.post('/admin/base-revenue/payouts', payload, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+    }),
+  reviewBasePayout: (id, payload) =>
+    client.post(`/admin/base-revenue/payouts/${encodeURIComponent(id)}/review`, payload),
+  updateBaseBank: (payload) => client.put('/admin/base-revenue/bank', payload),
+  setBaseKyc: (payload) => client.post('/admin/base-revenue/kyc', payload),
+  setBaseFreeForever: (payload) => client.post('/admin/base-revenue/free-forever', payload),
 
   /* ADMIN — system */
   getSystemHealth: () => client.get('/admin/system/health'),

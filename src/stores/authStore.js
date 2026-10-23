@@ -162,6 +162,13 @@ export const useAuthStore = defineStore('auth', {
       return this.user;
     },
 
+    /** Keep the cached CTF balance in sync after a fess charge or refund. */
+    setWalletBalance(balance) {
+      if (!this.user || typeof balance !== 'number' || Number.isNaN(balance)) return;
+      this.user = { ...this.user, balance };
+      localStorage.setItem('fess_user', JSON.stringify(this.user));
+    },
+
     /** Persist profile changes through the API, then update local state. */
     async updateProfile(updates = {}) {
       const res = await api.updateProfile(updates);

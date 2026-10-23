@@ -30,6 +30,8 @@
             <SecurityControlsCard />
             <EngineLogStreamCard :logs="engineLogs" />
           </div>
+
+          <SuperAdminRevenuePanel />
         </template>
       </div>
     </main>
@@ -51,6 +53,7 @@ import SuperAdminHeader from '../components/admin/SuperAdminHeader.vue';
 import SystemStatGrid from '../components/admin/SystemStatGrid.vue';
 import SecurityControlsCard from '../components/admin/SecurityControlsCard.vue';
 import EngineLogStreamCard from '../components/admin/EngineLogStreamCard.vue';
+import SuperAdminRevenuePanel from '../components/admin/SuperAdminRevenuePanel.vue';
 
 import { useSuperAdminDashboard } from '../composables/useSuperAdminDashboard';
 

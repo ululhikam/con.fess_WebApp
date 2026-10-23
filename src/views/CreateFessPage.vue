@@ -248,6 +248,9 @@ const showQuoteModal = ref(false);
 const showPublishModal = ref(false);
 // true = user belum memilih template; composer memakai template acak.
 const isRandomTemplate = ref(true);
+// Stable across retries so a network failure after the backend committed the
+// fess cannot charge the same post twice. Reset only after a confirmed success.
+let publishIdempotencyKey = null;
 const savingDraft = ref(false);
 const publishing = ref(false);
 const publishError = ref('');
@@ -500,6 +503,8 @@ async function publishFess() {
       return;
     }
 
+    if (!publishIdempotencyKey) publishIdempotencyKey = generateClientId('fess');
+
     const payload = {
       base_handle: form.value.baseHandle,
       content: form.value.content.trim(),
@@ -530,7 +535,10 @@ async function publishFess() {
     };
 
     // Publish through the API — the shared feed store picks up the response.
-    const createdFess = await publish(payload);
+    const createdFess = await publish(payload, {
+      idempotencyKey: publishIdempotencyKey,
+    });
+    publishIdempotencyKey = null;
 
     // Kirim fess = otomatis mengikuti base tujuan (backend) — segarkan cache follow.
     syncFollowing().catch(() => {});
@@ -538,19 +546,33 @@ async function publishFess() {
     // Clear draft
     localStorage.removeItem('fess_draft');
 
+    const chargedCtf = Number(createdFess?.chargedCtf ?? 0);
+    const ctfBalance = createdFess?.ctfBalance;
+    if (Number.isFinite(ctfBalance)) authStore.setWalletBalance(ctfBalance);
+    const chargeText =
+      chargedCtf > 0
+        ? ` ${chargedCtf} CTF terpakai${Number.isFinite(ctfBalance) ? `, sisa ${ctfBalance} CTF` : ''}.`
+        : '';
     const fessStatus = createdFess?.rawStatus || createdFess?.status || 'pending';
 
     // Role-aware navigation: Base Admin returns to /base-admin, regular user to /feed.
     // User biasa melihat toast dari query `postSuccess` di FeedPage.
     if (authStore.user?.role === 'Base Admin') {
       if (fessStatus === 'pending') {
-        toast.pending('Fess terkirim dan masuk antrean moderasi base.');
+        toast.pending(`Fess terkirim dan masuk antrean moderasi base.${chargeText}`);
       } else {
-        toast.success('Fess berhasil diterbitkan.');
+        toast.success(`Fess berhasil diterbitkan.${chargeText}`);
       }
       router.push('/base-admin');
     } else {
-      router.push({ path: '/feed', query: { postSuccess: fessStatus } });
+      router.push({
+        path: '/feed',
+        query: {
+          postSuccess: fessStatus,
+          ...(chargedCtf > 0 ? { charged: chargedCtf } : {}),
+          ...(Number.isFinite(ctfBalance) ? { balance: ctfBalance } : {}),
+        },
+      });
     }
   } catch (error) {
     console.error('Publish failed:', error);

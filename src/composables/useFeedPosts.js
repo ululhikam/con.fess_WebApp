@@ -252,11 +252,18 @@ export function useFeedPosts() {
    * @param {object} payload — CreateFess payload (base_handle, content, ...)
    * @returns {Promise<object|null>} the created fess mapped for the feed
    */
-  async function publish(payload) {
-    const res = await api.createFess(payload);
+  async function publish(payload, options = {}) {
+    const res = await api.createFess(payload, options.idempotencyKey);
     const created = res?.fess ?? res?.data ?? res;
     if (!created) return null;
     const mapped = mapFessToPost(created);
+
+    // Billing metadata is returned only when CTF was actually charged. Keep it
+    // on the mapped post so the composer can surface the cost and new balance.
+    mapped.chargedCtf = Number(created.charged_ctf ?? 0);
+    mapped.ctfBalance =
+      typeof created.ctf_balance === 'number' ? created.ctf_balance : null;
+    mapped.baseBilling = created.base_billing ?? null;
 
     // PENTING: fess yang baru dibuat biasanya berstatus "pending" (harus dimoderasi
     // admin base sebelum tayang). JANGAN inject ke posts.value karena:
