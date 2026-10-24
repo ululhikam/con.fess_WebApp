@@ -313,7 +313,7 @@ watch(
     const balance = Number(route.query.balance);
     const chargeText =
       charged > 0
-        ? ` ${charged} CTF terpakai${Number.isFinite(balance) ? `, sisa ${balance} CTF` : ''}.`
+        ? ` ${charged} CTF dipotong${Number.isFinite(balance) ? `, sisa ${balance} CTF` : ''}.`
         : '';
     if (status === 'pending') {
       showFeedToast(

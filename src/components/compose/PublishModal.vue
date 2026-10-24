@@ -75,8 +75,16 @@
             </div>
 
             <div v-if="billing" class="summary-row billing-row">
-              <span class="summary-label">Biaya</span>
+              <span class="summary-label">Biaya posting</span>
               <span class="summary-value">{{ billingSummary }}</span>
+            </div>
+
+            <div v-if="billingRequiresPayment" class="summary-row billing-balance-row">
+              <span class="summary-label">Saldo CTF</span>
+              <span class="summary-value" :class="{ 'is-insufficient': insufficientCtf }">
+                {{ formattedBalance }} CTF
+                <template v-if="!insufficientCtf"> → {{ balanceAfterLabel }} CTF</template>
+              </span>
             </div>
 
             <div v-if="form.topic" class="summary-row">
@@ -116,6 +124,14 @@
             </span>
           </div>
 
+          <!-- Penegasan biaya: charge terjadi saat request fess dikirim. -->
+          <div v-if="billingRequiresPayment && !insufficientCtf" class="billing-charge-note">
+            <Coins :size="16" />
+            <span>
+              {{ billingCtfCost }} CTF akan dipotong dari saldo kamu saat fess dikirim.
+            </span>
+          </div>
+
           <!-- Saldo kurang: hentikan konfirmasi dan arahkan ke top-up. -->
           <div v-if="insufficientCtf" class="balance-warning" role="alert">
             <Wallet :size="18" />
@@ -142,9 +158,7 @@
             :disabled="confirming || insufficientCtf"
           >
             <Loader2 v-if="confirming" :size="16" class="spin" />
-            <span v-else>{{
-              insufficientCtf ? 'Saldo Kurang' : isScheduled ? 'Jadwalkan' : 'Posting Sekarang'
-            }}</span>
+            <span v-else>{{ confirmButtonLabel }}</span>
           </button>
         </footer>
       </div>
@@ -154,7 +168,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { X, Calendar, Loader2, AlertCircle, Download, GripVertical, Wallet } from 'lucide-vue-next';
+import { X, Calendar, Loader2, AlertCircle, Download, GripVertical, Wallet, Coins } from 'lucide-vue-next';
 import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
 import { TEMPLATES } from '../../config/templates';
@@ -197,6 +211,25 @@ const insufficientCtf = computed(
 );
 
 const formattedBalance = computed(() => Number(props.ctfBalance ?? 0).toLocaleString('id-ID'));
+
+const billingRequiresPayment = computed(() => props.billing?.requires_payment === true);
+
+const balanceAfter = computed(() => Number(props.ctfBalance ?? 0) - billingCtfCost.value);
+
+const balanceAfterLabel = computed(() =>
+  Math.max(0, balanceAfter.value).toLocaleString('id-ID')
+);
+
+/** Tombol konfirmasi menyebut nominal yang dipotong agar tidak ambigu. */
+const confirmButtonLabel = computed(() => {
+  if (insufficientCtf.value) return 'Saldo Kurang';
+  if (billingRequiresPayment.value) {
+    return props.isScheduled
+      ? `Jadwalkan & Potong ${billingCtfCost.value} CTF`
+      : `Posting & Potong ${billingCtfCost.value} CTF`;
+  }
+  return props.isScheduled ? 'Jadwalkan' : 'Posting Sekarang';
+});
 
 /** Ringkasan menampilkan label topik asli (bukan id mentah). */
 const topicLabel = computed(() => {
@@ -511,6 +544,35 @@ function close() {
 .billing-row .summary-value {
   color: var(--brand-blue);
   font-weight: 800;
+}
+
+.billing-balance-row .summary-value {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.billing-balance-row .summary-value.is-insufficient {
+  color: var(--danger, #ef4444);
+}
+
+.billing-charge-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 20px 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.09);
+  color: var(--warning, #b45309);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.billing-charge-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .balance-warning {

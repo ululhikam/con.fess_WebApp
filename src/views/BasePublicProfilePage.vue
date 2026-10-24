@@ -552,10 +552,10 @@ const billingBadge = computed(() => {
   }
   const cost = Number(billing.ctf_cost ?? 1) || 1;
   return {
-    label: `${cost} CTF / fess`,
+    label: `Berbayar · ${cost} CTF/fess`,
     className: 'billing-chip--paid',
     paid: true,
-    title: `Setelah trial berakhir, setiap fess yang diterbitkan memotong ${cost} CTF.`,
+    title: `Setiap fess yang dikirim ke base ini memotong ${cost} CTF dari saldo.`,
   };
 });
 

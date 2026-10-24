@@ -30,7 +30,7 @@
             <Loader2 :size="16" class="spin" />
             <span>Mengunggah…</span>
           </template>
-          <span v-else>{{ isScheduled ? 'Jadwalkan' : 'Posting' }}</span>
+          <span v-else>{{ publishButtonLabel }}</span>
         </button>
       </div>
     </header>
@@ -425,6 +425,17 @@ const selectedBaseNeedsTopUp = computed(
     walletBalance.value < paidFessCost.value,
 );
 
+/**
+ * Label tombol header sengaja menyertakan harga agar user melihat biaya
+ * sebelum membuka modal konfirmasi — termasuk saat saldo sedang kurang.
+ */
+const publishButtonLabel = computed(() => {
+  const action = isScheduled.value ? 'Jadwalkan' : 'Posting';
+  return selectedBaseBilling.value?.requires_payment === true
+    ? `${action} · ${paidFessCost.value} CTF`
+    : action;
+});
+
 const selectedBaseBillingMessage = computed(() => {
   const billing = selectedBaseBilling.value;
   if (!billing) return '';
@@ -436,8 +447,8 @@ const selectedBaseBillingMessage = computed(() => {
   }
   const suffix = `Saldo kamu ${walletBalance.value.toLocaleString('id-ID')} CTF.`;
   return selectedBaseNeedsTopUp.value
-    ? `Fess ini butuh ${paidFessCost.value} CTF. ${suffix}`
-    : `Fess ini memotong ${paidFessCost.value} CTF. ${suffix}`;
+    ? `Fess ini berbayar ${paidFessCost.value} CTF. ${suffix} Saldo belum cukup — top up dulu.`
+    : `Fess ini berbayar ${paidFessCost.value} CTF dan akan dipotong dari saldo kamu. ${suffix}`;
 });
 
 const getPlaceholder = computed(() => {
@@ -623,7 +634,7 @@ async function publishFess() {
     if (Number.isFinite(ctfBalance)) authStore.setWalletBalance(ctfBalance);
     const chargeText =
       chargedCtf > 0
-        ? ` ${chargedCtf} CTF terpakai${Number.isFinite(ctfBalance) ? `, sisa ${ctfBalance} CTF` : ''}.`
+        ? ` ${chargedCtf} CTF dipotong${Number.isFinite(ctfBalance) ? `, sisa ${ctfBalance} CTF` : ''}.`
         : '';
     const fessStatus = createdFess?.rawStatus || createdFess?.status || 'pending';
 
