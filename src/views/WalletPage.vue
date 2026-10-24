@@ -66,9 +66,9 @@ onMounted(() => {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px;
-  max-width: 860px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 14px 20px;
+  padding: 14px 24px;
   background: color-mix(in srgb, var(--bg-page) 88%, transparent);
   border-bottom: 1px solid var(--shell-border);
   backdrop-filter: blur(16px);
@@ -110,15 +110,15 @@ onMounted(() => {
 
 .wallet-page-title h1 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 15px;
+  font-weight: 800;
   line-height: 1.2;
 }
 
 .wallet-page-title p {
   margin: 1px 0 0;
-  font-size: 9.5px;
-  color: var(--shell-text-dim);
+  font-size: 10px;
+  color: var(--shell-text-muted);
 }
 
 .wallet-secure-badge {
@@ -135,9 +135,9 @@ onMounted(() => {
 }
 
 .wallet-page-main {
-  max-width: 760px;
+  max-width: 1120px;
   margin: 0 auto;
-  padding: 20px 16px 48px;
+  padding: 24px 24px 64px;
 }
 
 @media (max-width: 520px) {
