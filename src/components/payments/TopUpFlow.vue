@@ -299,8 +299,15 @@
                 :class="{ selected: selectedMethod === method.code }"
                 @click="selectedMethod = method.code"
               >
-                <span class="method-icon">
-                  <component :is="iconForMethod(method)" :size="19" />
+                <span class="method-icon" :class="{ 'method-icon--qris': method.group === 'qris' }">
+                  <img
+                    v-if="logoForMethod(method)"
+                    :src="logoForMethod(method)"
+                    :alt="`Logo ${method.label}`"
+                    class="method-logo"
+                    loading="lazy"
+                  />
+                  <component v-else :is="iconForMethod(method)" :size="19" />
                 </span>
                 <span class="method-text">
                   <strong>{{ method.label }}</strong>
@@ -441,6 +448,25 @@ import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 import { useAuthStore } from '../../stores/authStore';
 import { formatNumber } from '../../utils/format';
+import qrisLogo from '../../assets/payments/qris.svg';
+import gopayLogo from '../../assets/payments/gopay.svg';
+import shopeepayLogo from '../../assets/payments/shopeepay.svg';
+import bcaLogo from '../../assets/payments/bca.svg';
+import bniLogo from '../../assets/payments/bni.svg';
+import briLogo from '../../assets/payments/bri.svg';
+import permataLogo from '../../assets/payments/permata.svg';
+import mandiriLogo from '../../assets/payments/mandiri.svg';
+
+const METHOD_LOGOS = {
+  qris: qrisLogo,
+  gopay: gopayLogo,
+  shopeepay: shopeepayLogo,
+  bca_va: bcaLogo,
+  bni_va: bniLogo,
+  bri_va: briLogo,
+  permata_va: permataLogo,
+  mandiri_bill: mandiriLogo,
+};
 
 const props = defineProps({
   initialOrderId: { type: String, default: '' },
@@ -549,6 +575,10 @@ function newRequestKey() {
 function bonusFor(pkg) {
   const base = Math.round((Number(pkg.amountIdr) / 5000) * 25);
   return Math.max(0, Number(pkg.ctfAmount) - base);
+}
+
+function logoForMethod(method) {
+  return METHOD_LOGOS[method.code] || '';
 }
 
 function iconForMethod(method) {
@@ -1191,12 +1221,25 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 33px;
-  height: 33px;
+  width: 60px;
+  height: 38px;
+  padding: 5px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 10px;
-  background: var(--shell-chip);
-  color: var(--shell-text);
+  background: #fff;
+  color: #111;
   flex-shrink: 0;
+}
+
+.method-icon--qris {
+  width: 72px;
+}
+
+.method-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .method-text {
