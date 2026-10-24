@@ -39,8 +39,8 @@ const landingSteps = [
   },
   {
     number: '03',
-    title: 'Auto-Posting Ke Sosmed',
-    desc: 'Bot akan memverifikasi dan memposting pesanmu ke IG/Threads/X secara instan tanpa tunda.',
+    title: 'Terbit di FnC & Instagram',
+    desc: 'Setelah lolos moderasi, fess terbit di FnC. Auto-post Instagram berjalan jika akun base sudah terhubung; jika belum, fess tetap tayang normal.',
   },
 ];
 </script>

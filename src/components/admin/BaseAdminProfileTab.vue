@@ -271,7 +271,7 @@
                 <Instagram :size="18" class="row-ico-brand" />
                 <div>
                   <div class="menu-row-label">Koneksi Medsos</div>
-                  <div class="menu-row-desc">Instagram, Twitter Bot, Telegram</div>
+                  <div class="menu-row-desc">Instagram auto-post (opsional)</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />

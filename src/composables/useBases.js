@@ -43,6 +43,8 @@ export function mapBase(raw) {
     is_following: raw.is_following ?? false,
     bio: raw.bio || '',
     igAccount: raw.ig_account || '',
+    instagramConnected: raw.instagram_connected ?? null,
+    billing: raw.billing || null,
     rules: Array.isArray(raw.rules) ? raw.rules : [],
     followersCount: raw.followers_count ?? 0,
     followingCount: raw.following_count ?? 0,

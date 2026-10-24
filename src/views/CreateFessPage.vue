@@ -60,6 +60,28 @@
           @change="onBaseChange"
         />
 
+        <!-- Biaya fess ditampilkan sebelum publish, termasuk saat base masih trial. -->
+        <div
+          v-if="selectedBaseBilling"
+          class="composer-billing-note"
+          :class="{
+            'is-paid': selectedBaseBilling.requires_payment,
+            'is-insufficient': selectedBaseNeedsTopUp,
+          }"
+        >
+          <Coins v-if="selectedBaseBilling.requires_payment" :size="14" />
+          <Sparkles v-else :size="14" />
+          <span class="composer-billing-text">{{ selectedBaseBillingMessage }}</span>
+          <button
+            v-if="selectedBaseNeedsTopUp"
+            type="button"
+            class="btn-inline-topup"
+            @click="handleTopUpFromPublish"
+          >
+            Top Up CTF
+          </button>
+        </div>
+
         <!-- Text Editor -->
         <EditorArea v-model="form.content" :placeholder="getPlaceholder" :max-length="2000" />
 
@@ -171,8 +193,11 @@
       :form="form"
       :is-scheduled="isScheduled"
       :confirming="publishing"
+      :billing="selectedBaseBilling"
+      :ctf-balance="walletBalance"
       @confirm="publishFess"
       @cancel="showPublishModal = false"
+      @top-up="handleTopUpFromPublish"
       @reorder-slides="onReorderSlides"
     />
   </div>
@@ -192,6 +217,8 @@ import {
   AlertCircle,
   Quote,
   X,
+  Coins,
+  Sparkles,
 } from 'lucide-vue-next';
 
 // Components
@@ -209,6 +236,7 @@ import QuoteModal from '../components/compose/QuoteModal.vue';
 // Composables & Stores
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../composables/useToast';
+import { confirmDialog } from '../composables/useAppDialog';
 import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases, mapBase } from '../composables/useBases';
 import { useTopics } from '../composables/useTopics';
@@ -375,6 +403,43 @@ const canPublish = computed(() => {
 
 const isScheduled = computed(() => !!form.value.scheduledAt);
 
+/** Billing base tujuan — dipakai badge composer dan ringkasan modal publish. */
+const selectedBaseBilling = computed(() => {
+  const selected = availableBases.value.find((base) => base.handle === form.value.baseHandle);
+  return selected?.billing || null;
+});
+
+const walletBalance = computed(() => {
+  const balance = Number(authStore.user?.balance ?? 0);
+  return Number.isFinite(balance) ? balance : 0;
+});
+
+const paidFessCost = computed(() => {
+  const cost = Number(selectedBaseBilling.value?.ctf_cost ?? 1);
+  return Number.isFinite(cost) && cost > 0 ? cost : 1;
+});
+
+const selectedBaseNeedsTopUp = computed(
+  () =>
+    selectedBaseBilling.value?.requires_payment === true &&
+    walletBalance.value < paidFessCost.value,
+);
+
+const selectedBaseBillingMessage = computed(() => {
+  const billing = selectedBaseBilling.value;
+  if (!billing) return '';
+  if (billing.reason === 'free_forever') {
+    return 'Base gratis permanen — fess ini tanpa potongan CTF.';
+  }
+  if (billing.reason === 'trial' || billing.trial_active) {
+    return 'Trial base aktif — fess ini gratis.';
+  }
+  const suffix = `Saldo kamu ${walletBalance.value.toLocaleString('id-ID')} CTF.`;
+  return selectedBaseNeedsTopUp.value
+    ? `Fess ini butuh ${paidFessCost.value} CTF. ${suffix}`
+    : `Fess ini memotong ${paidFessCost.value} CTF. ${suffix}`;
+});
+
 const getPlaceholder = computed(() => {
   if (form.value.baseHandle) {
     const base = availableBases.value.find((b) => b.handle === form.value.baseHandle);
@@ -439,6 +504,13 @@ function onReorderSlides(order) {
   for (const leftover of byId.values()) next.push(leftover);
   const changed = next.some((item, idx) => item !== list[idx]);
   if (changed) form.value.media = next;
+}
+
+/** Simpan draf sebelum ke wallet supaya isi composer tidak hilang. */
+async function handleTopUpFromPublish() {
+  showPublishModal.value = false;
+  await saveDraft();
+  router.push('/wallet');
 }
 
 async function saveDraft() {
@@ -576,9 +648,30 @@ async function publishFess() {
     }
   } catch (error) {
     console.error('Publish failed:', error);
-    publishError.value =
-      error?.message || 'Gagal mengirim fess. Pastikan format konten valid dan coba lagi.';
-    toast.error(publishError.value);
+
+    const errorCode = error?.data?.code || error?.code;
+    if (errorCode === 'INSUFFICIENT_CTF') {
+      publishError.value = 'Saldo CTF kamu tidak cukup. Lakukan top up lalu coba lagi.';
+      showPublishModal.value = false;
+      authStore.fetchMe().catch(() => {});
+
+      const shouldTopUp = await confirmDialog({
+        title: 'Saldo CTF Kurang',
+        message:
+          'Fess di base berbayar membutuhkan 1 CTF. Saldo kamu belum cukup. Top up CTF sekarang?',
+        variant: 'warning',
+        confirmLabel: 'Top Up CTF',
+        cancelLabel: 'Nanti',
+      });
+      if (shouldTopUp) {
+        await saveDraft();
+        router.push('/wallet');
+      }
+    } else {
+      publishError.value =
+        error?.message || 'Gagal mengirim fess. Pastikan format konten valid dan coba lagi.';
+      toast.error(publishError.value);
+    }
   } finally {
     publishing.value = false;
     showPublishModal.value = false;
@@ -1057,6 +1150,60 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   overflow: hidden;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+.composer-billing-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: -4px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.08);
+  color: #0f9f6e;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.composer-billing-note.is-paid {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.09);
+  color: #b45309;
+}
+
+.composer-billing-note.is-insufficient {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+}
+
+.composer-billing-note svg {
+  flex-shrink: 0;
+}
+
+.composer-billing-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-inline-topup {
+  flex-shrink: 0;
+  padding: 6px 11px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-inline-topup:hover {
+  background: currentColor;
+  color: var(--bg-surface);
 }
 
 .publish-error-banner {

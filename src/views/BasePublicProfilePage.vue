@@ -167,7 +167,7 @@
                 </a>
 
                 <div
-                  v-if="baseData.igAccount"
+                  v-if="baseData.instagramConnected"
                   class="medsos-item-chip auto-sync-chip"
                   title="Integrasi Auto-Post Instagram Aktif"
                 >
@@ -176,6 +176,17 @@
                     <span class="radar-dot"></span>
                   </span>
                   <span>Auto-Post Feed Aktif</span>
+                </div>
+
+                <div
+                  v-if="billingBadge"
+                  class="medsos-item-chip billing-chip"
+                  :class="billingBadge.className"
+                  :title="billingBadge.title"
+                >
+                  <Coins v-if="billingBadge.paid" :size="14" />
+                  <Sparkles v-else :size="14" />
+                  <span>{{ billingBadge.label }}</span>
                 </div>
               </div>
             </div>
@@ -475,6 +486,7 @@ import {
   Copy,
   ExternalLink,
   MessageSquare,
+  Coins,
 } from 'lucide-vue-next';
 
 import FessCard from '../components/common/FessCard.vue';
@@ -517,6 +529,35 @@ const baseData = ref(null);
 const baseLoading = ref(false);
 const baseError = ref(null);
 const baseNotFound = computed(() => baseError.value?.status === 404);
+
+/** Badge publik yang menjelaskan apakah fess di base ini gratis atau 1 CTF. */
+const billingBadge = computed(() => {
+  const billing = baseData.value?.billing;
+  if (!billing) return null;
+  if (billing.reason === 'free_forever') {
+    return {
+      label: 'Gratis permanen',
+      className: 'billing-chip--free',
+      paid: false,
+      title: 'Base ini gratis permanen — fess tidak memotong CTF.',
+    };
+  }
+  if (billing.reason === 'trial' || billing.trial_active) {
+    return {
+      label: 'Trial gratis',
+      className: 'billing-chip--trial',
+      paid: false,
+      title: 'Masa trial base masih aktif — fess tidak memotong CTF.',
+    };
+  }
+  const cost = Number(billing.ctf_cost ?? 1) || 1;
+  return {
+    label: `${cost} CTF / fess`,
+    className: 'billing-chip--paid',
+    paid: true,
+    title: `Setelah trial berakhir, setiap fess yang diterbitkan memotong ${cost} CTF.`,
+  };
+});
 
 /** Hanya pemilik/base admin pengelola yang boleh membuka daftar pengikut. */
 const isBaseOwner = computed(() => {
@@ -1218,6 +1259,36 @@ function handleBottomNavChange(tabKey) {
   border-color: rgba(16, 185, 129, 0.25);
   color: #10b981;
   font-weight: 800;
+}
+
+.billing-chip {
+  font-weight: 800;
+}
+
+.billing-chip--trial {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #0f9f6e;
+}
+
+.billing-chip--free {
+  background: rgba(0, 85, 255, 0.07);
+  border-color: rgba(0, 85, 255, 0.22);
+  color: #0055ff;
+}
+
+.billing-chip--paid {
+  background: rgba(245, 158, 11, 0.09);
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #b45309;
+}
+
+[data-theme='dark'] .billing-chip--free {
+  color: #60a5fa;
+}
+
+[data-theme='dark'] .billing-chip--paid {
+  color: #fbbf24;
 }
 
 .pulse-radar-wrap {

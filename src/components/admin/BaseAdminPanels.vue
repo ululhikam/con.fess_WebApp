@@ -32,7 +32,7 @@
         <ContentSkeleton
           v-if="connectionsLoading && !connections.length"
           type="list"
-          :count="3"
+          :count="1"
           label="Memuat koneksi…"
         />
 
@@ -47,7 +47,7 @@
 
         <template v-else>
           <div
-            v-for="(conn, i) in connections"
+            v-for="(conn, i) in visibleConnections"
             :key="conn.id"
             class="admin-feature-card"
             :class="{ 'mt-4': i > 0 }"
@@ -739,6 +739,14 @@ const connectionsLoading = ref(false);
 const connectionsError = ref(null);
 const connectionBusy = ref(null);
 const connectionNotice = ref('');
+
+/**
+ * Hanya Instagram yang punya integrasi publikasi nyata. Kartu Twitter/Telegram
+ * warisan lama jangan ditampilkan seolah bisa dihubungkan.
+ */
+const visibleConnections = computed(() =>
+  connections.value.filter((conn) => conn.id === 'instagram'),
+);
 
 function badgeClass(id) {
   if (id === 'instagram') return 'ig-badge';

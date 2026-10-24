@@ -1,7 +1,7 @@
 <template>
   <AdminCard
-    title="Keuangan & Saldo $CLUB"
-    description="Pendapatan komunitas dari kontribusi creator & auto-crossposting"
+    title="Keuangan & Pendapatan Base"
+    description="Pendapatan IDR base dari fess berbayar yang sudah terbit"
   >
     <div class="treasury-banner p-5 flex justify-between items-center flex-wrap gap-4">
       <div>
@@ -15,7 +15,7 @@
 
 <script setup>
 /**
- * FinanceCard — treasury balance banner for the keuangan tab.
+ * FinanceCard — ringkasan saldo pendapatan IDR base untuk tab keuangan.
  */
 import AdminCard from './AdminCard.vue';
 import AdminButton from './AdminButton.vue';

@@ -61,8 +61,8 @@ const landingFeatures = [
     preview: 'anonim',
   },
   {
-    title: 'AUTO-PUBLISH KE SOSMED',
-    desc: 'Bot menyalurkan otomatis ke Instagram, Threads, & X.',
+    title: 'AUTO-PUBLISH KE INSTAGRAM',
+    desc: 'Jika akun Instagram base terhubung, fess terbit otomatis ke feed. Tanpa Instagram, fess tetap tayang di FnC.',
     preview: 'autopublish',
   },
   {

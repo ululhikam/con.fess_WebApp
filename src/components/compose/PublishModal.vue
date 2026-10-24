@@ -74,6 +74,11 @@
               <span class="summary-value">{{ getBaseName(form.baseHandle) }}</span>
             </div>
 
+            <div v-if="billing" class="summary-row billing-row">
+              <span class="summary-label">Biaya</span>
+              <span class="summary-value">{{ billingSummary }}</span>
+            </div>
+
             <div v-if="form.topic" class="summary-row">
               <span class="summary-label">Topik</span>
               <span class="summary-value">{{ topicLabel }}</span>
@@ -110,6 +115,19 @@
               memiliki akses internet.
             </span>
           </div>
+
+          <!-- Saldo kurang: hentikan konfirmasi dan arahkan ke top-up. -->
+          <div v-if="insufficientCtf" class="balance-warning" role="alert">
+            <Wallet :size="18" />
+            <div class="balance-warning__copy">
+              <strong>Saldo CTF kurang</strong>
+              <span>
+                Fess ini membutuhkan {{ billingCtfCost }} CTF. Saldo kamu
+                {{ formattedBalance }} CTF.
+              </span>
+            </div>
+            <button type="button" class="btn-topup-warning" @click="$emit('top-up')">Top Up</button>
+          </div>
         </div>
 
         <footer class="modal-footer">
@@ -121,10 +139,12 @@
             class="btn-primary"
             :class="{ 'btn-danger': !isScheduled }"
             @click="handleConfirm"
-            :disabled="confirming"
+            :disabled="confirming || insufficientCtf"
           >
             <Loader2 v-if="confirming" :size="16" class="spin" />
-            <span v-else>{{ isScheduled ? 'Jadwalkan' : 'Posting Sekarang' }}</span>
+            <span v-else>{{
+              insufficientCtf ? 'Saldo Kurang' : isScheduled ? 'Jadwalkan' : 'Posting Sekarang'
+            }}</span>
           </button>
         </footer>
       </div>
@@ -134,7 +154,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { X, Calendar, Loader2, AlertCircle, Download, GripVertical } from 'lucide-vue-next';
+import { X, Calendar, Loader2, AlertCircle, Download, GripVertical, Wallet } from 'lucide-vue-next';
 import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
 import { TEMPLATES } from '../../config/templates';
@@ -147,11 +167,36 @@ const props = defineProps({
   isScheduled: { type: Boolean, default: false },
   /** True saat request posting sedang berjalan — kunci tombol konfirmasi. */
   confirming: { type: Boolean, default: false },
+  /** Status billing base tujuan dari API (trial/free/paid). */
+  billing: { type: Object, default: null },
+  /** Saldo CTF user yang sedang login, untuk preflight saldo kurang. */
+  ctfBalance: { type: Number, default: 0 },
 });
 
-const emit = defineEmits(['update:show', 'confirm', 'cancel', 'reorder-slides']);
+const emit = defineEmits(['update:show', 'confirm', 'cancel', 'top-up', 'reorder-slides']);
 
 const { getTopicById } = useTopics();
+
+const billingCtfCost = computed(() => {
+  const cost = Number(props.billing?.ctf_cost ?? 1);
+  return Number.isFinite(cost) && cost > 0 ? cost : 1;
+});
+
+const billingSummary = computed(() => {
+  const billing = props.billing;
+  if (!billing) return '';
+  if (billing.reason === 'free_forever') return 'Gratis permanen';
+  if (billing.reason === 'trial' || billing.trial_active) return 'Gratis (trial)';
+  return `${billingCtfCost.value} CTF`;
+});
+
+const insufficientCtf = computed(
+  () =>
+    props.billing?.requires_payment === true &&
+    Number(props.ctfBalance ?? 0) < billingCtfCost.value,
+);
+
+const formattedBalance = computed(() => Number(props.ctfBalance ?? 0).toLocaleString('id-ID'));
 
 /** Ringkasan menampilkan label topik asli (bukan id mentah). */
 const topicLabel = computed(() => {
@@ -263,7 +308,7 @@ function getTotalMediaSize() {
 function handleConfirm() {
   // Guard ganda: parent juga mengunci lewat `publishing`, tapi modal ini
   // menolak emit kedua saat request pertama masih berjalan.
-  if (props.confirming) return;
+  if (props.confirming || insufficientCtf.value) return;
   emit('confirm');
 }
 
@@ -461,6 +506,64 @@ function close() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.billing-row .summary-value {
+  color: var(--brand-blue);
+  font-weight: 800;
+}
+
+.balance-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.09);
+  color: var(--danger, #ef4444);
+}
+
+.balance-warning > svg {
+  flex-shrink: 0;
+}
+
+.balance-warning__copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.4;
+}
+
+.balance-warning__copy strong {
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.balance-warning__copy span {
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.btn-topup-warning {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-topup-warning:hover {
+  background: currentColor;
+  color: var(--bg-surface);
 }
 
 .schedule-warning {

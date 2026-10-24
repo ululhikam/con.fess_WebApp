@@ -75,20 +75,20 @@ const landingFaqs = [
     a: 'Ya, 100%! Identitas, nama akun, maupun email kamu tidak pernah ditampilkan ke publik atau disimpan di postingan. Pesan diproses secara anonim.',
   },
   {
-    q: 'Bagaimana cara kerja bot otomatis memposting ke Instagram, Threads, dan X?',
-    a: 'Setelah confession kamu dikirim dan lolos verifikasi moderasi AI/Admin, bot terintegrasi kami akan langsung membuat desain gambar dan memposting pesan tersebut ke akun sosial media Base secara otomatis & realtime.',
+    q: 'Bagaimana cara kerja auto-post ke Instagram?',
+    a: 'Jika Base Admin sudah menghubungkan akun Instagram, fess yang lolos moderasi akan dirender menjadi kartu gambar dan diposting otomatis ke akun Instagram base tersebut. Jika belum terhubung, fess tetap terbit normal di FnC tanpa auto-post.',
   },
   {
     q: 'Apakah gratis untuk mengirim Fess?',
-    a: 'Pengiriman pesan dasar 100% gratis tanpa biaya apapun. Kamu bisa mengirim pesan ke Base favorit kapan saja.',
+    a: 'Base baru bisa mendapatkan trial 7 hari (satu kali per kreator), dan selama trial fess gratis. Setelah trial, fess di base berbayar memotong 1 CTF per fess yang diterbitkan. Base dengan status gratis permanen tidak memotong CTF. CTF tidak dapat dicairkan menjadi uang.',
   },
   {
     q: 'Apakah saya wajib mendaftar akun untuk mengirim Fess?',
-    a: 'Kamu bisa mengirim pesan secara langsung melalui form publik tanpa ribet, atau mendaftar akun untuk menyimpan riwayat dan mengelola fess buatanmu.',
+    a: 'Saat base masih dalam masa trial, pesan bisa dikirim lewat form publik. Setelah trial berakhir, kamu perlu login dengan akun yang emailnya sudah terverifikasi untuk mengirim fess di base berbayar.',
   },
   {
-    q: 'Berapa lama proses hingga fess saya disetujui dan terbit di sosial media?',
-    a: 'Proses moderasi AI berlangsung secara realtime kurang dari 5 detik. Jika lolos filter kata sensitif, bot akan langsung mengunggahnya detik itu juga.',
+    q: 'Berapa lama proses hingga fess saya disetujui dan terbit?',
+    a: 'Waktu moderasi bergantung pada antrean AI/Admin base. Setelah disetujui, fess langsung terbit di FnC. Auto-post Instagram hanya berjalan jika base sudah menghubungkan akun Instagram-nya.',
   },
   {
     q: 'Bagaimana jika pesan confession saya melanggar aturan komunitas?',
@@ -96,7 +96,7 @@ const landingFaqs = [
   },
   {
     q: 'Bisakah saya mendaftarkan dan mengelola Base Komunitas milik saya sendiri?',
-    a: 'Tentu saja! Kamu dapat mendaftarkan Base baru melalui dashboard, menghubungkan akun sosmed milikmu, dan menentukan aturan moderasi komunitasmu sendiri.',
+    a: 'Tentu saja! Kamu dapat mendaftarkan Base baru melalui dashboard dan menentukan aturan moderasi komunitasmu sendiri. Menghubungkan Instagram bersifat opsional — base tetap bisa menerbitkan fess di FnC tanpa akun sosial media.',
   },
   {
     q: 'Bagaimana cara melaporkan pesan yang tidak pantas?',

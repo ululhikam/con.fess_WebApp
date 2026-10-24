@@ -691,7 +691,7 @@ const FAQS = reactive([
   {
     id: 1,
     q: 'Apa itu CTF dan bagaimana cara mendapatkannya?',
-    a: 'CTF (Coin to Fess) adalah mata uang virtual di Fess n Curious. Kamu bisa mendapatkan CTF dengan top up, mendapat reward dari fess populer, atau dari program referral.',
+    a: 'CTF (Coin to Fess) adalah mata uang virtual di Fess n Curious. 1 CTF = 1 fess di base berbayar. CTF didapat hanya melalui top up, tidak bisa dicairkan menjadi uang, dan base baru mendapat trial 7 hari tanpa potongan CTF.',
     open: false,
   },
   {

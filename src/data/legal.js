@@ -4,7 +4,7 @@
  * (/privacy, /terms, /data-deletion di LegalPage.vue).
  */
 
-export const LEGAL_LAST_UPDATED = '17 Oktober 2026';
+export const LEGAL_LAST_UPDATED = '24 Oktober 2026';
 export const LEGAL_CONTACT_EMAIL = 'fessncurious@gmail.com';
 
 export const TERMS_SECTIONS = [
@@ -33,7 +33,8 @@ export const TERMS_SECTIONS = [
     title: '4. Mata Uang Virtual (CTF)',
     paragraphs: [
       'CTF (Coin to Fess) adalah mata uang virtual yang hanya berlaku di dalam ekosistem Fess n Curious. CTF tidak dapat dikonversi kembali ke uang tunai atau mata uang lainnya.',
-      'Top up CTF bersifat final dan tidak dapat dikembalikan (non-refundable), kecuali terdapat kesalahan teknis yang terbukti dari pihak Fess n Curious.',
+      'Setiap fess yang diterbitkan di base berbayar memotong 1 CTF. Base baru dapat memperoleh masa trial 7 hari (satu kali per kreator) tanpa potongan CTF, dan base dengan status gratis permanen tidak memotong CTF. Ketentuan biaya selalu ditampilkan di composer sebelum fess dikirim.',
+      'CTF dikembalikan otomatis jika fess ditolak atau dihapus sebelum pertama kali terbit. Setelah fess pernah terbit, CTF tidak dapat dikembalikan. Top up CTF bersifat final dan tidak dapat dikembalikan (non-refundable), kecuali terdapat kesalahan teknis yang terbukti dari pihak Fess n Curious.',
     ],
   },
   {
@@ -58,6 +59,7 @@ export const PRIVACY_SECTIONS = [
     paragraphs: [
       'Saat mendaftar: email, username/alias, dan password yang terenkripsi. Kami tidak menyimpan password dalam bentuk teks biasa.',
       'Saat menggunakan Platform: fess yang kamu kirim (terenkripsi), riwayat voting, base yang diikuti, dan data penggunaan aplikasi yang anonim untuk keperluan analitik internal.',
+      'Saat top up CTF: ID pesanan, nominal, metode pembayaran, dan status transaksi dari Midtrans. Kami tidak menyimpan nomor kartu atau kredensial pembayaran kamu.',
     ],
   },
   {
