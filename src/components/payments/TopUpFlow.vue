@@ -694,6 +694,7 @@ function handlePaid(order) {
 }
 
 function setActiveOrder(order) {
+  const previous = activeOrder.value;
   activeOrder.value = order;
   if (!order) {
     stopPolling();
@@ -701,7 +702,21 @@ function setActiveOrder(order) {
   }
   if (order.status === 'pending') startPolling();
   else stopPolling();
-  if (order.status === 'paid') handlePaid(order);
+  if (order.status === 'paid') {
+    // Credit the wallet immediately when this session saw the order go from
+    // pending to paid, so the success panel never shows the pre-payment balance.
+    // Opening an already-paid order must not add the CTF a second time.
+    if (
+      previous?.order_id === order.order_id &&
+      previous.status === 'pending' &&
+      !notifiedPaidOrders.has(order.order_id)
+    ) {
+      authStore.setWalletBalance(
+        Number(authStore.user?.balance || 0) + Number(order.ctf_amount || 0),
+      );
+    }
+    handlePaid(order);
+  }
 }
 
 async function loadConfig() {
