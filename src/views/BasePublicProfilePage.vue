@@ -166,7 +166,11 @@
                   <ExternalLink :size="11" class="medsos-ext-icon" />
                 </a>
 
-                <div class="medsos-item-chip auto-sync-chip" title="Integrasi Auto-Post Instagram Aktif">
+                <div
+                  v-if="baseData.igAccount"
+                  class="medsos-item-chip auto-sync-chip"
+                  title="Integrasi Auto-Post Instagram Aktif"
+                >
                   <span class="pulse-radar-wrap">
                     <span class="radar-wave"></span>
                     <span class="radar-dot"></span>
@@ -398,7 +402,9 @@
               </div>
               <div class="meta-item">
                 <span class="meta-lbl">Instagram Sync</span>
-                <span class="meta-val">{{ baseData.igAccount }}</span>
+                <span class="meta-val">
+                  {{ baseData.igAccount || 'Tidak terhubung — fess terbit di FnC saja' }}
+                </span>
               </div>
               <div class="meta-item">
                 <span class="meta-lbl">Status Verifikasi</span>

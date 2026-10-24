@@ -1,7 +1,7 @@
 <template>
   <AuthShell
     logo-word="CONFESS"
-    subtitle="Pendaftaran Akun Admin Base & Setup Auto-Post"
+    subtitle="Pendaftaran Akun Admin Base"
     :max-width="520"
   >
     <!-- Account Type / Role Switcher Tabs (hanya tampil di Step 1) -->
@@ -107,7 +107,7 @@
         />
 
         <button type="submit" class="btn-step-next mt-3">
-          <span>Lanjut: Tautkan Instagram</span>
+          <span>Lanjut: Sosmed (opsional)</span>
           <ArrowRight :size="16" />
         </button>
       </form>
@@ -145,9 +145,11 @@
     <!-- STEP 2: TAUTAN AKUN INSTAGRAM (KHUSUS INSTAGRAM) -->
     <section v-else-if="currentStep === 2" class="wizard-step-pane">
       <div class="step-hero mb-4">
-        <h2 class="step-title">2. Tautkan Akun Instagram</h2>
+        <h2 class="step-title">2. Hubungkan Instagram (Opsional)</h2>
         <p class="step-desc">
-          Hubungkan akun Instagram komunitasmu untuk otomatis menerbitkan confession yang disetujui langsung ke Instagram Feed (visual card &amp; carousel) atau Reels (video).
+          Tanpa menghubungkan Instagram, fess tetap terbit normal di FnC saja.
+          Koneksi sosmed hanya diperlukan jika kamu ingin fess juga diposting otomatis
+          ke Feed atau Reels Instagram base. Kamu bisa menghubungkannya nanti dari dashboard.
         </p>
       </div>
 
@@ -161,7 +163,7 @@
             <div class="medsos-info">
               <div class="medsos-name">Instagram Graph API Integration</div>
               <div class="medsos-status">
-                {{ igConnected ? '✓ Terhubung ke Instagram Auto-Post' : 'Publikasi otomatis ke Story & Feed' }}
+                {{ igConnected ? '✓ Terhubung ke Instagram Auto-Post' : 'Opsional — hanya untuk auto-post Instagram' }}
               </div>
             </div>
             <span v-if="igConnected" class="badge-connected">AKTIF</span>
@@ -196,7 +198,7 @@
           <div class="ig-features-list mt-3">
             <div class="ig-feat-item">
               <Check :size="13" class="feat-icon" />
-              <span>Otomatis render kartu confess jadi visual Story Instagram 9:16</span>
+              <span>Otomatis render kartu fess jadi visual Feed Instagram 4:5</span>
             </div>
             <div class="ig-feat-item">
               <Check :size="13" class="feat-icon" />
@@ -216,10 +218,14 @@
           <span>Kembali</span>
         </button>
         <button type="button" class="btn-step-next" @click="goToStep3">
-          <span>Lanjut: Profil Base</span>
+          <span>{{ igConnected ? 'Lanjut: Profil Base' : 'Lewati & Lanjut: Profil Base' }}</span>
           <ArrowRight :size="16" />
         </button>
       </div>
+      <p v-if="!igConnected" class="wizard-skip-note">
+        Tanpa Instagram, fess tetap terbit di FnC. Kamu bisa menghubungkannya kapan saja
+        lewat menu Koneksi Medsos di dashboard.
+      </p>
     </section>
 
     <!-- STEP 3: INPUT PROFIL BASE (NAMA, USERNAME, FOTO PROFIL, BIO) -->
@@ -339,7 +345,7 @@
  * RegisterPage — Onboarding flow for Admin Base.
  * 3-step wizard:
  *  1. Email & Password ATAU Google
- *  2. Tautkan Akun Instagram (Instagram Graph API Auto-Post)
+ *  2. Hubungkan Instagram (opsional — base tetap bisa FnC-only)
  *  3. Input Profil Base (Nama Base, Username Base, Foto Profil, Bio)
  *
  * After completion: redirects straight to the Admin Base Home (/base-admin).
@@ -371,7 +377,7 @@ const authStore = useAuthStore();
 
 const STEPS = [
   { step: 1, label: 'Akun' },
-  { step: 2, label: 'Instagram' },
+  { step: 2, label: 'Sosmed (opsional)' },
   { step: 3, label: 'Profil Base' },
 ];
 
@@ -1029,6 +1035,14 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.wizard-skip-note {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
 }
 
 .btn-step-back {

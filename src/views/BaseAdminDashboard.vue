@@ -313,7 +313,7 @@ async function handleTakeDownFess(id) {
   const confirmed = await confirmDialog({
     title: 'Take Down Fess',
     message:
-      'Take down fess ini? Fess akan dihapus dari feed dan postingan Instagram-nya juga akan dicoba dihapus. Tindakan ini tidak bisa dikembalikan.',
+      'Take down fess ini? Fess akan dihapus dari feed dan postingan Instagram-nya (jika ada) juga akan dicoba dihapus. Tindakan ini tidak bisa dikembalikan.',
     confirmLabel: 'Take Down',
     variant: 'danger',
   });

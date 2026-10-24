@@ -256,6 +256,10 @@ export function useFessModeration(options = {}) {
         toast.success('Posting Instagram berhasil diterbitkan.');
       } else if (data?.ig_pending) {
         toast.pending('Video sedang diproses Instagram. Postingan akan terbit otomatis.');
+      } else if (data?.ig_status === 'skipped' || data?.skipped) {
+        toast.info(
+          data?.message || 'Fess hanya terbit di FnC karena Instagram belum terhubung.',
+        );
       } else {
         toast.error(data?.ig_error || 'Posting ke Instagram belum berhasil.');
       }

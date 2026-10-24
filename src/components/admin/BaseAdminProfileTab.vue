@@ -1014,7 +1014,7 @@ async function approveFess(id) {
   fesses.value = fesses.value.filter((f) => f.id !== id);
   try {
     await api.approveFess(id);
-    actionNotice.value = `Fess #${id} berhasil disetujui & otomatis diposting ke Instagram Story base!`;
+    actionNotice.value = `Fess #${id} berhasil disetujui & terbit di FnC.`;
     toast.success(`Fess #${id} berhasil disetujui.`);
     setTimeout(() => {
       actionNotice.value = '';
@@ -1051,7 +1051,7 @@ async function takeDownFess(id) {
   const confirmed = await confirmDialog({
     title: 'Take Down Fess',
     message:
-      'Take down fess ini? Fess akan dihapus dari FnC dan postingan Instagram-nya juga akan dicoba dihapus. Tindakan ini tidak bisa dikembalikan.',
+      'Take down fess ini? Fess akan dihapus dari FnC dan postingan Instagram-nya (jika ada) juga akan dicoba dihapus. Tindakan ini tidak bisa dikembalikan.',
     confirmLabel: 'Take Down',
     variant: 'danger',
   });

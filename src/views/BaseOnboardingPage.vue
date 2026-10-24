@@ -134,14 +134,17 @@
 
         <div class="onb-nav">
           <button type="button" class="onb-btn ghost" @click="goBack">Kembali</button>
-          <button type="button" class="onb-btn primary" @click="goNext">Lanjut: Instagram & Aturan</button>
+          <button type="button" class="onb-btn primary" @click="goNext">Lanjut: Aturan Base</button>
         </div>
       </section>
 
       <!-- STEP 3: INSTAGRAM & ATURAN + KONFIRMASI -->
       <section v-else class="onb-pane">
-        <h1 class="onb-title">Instagram &amp; Aturan</h1>
-        <p class="onb-desc">Langkah terakhir — hubungkan Instagram untuk auto-publish dan tentukan aturan komunitas.</p>
+        <h1 class="onb-title">Koneksi Sosmed (Opsional) &amp; Aturan</h1>
+        <p class="onb-desc">
+          Langkah terakhir — atur aturan komunitas. Instagram sepenuhnya opsional:
+          tanpa menghubungkannya, fess tetap terbit normal di FnC saja.
+        </p>
 
         <!-- Meta Instagram Integration Card -->
         <div class="onb-ig-card" :class="{ 'is-connected': igConnected }">
@@ -151,14 +154,15 @@
             </div>
             <div class="onb-ig-meta-info">
               <div class="onb-ig-title-row">
-                <span class="onb-ig-app-title">Integrasi Instagram Base</span>
+                <span class="onb-ig-app-title">Integrasi Instagram (Opsional)</span>
                 <span v-if="igConnected" class="onb-badge onb-badge-connected">
                   <CheckCircle2 :size="12" /> Terhubung
                 </span>
                 <span v-else class="onb-badge onb-badge-idle">Opsional</span>
               </div>
               <p class="onb-ig-app-desc">
-                Publikasikan confession yang disetujui secara otomatis ke Instagram Feed &amp; Reels base.
+                Hanya jika kamu ingin fess yang disetujui ikut diposting otomatis ke
+                Instagram Feed &amp; Reels base. Tanpa koneksi, fess tetap live di FnC.
               </p>
             </div>
           </div>
@@ -222,8 +226,8 @@
             </button>
 
             <p class="onb-ig-oauth-hint">
-              Kamu akan memilih akun Instagram profesional base langsung di halaman resmi
-              Meta. Tidak perlu mengetik handle — akun yang terhubung akan terisi otomatis.
+              Opsional. Kamu akan memilih akun Instagram profesional base langsung di
+              halaman resmi Meta. Tanpa koneksi, fess tetap terbit normal di FnC.
             </p>
 
             <div class="onb-ig-perks">
@@ -260,7 +264,11 @@
           <div class="onb-summary-row">
             <span>Instagram</span>
             <strong :class="{ 'text-meta-verified': igConnected }">
-              {{ form.igAccount ? form.igAccount + (igConnected ? ' (Meta OAuth ✓)' : '') : '—' }}
+              {{
+                igConnected
+                  ? `${normalizedIgAccount} (Meta OAuth ✓)`
+                  : 'Tidak terhubung — fess terbit di FnC saja'
+              }}
             </strong>
           </div>
         </div>
@@ -307,7 +315,7 @@ import { confirmDialog } from '../composables/useAppDialog';
 const STEPS = [
   { step: 1, label: 'Identitas' },
   { step: 2, label: 'Profil' },
-  { step: 3, label: 'Instagram & Aturan' },
+  { step: 3, label: 'Aturan & Sosmed' },
 ];
 const CATEGORIES = ['Umum', 'Kampus', 'Kota', 'Hobi'];
 const COLORS = ['#0055FF', '#7000FF', '#FF0055', '#00B2FF', '#00C853', '#F59E0B'];

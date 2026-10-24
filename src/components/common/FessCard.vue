@@ -70,6 +70,14 @@
           <Clock :size="12" />
           <span>IG menunggu</span>
         </span>
+        <span
+          v-else-if="post.igStatus === 'skipped' && canManageInstagram"
+          class="badge-subtle"
+          title="Fess diterbitkan di FnC tanpa auto-post karena Instagram belum terhubung."
+        >
+          <CheckCircle2 :size="12" />
+          <span>FnC</span>
+        </span>
 
         <!-- Indikasi filter NLP (mode auto post) — hanya terlihat admin base -->
         <span
@@ -1435,6 +1443,12 @@ async function openInstagramStoryAutoPost() {
       triggerToast(
         'Gagal sementara — sistem mencoba lagi otomatis. Pantau badge status IG.',
         'warning',
+      );
+    } else if (igPostData.value?.ig_status === 'skipped' || igPostData.value?.skipped) {
+      triggerToast(
+        igPostData.value?.message ||
+          'Fess hanya terbit di FnC karena Instagram belum terhubung.',
+        'info',
       );
     } else {
       const reason = igPostData.value?.ig_error || igPostData.value?.message;

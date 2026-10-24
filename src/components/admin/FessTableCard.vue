@@ -32,7 +32,9 @@
                     ? 'gagal'
                     : fess.igStatus === 'pending'
                       ? 'menunggu video'
-                      : 'proses'
+                      : fess.igStatus === 'skipped'
+                        ? 'FnC saja'
+                        : 'proses'
               }}
             </span>
           </div>
