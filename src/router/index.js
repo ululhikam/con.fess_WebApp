@@ -133,8 +133,41 @@ const routes = [
   {
     path: '/super-admin',
     name: 'SuperAdmin',
-    component: () => import('../views/SuperAdminDashboard.vue'),
-    meta: { requiresAuth: true, roles: ['Super Admin'], title: 'Super Admin' },
+    component: () => import('../views/super-admin/SuperAdminLayout.vue'),
+    redirect: { name: 'SuperAdminOverview' },
+    meta: { requiresAuth: true, roles: ['Super Admin'], title: 'Konsol Platform' },
+    children: [
+      {
+        path: '',
+        name: 'SuperAdminOverview',
+        component: () => import('../views/super-admin/OverviewPage.vue'),
+        meta: { title: 'Ringkasan Platform' },
+      },
+      {
+        path: 'keuangan',
+        name: 'SuperAdminFinance',
+        component: () => import('../views/super-admin/FinancePage.vue'),
+        meta: { title: 'Keuangan Platform' },
+      },
+      {
+        path: 'pengguna',
+        name: 'SuperAdminUsers',
+        component: () => import('../views/super-admin/UsersPage.vue'),
+        meta: { title: 'Pengguna & Akses' },
+      },
+      {
+        path: 'keamanan',
+        name: 'SuperAdminSecurity',
+        component: () => import('../views/super-admin/SecurityPage.vue'),
+        meta: { title: 'Keamanan & Audit' },
+      },
+      {
+        path: 'sistem',
+        name: 'SuperAdminSystem',
+        component: () => import('../views/super-admin/SystemPage.vue'),
+        meta: { title: 'Sistem & Integrasi' },
+      },
+    ],
   },
   // Halaman legal publik (tanpa login) — dipakai juga sebagai URL kebijakan
   // Meta App Review (Instagram Platform).
@@ -236,6 +269,16 @@ router.beforeEach(async (to, from, next) => {
     if (userRole === 'Super Admin') return next({ name: 'SuperAdmin' });
     if (userRole === 'Base Admin') return next({ name: 'BaseAdmin' });
     return next({ name: 'Feed' });
+  }
+
+  // Platform operations and base operations are separate consoles. A Super
+  // Admin must support a base through the read-only platform panel, not by
+  // entering the Base Admin dashboard.
+  if (
+    userRole === 'Super Admin' &&
+    (to.name === 'BaseAdmin' || to.name === 'BaseOnboarding')
+  ) {
+    return next({ name: 'SuperAdmin' });
   }
 
   // 4. Strict Role Access Control:

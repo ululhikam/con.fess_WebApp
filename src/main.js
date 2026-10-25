@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import { createAppPlugins, bootstrap, configureApp } from './plugins';
 import './style.css';
+import './styles/super-admin.css';
 
 bootstrap();
 

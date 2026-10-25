@@ -2,17 +2,18 @@
   <nav class="admin-topnav" :class="{ 'admin-topnav--sticky': sticky }" aria-label="Navigasi portal admin">
     <div class="container flex items-center justify-between flex-wrap gap-3">
       <!-- Admin Portal Brand -->
-      <router-link to="/base-admin" class="brand-logo" aria-label="Portal Admin — Beranda">
+      <router-link :to="homeTo" class="brand-logo" :aria-label="brandAriaLabel">
         <div class="speech-bubble-logo">
           <img src="/logo.png" alt="Logo" class="admin-logo-img" />
-          <span class="logo-base">BASE</span>
-          <span class="logo-admin">ADMIN PORTAL</span>
+          <span class="logo-base">{{ isSuperAdmin ? 'PLATFORM' : 'BASE' }}</span>
+          <span class="logo-admin">{{ isSuperAdmin ? 'OPS CONSOLE' : 'ADMIN PORTAL' }}</span>
         </div>
       </router-link>
 
       <!-- Center: Dedicated Admin Navigation -->
       <div class="nav-pill-container" role="navigation" aria-label="Menu Admin">
         <router-link
+          v-if="!isSuperAdmin"
           to="/base-admin"
           class="nav-pill"
           :class="{ 'active-pill': active === 'base-admin' }"
@@ -30,7 +31,7 @@
           :aria-current="active === 'super-admin' ? 'page' : null"
         >
           <ShieldAlert :size="14" />
-          <span>Super Admin</span>
+          <span>Konsol Platform</span>
         </router-link>
       </div>
 
@@ -59,7 +60,7 @@
  */
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Shield, ShieldAlert, LayoutDashboard, LogOut } from 'lucide-vue-next';
+import { ShieldAlert, LayoutDashboard, LogOut } from 'lucide-vue-next';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../composables/useToast';
 
@@ -73,6 +74,10 @@ const authStore = useAuthStore();
 const router = useRouter();
 
 const isSuperAdmin = computed(() => authStore.isSuperAdmin);
+const homeTo = computed(() => (isSuperAdmin.value ? '/super-admin' : '/base-admin'));
+const brandAriaLabel = computed(() =>
+  isSuperAdmin.value ? 'Konsol Platform — Beranda' : 'Portal Admin Base — Beranda'
+);
 
 async function logout() {
   await authStore.logout();

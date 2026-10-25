@@ -148,9 +148,23 @@ export const api = {
 
   /* ADMIN — system */
   getSystemHealth: () => client.get('/admin/system/health'),
-  updateSecurityControls: (payload) => client.patch('/admin/system/security', payload),
   getEngineLogs: (params) => client.get('/admin/system/logs', { params }),
-  banUser: (payload) => client.post('/admin/users/ban', payload),
+
+  /* ADMIN — platform operations console (Super Admin only) */
+  getAdminOpsSummary: () => client.get('/admin/ops/summary'),
+  getAdminAuditLogs: (params) => client.get('/admin/audit-logs', { params }),
+  getAdminUsers: (params) => client.get('/admin/users', { params }),
+  banAdminUser: (id, payload) =>
+    client.post(`/admin/users/${encodeURIComponent(id)}/ban`, payload),
+  unbanAdminUser: (id, payload) =>
+    client.post(`/admin/users/${encodeURIComponent(id)}/unban`, payload),
+  getAdminBaseSupport: (handle) =>
+    client.get(`/admin/bases/${encodeURIComponent(handle)}/support`),
+  getAdminPaymentOrders: (params) => client.get('/admin/payments/orders', { params }),
+  getAdminPaymentOrder: (id) =>
+    client.get(`/admin/payments/orders/${encodeURIComponent(id)}`),
+  getAdminPaymentEvents: (params) => client.get('/admin/payments/events', { params }),
+  getAdminSystemSettings: () => client.get('/admin/system/settings'),
 };
 
 /** Re-export error class for catch handling. */
