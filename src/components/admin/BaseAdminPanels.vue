@@ -80,10 +80,7 @@
                   {{ connectionTokenInfo(conn).text }}
                 </div>
               </div>
-              <span
-                class="status-online-pill"
-                :class="{ 'status-idle-pill': !conn.connected }"
-              >
+              <span class="status-online-pill" :class="{ 'status-idle-pill': !conn.connected }">
                 {{ conn.connected ? 'AKTIF' : 'NONAKTIF' }}
               </span>
             </div>
@@ -140,18 +137,21 @@
         v-else-if="modelValue === 'keuangan_saldo'"
         mode="saldo"
         :base-handle="baseHandle"
+        @navigate="$emit('update:modelValue', $event)"
       />
 
       <BaseRevenuePanel
         v-else-if="modelValue === 'keuangan_pendapatan'"
         mode="pendapatan"
         :base-handle="baseHandle"
+        @navigate="$emit('update:modelValue', $event)"
       />
 
       <BaseRevenuePanel
         v-else-if="modelValue === 'keuangan_penarikan'"
         mode="penarikan"
         :base-handle="baseHandle"
+        @navigate="$emit('update:modelValue', $event)"
       />
       <!-- ========================================================
            3. ANALITIK
@@ -543,7 +543,9 @@
             <div class="toggle-row">
               <div>
                 <div class="toggle-title">Fess Baru Masuk</div>
-                <div class="toggle-desc">Pemberitahuan instan saat ada user mengirim confession</div>
+                <div class="toggle-desc">
+                  Pemberitahuan instan saat ada user mengirim confession
+                </div>
               </div>
               <input v-model="notifSettings.newFess" type="checkbox" class="toggle-switch" />
             </div>
@@ -607,7 +609,9 @@
 
         <div class="support-contact-box mt-4">
           <div class="font-bold text-sm">Butuh Bantuan Teknis Tambahan?</div>
-          <p class="text-xs text-muted mt-1">Tim teknis Fess n Curious siap membantu 24/7 terkait integrasi bot dan sistem auto-post.</p>
+          <p class="text-xs text-muted mt-1">
+            Tim teknis Fess n Curious siap membantu 24/7 terkait integrasi bot dan sistem auto-post.
+          </p>
           <a href="mailto:fessncurious@gmail.com" class="btn-contact-support mt-3">
             Hubungi Tim Teknis via Email
           </a>
@@ -618,13 +622,25 @@
       <template v-else-if="modelValue === 'pengaturan_ketentuan'">
         <div class="legal-text-container">
           <h4 class="legal-section-title">1. Ketentuan Umum Pengelola Base</h4>
-          <p class="legal-p">Setiap pengelola base bertanggung jawab penuh atas moderasi konten dan menjaga kepatuhan komunitas terhadap norma hukum dan privasi.</p>
+          <p class="legal-p">
+            Setiap pengelola base bertanggung jawab penuh atas moderasi konten dan menjaga kepatuhan
+            komunitas terhadap norma hukum dan privasi.
+          </p>
 
           <h4 class="legal-section-title mt-4">2. Kebijakan Konten Terlarang</h4>
-          <p class="legal-p">Dilarang keras menyetujui atau menerbitkan konten bermuatan SARA, pornografi, ancaman kekerasan, doxxing, dan judi online.</p>
+          <p class="legal-p">
+            Dilarang keras menyetujui atau menerbitkan konten bermuatan SARA, pornografi, ancaman
+            kekerasan, doxxing, dan judi online.
+          </p>
 
           <h4 class="legal-section-title mt-4">3. Pembagian Royalti &amp; Saldo</h4>
-          <p class="legal-p">Pendapatan base berasal dari fess berbayar yang terbit: Rp80 per fess dalam ledger IDR terpisah, ditahan 7 hari, dan tidak berlaku untuk self-post, masa trial, atau base freeForever. Saldo CTF pengguna tidak dapat dicairkan. Penarikan minimal Rp50.000, membutuhkan KYC dan rekening terdaftar, serta disetujui manual oleh Super Admin. Biaya transfer default Rp6.500 dapat disesuaikan saat approval.</p>
+          <p class="legal-p">
+            Pendapatan base berasal dari fess berbayar yang terbit: Rp80 per fess dalam ledger IDR
+            terpisah, ditahan 7 hari, dan tidak berlaku untuk self-post, masa trial, atau base
+            freeForever. Saldo CTF pengguna tidak dapat dicairkan. Penarikan minimal Rp50.000,
+            membutuhkan KYC dan rekening terdaftar, serta disetujui manual oleh Super Admin. Biaya
+            transfer default Rp6.500 dapat disesuaikan saat approval.
+          </p>
         </div>
       </template>
 
@@ -632,10 +648,16 @@
       <template v-else-if="modelValue === 'pengaturan_privasi'">
         <div class="legal-text-container">
           <h4 class="legal-section-title">1. Perlindungan Anonimitas Pengirim</h4>
-          <p class="legal-p">Sistem Fess n Curious mengenkripsi identitas pengirim secara end-to-end. Pengelola base tidak dapat melihat alamat email atau nomor telepon asli dari pengirim confession.</p>
+          <p class="legal-p">
+            Sistem Fess n Curious mengenkripsi identitas pengirim secara end-to-end. Pengelola base
+            tidak dapat melihat alamat email atau nomor telepon asli dari pengirim confession.
+          </p>
 
           <h4 class="legal-section-title mt-4">2. Keamanan Kredensial Media Sosial</h4>
-          <p class="legal-p">Token akses Instagram Graph API disimpan dalam brankas kredensial terenkripsi dan hanya digunakan untuk auto-posting fess yang telah disetujui.</p>
+          <p class="legal-p">
+            Token akses Instagram Graph API disimpan dalam brankas kredensial terenkripsi dan hanya
+            digunakan untuk auto-posting fess yang telah disetujui.
+          </p>
         </div>
       </template>
 
@@ -716,7 +738,7 @@ const baseHandle = computed(
 const panelTitle = computed(() => {
   const map = {
     medsos: 'Koneksi Media Sosial',
-    keuangan_saldo: 'Pendapatan Base (IDR)',
+    keuangan_saldo: 'Saldo Base (IDR)',
     keuangan_pendapatan: 'Riwayat Pendapatan',
     keuangan_penarikan: 'Payout & Rekening',
     analitik_ringkasan: 'Ringkasan Analitik Base',
@@ -887,7 +909,12 @@ async function loadAnalytics() {
         ? [
             api.getStats(),
             api.getBase(baseHandle.value),
-            api.getFesses({ base: baseHandle.value, status: 'approved', sort: 'popular', limit: 5 }),
+            api.getFesses({
+              base: baseHandle.value,
+              status: 'approved',
+              sort: 'popular',
+              limit: 5,
+            }),
             // Fess pending terbaru untuk memantau hasil filter NLP di panel moderasi.
             api.getFesses({ base: baseHandle.value, status: 'pending', limit: 20 }),
           ]
@@ -942,9 +969,7 @@ const moderationMessage = ref('');
 /** Sinkronkan form dari payload base (GET/PATCH /bases/:handle). */
 function syncModerationForm(base) {
   moderationForm.postMode = base?.post_mode || 'moderated';
-  moderationForm.bannedWords = Array.isArray(base?.banned_words)
-    ? [...base.banned_words]
-    : [];
+  moderationForm.bannedWords = Array.isArray(base?.banned_words) ? [...base.banned_words] : [];
 }
 
 function addBannedWord() {
@@ -1168,9 +1193,22 @@ watch(
   flex-shrink: 0;
 }
 
-.ig-badge { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-.x-badge { background: #000; }
-.tg-badge { background: #24a1de; }
+.ig-badge {
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
+}
+.x-badge {
+  background: #000;
+}
+.tg-badge {
+  background: #24a1de;
+}
 
 .status-online-pill {
   margin-left: auto;
@@ -1295,7 +1333,14 @@ watch(
   gap: 6px;
   padding: 8px 14px;
   border-radius: var(--radius-pill);
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   color: #ffffff;
   border: none;
   font-family: inherit;
@@ -1303,7 +1348,9 @@ watch(
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 3px 12px rgba(220, 39, 67, 0.35);
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
 }
 
 .btn-oauth-meta:hover {
@@ -1882,9 +1929,16 @@ watch(
   border-radius: 8px;
 }
 
-.sys-box { background: linear-gradient(135deg, #fff 50%, #0d121f 50%); }
-.light-box { background: #f8fafc; border: 1px solid #cbd5e1; }
-.dark-box { background: #0f172a; }
+.sys-box {
+  background: linear-gradient(135deg, #fff 50%, #0d121f 50%);
+}
+.light-box {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+}
+.dark-box {
+  background: #0f172a;
+}
 
 /* FAQ */
 .faq-accordion-list {

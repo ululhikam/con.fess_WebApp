@@ -297,8 +297,8 @@
               <div class="menu-row-left">
                 <Coins :size="18" class="row-ico-gold" />
                 <div>
-                  <div class="menu-row-label">Pendapatan Base (IDR)</div>
-                  <div class="menu-row-desc">Saldo IDR, hold &amp; status pencairan</div>
+                  <div class="menu-row-label">Saldo Base (IDR)</div>
+                  <div class="menu-row-desc">Saldo tersedia, hold &amp; status pencairan</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -1087,7 +1087,7 @@ async function takeDownFess(id) {
 const subModalTitle = computed(() => {
   const titles = {
     medsos: 'Koneksi Media Sosial',
-    keuangan_saldo: 'Pendapatan Base (IDR)',
+    keuangan_saldo: 'Saldo Base (IDR)',
     keuangan_pendapatan: 'Riwayat Pendapatan',
     keuangan_penarikan: 'Payout & Rekening',
     analitik_ringkasan: 'Ringkasan Analitik Base',
