@@ -212,7 +212,15 @@
             </div>
 
             <div class="fin-account">
-              <span class="fin-bank-mark" aria-hidden="true">{{ bankInitials }}</span>
+              <span
+                class="fin-bank-mark"
+                :class="{ 'has-logo': activeBankBrand?.logo }"
+                :style="bankMarkStyle(activeBankBrand)"
+                aria-hidden="true"
+              >
+                <img v-if="activeBankBrand?.logo" :src="activeBankBrand.logo" alt="" />
+                <template v-else>{{ bankInitials }}</template>
+              </span>
               <div class="fin-account__copy">
                 <span class="fin-account__label">Rekening payout</span>
                 <strong>{{ base?.bank_name || 'Belum diatur' }}</strong>
@@ -662,7 +670,15 @@
           </div>
 
           <div class="fin-bank-card" :class="{ 'is-empty': !bankComplete }">
-            <span class="fin-bank-mark" aria-hidden="true">{{ bankInitials }}</span>
+            <span
+              class="fin-bank-mark"
+              :class="{ 'has-logo': activeBankBrand?.logo }"
+              :style="bankMarkStyle(activeBankBrand)"
+              aria-hidden="true"
+            >
+              <img v-if="activeBankBrand?.logo" :src="activeBankBrand.logo" alt="" />
+              <template v-else>{{ bankInitials }}</template>
+            </span>
             <div class="fin-bank-card__copy">
               <span class="fin-account__label">Rekening aktif</span>
               <strong>{{ base?.bank_name || 'Belum ada rekening' }}</strong>
@@ -725,18 +741,142 @@
             </div>
 
             <div class="fin-form-grid">
-              <div class="fin-field">
-                <label for="payout-bank-name">Nama bank</label>
-                <input
-                  id="payout-bank-name"
-                  v-model="bankForm.bank_name"
-                  class="fin-input"
-                  type="text"
-                  maxlength="80"
-                  :disabled="savingBank"
-                  placeholder="BCA / BNI / BRI / Mandiri"
-                  required
-                />
+              <div class="fin-field fin-bank-field">
+                <span id="payout-bank-label">Bank tujuan</span>
+                <div ref="bankPickerRef" class="fin-bank-picker">
+                  <button
+                    id="payout-bank-trigger"
+                    ref="bankTriggerRef"
+                    type="button"
+                    class="fin-bank-trigger"
+                    :class="{
+                      'is-open': bankPickerOpen,
+                      'is-placeholder': bankTriggerPlaceholder,
+                    }"
+                    :disabled="savingBank"
+                    aria-haspopup="listbox"
+                    :aria-expanded="bankPickerOpen"
+                    aria-controls="payout-bank-menu"
+                    aria-labelledby="payout-bank-label payout-bank-trigger-title"
+                    @click="toggleBankPicker"
+                  >
+                    <span
+                      class="fin-bank-trigger__mark"
+                      :class="{
+                        'has-logo': selectedBankOption?.logo,
+                        'is-placeholder': bankTriggerPlaceholder,
+                      }"
+                      :style="bankMarkStyle(selectedBankOption)"
+                      aria-hidden="true"
+                    >
+                      <img v-if="selectedBankOption?.logo" :src="selectedBankOption.logo" alt="" />
+                      <template v-else-if="bankTriggerMark">{{ bankTriggerMark }}</template>
+                      <Landmark v-else :size="17" />
+                    </span>
+                    <span class="fin-bank-trigger__copy">
+                      <strong id="payout-bank-trigger-title">{{ bankTriggerTitle }}</strong>
+                      <small>{{ bankTriggerSubtitle }}</small>
+                    </span>
+                    <ChevronDown :size="16" class="fin-bank-trigger__chevron" aria-hidden="true" />
+                  </button>
+
+                  <div
+                    v-if="bankPickerOpen"
+                    id="payout-bank-menu"
+                    class="fin-bank-menu"
+                    @keydown.esc.stop.prevent="closeBankPicker(true)"
+                  >
+                    <div class="fin-bank-menu__head">
+                      <strong>Pilih bank tujuan</strong>
+                      <span>{{ filteredBanks.length }} bank</span>
+                    </div>
+
+                    <div class="fin-bank-search">
+                      <Search :size="15" aria-hidden="true" />
+                      <input
+                        ref="bankSearchRef"
+                        v-model="bankSearch"
+                        type="search"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-label="Cari bank"
+                        aria-controls="payout-bank-list"
+                        placeholder="Cari bank, mis. BCA atau Mandiri"
+                        @keydown.down.prevent="focusFirstBankOption"
+                        @keydown.enter.prevent="selectFirstBankOption"
+                      />
+                    </div>
+
+                    <div
+                      id="payout-bank-list"
+                      ref="bankListRef"
+                      class="fin-bank-options"
+                      role="listbox"
+                      aria-label="Daftar bank tujuan"
+                    >
+                      <button
+                        v-for="bank in filteredBanks"
+                        :key="bank.code"
+                        type="button"
+                        class="fin-bank-option"
+                        role="option"
+                        :aria-selected="bankSelection === bank.code"
+                        @click="selectBankOption(bank)"
+                      >
+                        <span
+                          class="fin-bank-option__mark"
+                          :class="{ 'has-logo': bank.logo }"
+                          :style="bankMarkStyle(bank)"
+                          aria-hidden="true"
+                        >
+                          <img v-if="bank.logo" :src="bank.logo" alt="" />
+                          <template v-else>{{ bank.initials }}</template>
+                        </span>
+                        <span class="fin-bank-option__copy">
+                          <strong>{{ bank.name }}</strong>
+                          <small>{{ bank.label }}</small>
+                        </span>
+                        <CheckCircle2
+                          v-if="bankSelection === bank.code"
+                          :size="16"
+                          class="fin-bank-option__state"
+                          aria-hidden="true"
+                        />
+                      </button>
+                      <p v-if="!filteredBanks.length" class="fin-bank-empty">
+                        Bank tidak ditemukan. Gunakan opsi
+                        <strong>Bank lainnya</strong> di bawah.
+                      </p>
+                    </div>
+
+                    <button type="button" class="fin-bank-other" @click="selectOtherBank">
+                      <span class="fin-bank-other__mark" aria-hidden="true">
+                        <Landmark :size="15" />
+                      </span>
+                      <span class="fin-bank-other__copy">
+                        <strong>Bank lainnya</strong>
+                        <small>Isi nama bank secara manual</small>
+                      </span>
+                      <Pencil :size="15" class="fin-bank-other__chevron" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="bankSelection === 'other'" class="fin-bank-custom">
+                  <label for="payout-bank-name">Nama bank</label>
+                  <input
+                    id="payout-bank-name"
+                    ref="bankOtherInputRef"
+                    v-model="bankForm.bank_name"
+                    class="fin-input"
+                    type="text"
+                    maxlength="80"
+                    :disabled="savingBank"
+                    placeholder="Contoh: Bank Nusantara"
+                    required
+                  />
+                  <span class="fin-help">Tulis nama bank lengkap agar transfer tidak gagal.</span>
+                </div>
               </div>
 
               <div class="fin-field">
@@ -905,13 +1045,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import {
   AlertCircle,
   ArrowDownToLine,
   BadgeCheck,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   CircleDollarSign,
   Clock3,
   Coins,
@@ -925,6 +1066,7 @@ import {
   ReceiptText,
   RotateCcw,
   Save,
+  Search,
   ShieldCheck,
   TrendingUp,
   WalletCards,
@@ -937,6 +1079,11 @@ import { confirmDialog } from '../../composables/useAppDialog';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
+import bcaLogo from '../../assets/payments/bca.svg';
+import bniLogo from '../../assets/payments/bni.svg';
+import briLogo from '../../assets/payments/bri.svg';
+import mandiriLogo from '../../assets/payments/mandiri.svg';
+import permataLogo from '../../assets/payments/permata.svg';
 
 const props = defineProps({
   mode: { type: String, default: 'saldo' },
@@ -951,6 +1098,216 @@ const financeTabs = [
   { key: 'keuangan_penarikan', label: 'Payout', icon: ArrowDownToLine },
 ];
 
+const BANK_OPTIONS = [
+  {
+    code: 'BCA',
+    name: 'BCA',
+    label: 'Bank Central Asia',
+    initials: 'BCA',
+    logo: bcaLogo,
+    aliases: ['bank bca', 'bank central asia bca'],
+  },
+  {
+    code: 'BNI',
+    name: 'BNI',
+    label: 'Bank Negara Indonesia',
+    initials: 'BNI',
+    logo: bniLogo,
+    aliases: ['bank bni', 'bank negara indonesia bni'],
+  },
+  {
+    code: 'BRI',
+    name: 'BRI',
+    label: 'Bank Rakyat Indonesia',
+    initials: 'BRI',
+    logo: briLogo,
+    aliases: ['bank bri', 'bank rakyat indonesia bri'],
+  },
+  {
+    code: 'MANDIRI',
+    name: 'Mandiri',
+    label: 'Bank Mandiri',
+    initials: 'MDR',
+    logo: mandiriLogo,
+    aliases: ['bank mandiri'],
+  },
+  {
+    code: 'PERMATA',
+    name: 'Permata',
+    label: 'Bank Permata',
+    initials: 'PMT',
+    logo: permataLogo,
+    aliases: ['bank permata'],
+  },
+  {
+    code: 'BSI',
+    name: 'BSI',
+    label: 'Bank Syariah Indonesia',
+    initials: 'BSI',
+    tone: '#0b9b84',
+    aliases: ['bank bsi', 'bank syariah indonesia'],
+  },
+  {
+    code: 'CIMB',
+    name: 'CIMB Niaga',
+    label: 'Bank CIMB Niaga',
+    initials: 'CIMB',
+    tone: '#a6192e',
+    aliases: ['bank cimb', 'bank cimb niaga'],
+  },
+  {
+    code: 'DANAMON',
+    name: 'Danamon',
+    label: 'Bank Danamon',
+    initials: 'DMN',
+    tone: '#e8a000',
+    ink: '#151515',
+    aliases: ['bank danamon'],
+  },
+  {
+    code: 'BTN',
+    name: 'BTN',
+    label: 'Bank Tabungan Negara',
+    initials: 'BTN',
+    tone: '#00549f',
+    aliases: ['bank btn', 'bank tabungan negara'],
+  },
+  {
+    code: 'MEGA',
+    name: 'Mega',
+    label: 'Bank Mega',
+    initials: 'MGA',
+    tone: '#d71920',
+    aliases: ['bank mega'],
+  },
+  {
+    code: 'BJB',
+    name: 'BJB',
+    label: 'Bank BJB',
+    initials: 'BJB',
+    tone: '#0072bc',
+    aliases: ['bank bjb', 'bank jawa barat'],
+  },
+  {
+    code: 'DKI',
+    name: 'DKI',
+    label: 'Bank DKI',
+    initials: 'DKI',
+    tone: '#d21f2b',
+    aliases: ['bank dki'],
+  },
+  {
+    code: 'JAGO',
+    name: 'Jago',
+    label: 'Bank Jago',
+    initials: 'JGO',
+    tone: '#f5b700',
+    ink: '#1b1b1b',
+    aliases: ['bank jago'],
+  },
+  {
+    code: 'SEABANK',
+    name: 'SeaBank',
+    label: 'SeaBank Indonesia',
+    initials: 'SEA',
+    tone: '#ff5c00',
+    aliases: ['bank seabank', 'seabank indonesia'],
+  },
+  {
+    code: 'NEO',
+    name: 'Neo Commerce',
+    label: 'Bank Neo Commerce',
+    initials: 'NEO',
+    tone: '#6f2dbd',
+    aliases: ['bank neo', 'bank neo commerce'],
+  },
+  {
+    code: 'OCBC',
+    name: 'OCBC',
+    label: 'OCBC Indonesia',
+    initials: 'OCBC',
+    tone: '#c8102e',
+    aliases: ['bank ocbc', 'ocbc indonesia'],
+  },
+  {
+    code: 'UOB',
+    name: 'UOB',
+    label: 'UOB Indonesia',
+    initials: 'UOB',
+    tone: '#1e3a8a',
+    aliases: ['bank uob', 'uob indonesia'],
+  },
+  {
+    code: 'PANIN',
+    name: 'Panin',
+    label: 'Panin Bank',
+    initials: 'PNN',
+    tone: '#0a5aa8',
+    aliases: ['bank panin'],
+  },
+  {
+    code: 'SINARMAS',
+    name: 'Sinarmas',
+    label: 'Bank Sinarmas',
+    initials: 'SMS',
+    tone: '#d71920',
+    aliases: ['bank sinarmas'],
+  },
+  {
+    code: 'BUKOPIN',
+    name: 'Bukopin',
+    label: 'KB Bukopin',
+    initials: 'BKP',
+    tone: '#0a5aa8',
+    aliases: ['bank bukopin', 'kb bukopin'],
+  },
+  {
+    code: 'MUAMALAT',
+    name: 'Muamalat',
+    label: 'Bank Muamalat',
+    initials: 'MUA',
+    tone: '#5c2d91',
+    aliases: ['bank muamalat'],
+  },
+  {
+    code: 'MAYBANK',
+    name: 'Maybank',
+    label: 'Maybank Indonesia',
+    initials: 'MYB',
+    tone: '#f7c600',
+    ink: '#1b1b1b',
+    aliases: ['bank maybank', 'maybank indonesia'],
+  },
+];
+
+function normalizeBankText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function findBankBrand(value) {
+  const needle = normalizeBankText(value);
+  if (!needle) return null;
+  return (
+    BANK_OPTIONS.find((option) =>
+      [option.code, option.name, option.label, ...(option.aliases || [])].some(
+        (candidate) => normalizeBankText(candidate) === needle,
+      ),
+    ) || null
+  );
+}
+
+function initialsForBank(value) {
+  return (
+    String(value || '')
+      .replace(/^bank\s+/i, '')
+      .replace(/[^a-z0-9]/gi, '')
+      .slice(0, 3)
+      .toUpperCase() || '—'
+  );
+}
+
 const workspace = ref(null);
 const loading = ref(false);
 const error = ref(null);
@@ -963,6 +1320,14 @@ const bankForm = reactive({
   password: '',
 });
 
+const bankSelection = ref('');
+const bankPickerOpen = ref(false);
+const bankSearch = ref('');
+const bankPickerRef = ref(null);
+const bankTriggerRef = ref(null);
+const bankSearchRef = ref(null);
+const bankListRef = ref(null);
+const bankOtherInputRef = ref(null);
 const submittingPayout = ref(false);
 const savingBank = ref(false);
 const payoutMessage = ref('');
@@ -1070,10 +1435,49 @@ const bankComplete = computed(() =>
 );
 const bankChangePending = computed(() => base.value?.bank_change_pending === true);
 
-const bankInitials = computed(() => {
-  const name = String(base.value?.bank_name || '').replace(/[^a-z0-9]/gi, '');
-  return name ? name.slice(0, 3).toUpperCase() : '—';
+const activeBankBrand = computed(() => findBankBrand(base.value?.bank_name));
+const bankInitials = computed(
+  () => activeBankBrand.value?.initials || initialsForBank(base.value?.bank_name),
+);
+const selectedBankOption = computed(
+  () => BANK_OPTIONS.find((option) => option.code === bankSelection.value) || null,
+);
+const filteredBanks = computed(() => {
+  const query = normalizeBankText(bankSearch.value);
+  if (!query) return BANK_OPTIONS;
+  return BANK_OPTIONS.filter((option) =>
+    [option.code, option.name, option.label, ...(option.aliases || [])].some((candidate) =>
+      normalizeBankText(candidate).includes(query),
+    ),
+  );
 });
+const bankTriggerMark = computed(
+  () =>
+    selectedBankOption.value?.initials ||
+    (bankSelection.value === 'other' ? initialsForBank(bankForm.bank_name) : ''),
+);
+const bankTriggerTitle = computed(() => {
+  if (selectedBankOption.value) return selectedBankOption.value.name;
+  if (bankSelection.value === 'other') return bankForm.bank_name.trim() || 'Bank lainnya';
+  return 'Pilih bank penerima';
+});
+const bankTriggerSubtitle = computed(() => {
+  if (selectedBankOption.value) return selectedBankOption.value.label;
+  if (bankSelection.value === 'other') return 'Nama bank diisi manual';
+  return 'Cari dan pilih dari daftar';
+});
+const bankTriggerPlaceholder = computed(
+  () =>
+    !selectedBankOption.value && !(bankSelection.value === 'other' && bankForm.bank_name.trim()),
+);
+
+function bankMarkStyle(option) {
+  if (!option || option.logo) return undefined;
+  return {
+    background: option.tone || 'var(--fin-inset)',
+    color: option.ink || '#ffffff',
+  };
+}
 
 const canRequestPayout = computed(
   () =>
@@ -1459,6 +1863,57 @@ function scrollToBank() {
   bankSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function toggleBankPicker() {
+  if (bankPickerOpen.value) {
+    closeBankPicker();
+  } else {
+    openBankPicker();
+  }
+}
+
+function openBankPicker() {
+  if (savingBank.value) return;
+  bankPickerOpen.value = true;
+  bankSearch.value = '';
+  nextTick(() => bankSearchRef.value?.focus());
+}
+
+function closeBankPicker(restoreFocus = false) {
+  bankPickerOpen.value = false;
+  bankSearch.value = '';
+  if (restoreFocus) nextTick(() => bankTriggerRef.value?.focus());
+}
+
+function selectBankOption(bank) {
+  bankForm.bank_name = bank.name;
+  bankSelection.value = bank.code;
+  bankError.value = '';
+  closeBankPicker(true);
+}
+
+function selectOtherBank() {
+  bankSelection.value = 'other';
+  bankForm.bank_name = '';
+  bankError.value = '';
+  closeBankPicker();
+  nextTick(() => bankOtherInputRef.value?.focus());
+}
+
+function focusFirstBankOption() {
+  bankListRef.value?.querySelector('.fin-bank-option')?.focus();
+}
+
+function selectFirstBankOption() {
+  const firstBank = filteredBanks.value[0];
+  if (firstBank) selectBankOption(firstBank);
+}
+
+function handleBankPickerOutside(event) {
+  if (!bankPickerOpen.value) return;
+  if (bankPickerRef.value?.contains(event.target)) return;
+  closeBankPicker();
+}
+
 function openBankForm() {
   bankError.value = '';
   prefillBank(base.value);
@@ -1469,6 +1924,7 @@ function cancelBankEdit() {
   bankError.value = '';
   bankMessage.value = '';
   bankForm.password = '';
+  closeBankPicker();
   prefillBank(base.value);
   showBankForm.value = false;
 }
@@ -1481,9 +1937,13 @@ function onBankAccountInput(event) {
 
 function prefillBank(source) {
   if (!source) return;
-  bankForm.bank_name = source.bank_name || '';
+  const sourceBankName = source.bank_name || '';
+  const knownBank = findBankBrand(sourceBankName);
+  bankForm.bank_name = knownBank?.name || sourceBankName;
   bankForm.bank_account_name = source.bank_account_name || '';
   bankForm.bank_account_number = '';
+  bankSelection.value = knownBank?.code || (sourceBankName ? 'other' : '');
+  closeBankPicker();
 }
 
 async function load() {
@@ -1569,8 +2029,20 @@ async function submitPayout() {
 async function saveBank() {
   bankError.value = '';
   bankMessage.value = '';
-  if (!bankForm.bank_name.trim() || !bankForm.bank_account_name.trim()) {
-    bankError.value = 'Nama bank dan nama pemilik rekening wajib diisi.';
+  bankPickerOpen.value = false;
+  if (!bankSelection.value) {
+    bankError.value = 'Pilih bank tujuan terlebih dahulu.';
+    return;
+  }
+  if (!bankForm.bank_name.trim()) {
+    bankError.value =
+      bankSelection.value === 'other'
+        ? 'Tulis nama bank terlebih dahulu.'
+        : 'Pilih bank tujuan terlebih dahulu.';
+    return;
+  }
+  if (!bankForm.bank_account_name.trim()) {
+    bankError.value = 'Nama pemilik rekening wajib diisi.';
     return;
   }
   if (!bankForm.password) {
@@ -1622,7 +2094,14 @@ async function saveBank() {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  load();
+  document.addEventListener('pointerdown', handleBankPickerOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', handleBankPickerOutside);
+});
 </script>
 
 <style scoped>
@@ -2406,6 +2885,18 @@ onMounted(load);
   flex-shrink: 0;
 }
 
+.fin-bank-mark.has-logo {
+  border: 1px solid var(--fin-border);
+  background: #ffffff;
+}
+
+.fin-bank-mark img {
+  display: block;
+  width: 30px;
+  height: 21px;
+  object-fit: contain;
+}
+
 .fin-account__copy {
   min-width: 0;
 }
@@ -3058,6 +3549,408 @@ onMounted(load);
   margin-top: 14px;
 }
 
+/* ============================== Bank picker ============================== */
+
+.fin-bank-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.fin-bank-trigger {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--fin-border-strong);
+  border-radius: 11px;
+  background: var(--fin-inset);
+  color: var(--fin-ink);
+  padding: 5px 10px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.fin-bank-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--shell-accent) 45%, var(--fin-border-strong));
+  background: color-mix(in srgb, var(--fin-inset) 78%, var(--fin-card));
+}
+
+.fin-bank-trigger:focus-visible,
+.fin-bank-trigger.is-open {
+  outline: none;
+  border-color: var(--shell-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--shell-accent) 17%, transparent);
+}
+
+.fin-bank-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.fin-bank-trigger__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #1231a7 0%, #0038ff 100%);
+  color: #ffffff;
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.fin-bank-trigger__mark.has-logo {
+  border: 1px solid var(--fin-border);
+  background: #ffffff;
+}
+
+.fin-bank-trigger__mark.is-placeholder {
+  border: 1px dashed var(--fin-border-strong);
+  background: var(--fin-card);
+  color: var(--fin-muted);
+}
+
+.fin-bank-trigger__mark img {
+  display: block;
+  width: 24px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.fin-bank-trigger__copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fin-bank-trigger__copy strong {
+  overflow: hidden;
+  color: var(--fin-ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-bank-trigger__copy small {
+  overflow: hidden;
+  margin-top: 1px;
+  color: var(--fin-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-bank-trigger.is-placeholder .fin-bank-trigger__copy strong {
+  color: var(--fin-muted);
+  font-weight: 700;
+}
+
+.fin-bank-trigger__chevron {
+  flex-shrink: 0;
+  color: var(--fin-muted);
+  transition: transform 0.18s ease;
+}
+
+.fin-bank-trigger.is-open .fin-bank-trigger__chevron {
+  transform: rotate(180deg);
+}
+
+.fin-bank-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid var(--fin-border-strong);
+  border-radius: 14px;
+  background: var(--fin-card);
+  box-shadow:
+    0 22px 50px -20px rgba(2, 8, 27, 0.62),
+    0 3px 12px rgba(2, 8, 27, 0.12);
+}
+
+.fin-bank-menu__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 8px;
+}
+
+.fin-bank-menu__head strong {
+  color: var(--fin-ink);
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fin-bank-menu__head span {
+  color: var(--fin-muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.fin-bank-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  margin: 0 6px 5px;
+  border: 1px solid var(--fin-border);
+  border-radius: 9px;
+  background: var(--fin-inset);
+  padding: 0 8px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.fin-bank-search:focus-within {
+  border-color: var(--shell-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--shell-accent) 13%, transparent);
+}
+
+.fin-bank-search svg {
+  flex-shrink: 0;
+  color: var(--fin-muted);
+}
+
+.fin-bank-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fin-ink);
+  padding: 8px 0;
+  font-family: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+.fin-bank-search input::placeholder {
+  color: color-mix(in srgb, var(--fin-muted) 72%, transparent);
+}
+
+.fin-bank-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  max-height: 278px;
+  padding: 0 6px 6px;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--fin-muted) 52%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.fin-bank-options::-webkit-scrollbar {
+  width: 7px;
+}
+
+.fin-bank-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fin-bank-options::-webkit-scrollbar-thumb {
+  border: 2px solid var(--fin-card);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fin-muted) 52%, transparent);
+}
+
+.fin-bank-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--fin-ink);
+  padding: 6px 7px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fin-bank-option:hover {
+  background: var(--fin-inset);
+}
+
+.fin-bank-option:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: -2px;
+  background: var(--fin-inset);
+}
+
+.fin-bank-option[aria-selected='true'] {
+  background: color-mix(in srgb, var(--shell-accent) 11%, transparent);
+}
+
+.fin-bank-option__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--fin-inset);
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.fin-bank-option__mark.has-logo {
+  border: 1px solid var(--fin-border);
+  background: #ffffff;
+}
+
+.fin-bank-option__mark img {
+  display: block;
+  width: 23px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.fin-bank-option__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.fin-bank-option__copy strong {
+  display: block;
+  color: var(--fin-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.fin-bank-option__copy small {
+  display: block;
+  overflow: hidden;
+  color: var(--fin-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-bank-option__state {
+  flex-shrink: 0;
+  color: var(--success-text);
+}
+
+.fin-bank-empty {
+  margin: 0;
+  padding: 16px 10px;
+  color: var(--fin-muted);
+  font-size: 10px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.fin-bank-empty strong {
+  color: var(--fin-ink);
+}
+
+.fin-bank-other {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--fin-border);
+  background: transparent;
+  color: var(--fin-ink);
+  padding: 9px 12px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fin-bank-other:hover {
+  background: var(--fin-inset);
+}
+
+.fin-bank-other:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: -2px;
+}
+
+.fin-bank-other__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px dashed var(--fin-border-strong);
+  border-radius: 8px;
+  background: var(--fin-inset);
+  color: var(--fin-muted);
+  flex-shrink: 0;
+}
+
+.fin-bank-other__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.fin-bank-other__copy strong {
+  display: block;
+  color: var(--fin-ink);
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.fin-bank-other__copy small {
+  display: block;
+  color: var(--fin-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.fin-bank-other__chevron {
+  flex-shrink: 0;
+  color: var(--fin-muted);
+}
+
+.fin-bank-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.fin-bank-custom > label {
+  color: var(--fin-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* ================================ History ================================ */
 
 .fin-filter-row {
@@ -3466,7 +4359,15 @@ onMounted(load);
   }
 
   .fin-card__subhead {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+
+  .fin-card__subhead > div {
+    min-width: 0;
+  }
+
+  .fin-card__subhead .fin-text-btn {
+    flex-shrink: 0;
   }
 }
 
