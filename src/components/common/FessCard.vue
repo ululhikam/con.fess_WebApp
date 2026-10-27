@@ -519,7 +519,7 @@
                     class="ig-story-rendered-img"
                   />
                   <div v-else class="ig-story-fallback-card">
-                    <p class="text-sm font-bold">{{ post.content }}</p>
+                    <p class="text-sm font-bold ig-fallback-text">{{ post.content }}</p>
                     <span class="text-xs text-muted mt-2">{{ post.handle }}</span>
                   </div>
                 </div>
@@ -1957,6 +1957,9 @@ function formatCount(num) {
   line-height: 1.6;
   color: var(--shell-text);
   margin: 0;
+  /* Pertahankan enter/baris baru dari composer (textarea) apa adanya. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -2812,5 +2815,11 @@ function formatCount(num) {
     padding: 4px 8px;
     font-size: 11.5px;
   }
+}
+
+/* Teks fallback card Instagram: baris baru dari composer tetap tampil. */
+.ig-fallback-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 </style>

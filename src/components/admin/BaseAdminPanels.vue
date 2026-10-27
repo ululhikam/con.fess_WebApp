@@ -1907,6 +1907,8 @@ watch(
   font-size: 13px;
   line-height: 1.5;
   margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .moderation-stats-banner {
@@ -2024,6 +2026,8 @@ watch(
   margin: 0;
   font-size: 12.5px;
   line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .flagged-meta {

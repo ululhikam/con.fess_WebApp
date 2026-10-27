@@ -623,6 +623,8 @@ const footerRight = computed(() =>
   margin: 0;
   line-height: 1.4;
   opacity: 0.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

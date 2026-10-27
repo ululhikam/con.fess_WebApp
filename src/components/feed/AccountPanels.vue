@@ -1443,6 +1443,9 @@ function handleReport() {
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--shell-text);
+  /* Baris baru tetap tampil sebelum dipotong line-clamp. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;

@@ -397,6 +397,8 @@ function confirm() {
   line-height: 1.45;
   color: var(--shell-text-sub);
   margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

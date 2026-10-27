@@ -669,6 +669,9 @@ function requestClose() {
   color: rgba(255, 255, 255, 0.88);
   font-size: 14px;
   line-height: 1.5;
+  /* Baris baru pada isi fess tetap tampil di panel info viewer. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   max-height: 4.6em;
   overflow-y: auto;
   scrollbar-width: thin;

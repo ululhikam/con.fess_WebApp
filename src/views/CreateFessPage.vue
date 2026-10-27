@@ -1154,6 +1154,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
   line-height: 1.5;
   color: var(--text-secondary, #d0d7e5);
   margin: 0;
+  white-space: pre-wrap;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   line-clamp: 3;

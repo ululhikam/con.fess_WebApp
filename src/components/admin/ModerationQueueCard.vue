@@ -66,4 +66,10 @@ function handleHide(id) {
 .mod-handle {
   color: var(--brand-blue);
 }
+
+/* Isi fess: baris baru dari composer tetap tampil. */
+.mod-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 </style>

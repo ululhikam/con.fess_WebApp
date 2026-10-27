@@ -99,6 +99,12 @@ function handleRetryInstagram(fess) {
   margin-bottom: 4px;
 }
 
+/* Isi fess: baris baru dari composer tetap tampil. */
+.fess-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .ig-admin-chip {
   display: inline-flex;
   align-items: center;
