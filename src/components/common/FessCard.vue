@@ -97,28 +97,32 @@
           <span>{{ statusBadgeLabel }}</span>
         </span>
 
-        <!-- TAKE DOWN (admin base): turunkan fess terbit dari feed & hapus -->
-        <button
-          v-if="canTakeDown"
-          type="button"
-          class="btn-takedown"
-          title="Take down fess ini"
-          aria-label="Take down fess"
-          @click="$emit('takeDown', post.id)"
-        >
-          <Trash2 :size="13" />
-        </button>
+        <!-- Aksi kanan header: default (take down + laporkan) atau slot khusus
+             admin (dipakai AdminFessCard untuk menu titik-3). -->
+        <slot name="headerActions">
+          <!-- TAKE DOWN (admin base): turunkan fess terbit dari feed & hapus -->
+          <button
+            v-if="canTakeDown"
+            type="button"
+            class="btn-takedown"
+            title="Take down fess ini"
+            aria-label="Take down fess"
+            @click="$emit('takeDown', post.id)"
+          >
+            <Trash2 :size="13" />
+          </button>
 
-        <!-- LAPORKAN KONTEN (FLAG BUTTON) -->
-        <button
-          type="button"
-          class="btn-flag-report"
-          title="Laporkan Konten"
-          aria-label="Laporkan Konten"
-          @click="showReportModal = true"
-        >
-          <Flag :size="13" />
-        </button>
+          <!-- LAPORKAN KONTEN (FLAG BUTTON) -->
+          <button
+            type="button"
+            class="btn-flag-report"
+            title="Laporkan Konten"
+            aria-label="Laporkan Konten"
+            @click="showReportModal = true"
+          >
+            <Flag :size="13" />
+          </button>
+        </slot>
       </div>
     </header>
 
@@ -1621,6 +1625,13 @@ async function submitComment() {
 /* 5. REPORT MODAL STATE */
 const showReportModal = ref(false);
 const isReported = ref(false);
+
+/* Aksi header yang dipindah ke menu titik-3 AdminFessCard. */
+defineExpose({
+  openReportModal: () => {
+    showReportModal.value = true;
+  },
+});
 
 async function handleReportSubmitted(payload) {
   showReportModal.value = false;

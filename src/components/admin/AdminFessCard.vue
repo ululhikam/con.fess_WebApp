@@ -1,73 +1,108 @@
 <template>
   <div class="admin-fess-card-wrapper">
-    <!-- Toolbar admin: satu tombol titik-3, semua aksi masuk dropdown -->
-    <div v-if="isAdmin" ref="toolbarRef" class="admin-card-toolbar">
-      <button
-        type="button"
-        class="admin-kebab-btn"
-        :class="{ 'is-open': menuOpen }"
-        :aria-expanded="menuOpen"
-        aria-haspopup="menu"
-        aria-label="Aksi admin untuk fess ini"
-        title="Aksi admin"
-        @click.stop="toggleMenu"
-      >
-        <MoreHorizontal :size="18" />
-      </button>
-
-      <Transition name="admin-menu">
-        <div v-if="menuOpen" class="admin-card-menu" role="menu" aria-label="Aksi admin">
-          <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(saveFessCard)">
-            <Download :size="14" />
-            <span>Simpan Card</span>
+    <FessCard
+      ref="fessCardRef"
+      v-bind="$attrs"
+      :post="post"
+      :is-admin="true"
+      hide-ig-action
+      @take-down="$emit('take-down', $event)"
+    >
+      <!-- Tombol titik-3 menempel di header kartu (menggantikan ikon
+           take down & laporkan yang kini masuk ke dropdown). -->
+      <template #headerActions>
+        <div ref="menuAnchorRef" class="admin-card-menu-anchor">
+          <button
+            type="button"
+            class="admin-kebab-btn"
+            :class="{ 'is-open': menuOpen }"
+            :aria-expanded="menuOpen"
+            aria-haspopup="menu"
+            aria-label="Aksi admin untuk fess ini"
+            title="Aksi admin"
+            @click.stop="toggleMenu"
+          >
+            <MoreHorizontal :size="16" />
           </button>
 
-          <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(copyFessText)">
-            <Copy :size="14" />
-            <span>Salin Teks Fess</span>
-          </button>
+          <Transition name="admin-menu">
+            <div
+              v-if="menuOpen"
+              class="admin-card-menu"
+              role="menu"
+              aria-label="Aksi admin"
+              @click.stop
+            >
+              <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(saveFessCard)">
+                <Download :size="14" />
+                <span>Simpan Card</span>
+              </button>
 
-          <!-- Aksi IG hanya relevan saat auto-post GAGAL -->
-          <template v-if="autoPostFailed">
-            <div class="admin-menu-divider" role="separator" />
-            <button
-              type="button"
-              role="menuitem"
-              class="admin-menu-item admin-menu-item--warn"
-              @click="runAction(() => emit('manual-ig-post', post.id))"
-            >
-              <Instagram :size="14" />
-              <span>Post IG Manual</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              class="admin-menu-item admin-menu-item--primary"
-              @click="runAction(() => emit('retry-ig-post', post.id))"
-            >
-              <RotateCcw :size="14" />
-              <span>Retry Auto-Post</span>
-            </button>
-          </template>
+              <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(copyFessText)">
+                <Copy :size="14" />
+                <span>Salin Teks Fess</span>
+              </button>
 
-          <!-- Kelola laporan hanya di tab Laporan -->
-          <template v-if="showReportAction">
-            <div class="admin-menu-divider" role="separator" />
-            <button
-              type="button"
-              role="menuitem"
-              class="admin-menu-item"
-              @click="runAction(() => emit('view-reports', post.id))"
-            >
-              <Flag :size="14" />
-              <span>Lihat Laporan</span>
-            </button>
-          </template>
+              <!-- Aksi IG hanya relevan saat auto-post GAGAL -->
+              <template v-if="autoPostFailed">
+                <div class="admin-menu-divider" role="separator" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="admin-menu-item admin-menu-item--warn"
+                  @click="runAction(() => emit('manual-ig-post', post.id))"
+                >
+                  <Instagram :size="14" />
+                  <span>Post IG Manual</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="admin-menu-item admin-menu-item--primary"
+                  @click="runAction(() => emit('retry-ig-post', post.id))"
+                >
+                  <RotateCcw :size="14" />
+                  <span>Retry Auto-Post</span>
+                </button>
+              </template>
+
+              <!-- Kelola laporan hanya di tab Laporan -->
+              <template v-if="showReportAction">
+                <div class="admin-menu-divider" role="separator" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="admin-menu-item"
+                  @click="runAction(() => emit('view-reports', post.id))"
+                >
+                  <Flag :size="14" />
+                  <span>Lihat Laporan</span>
+                </button>
+              </template>
+
+              <div class="admin-menu-divider" role="separator" />
+
+              <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(openReportModal)">
+                <Flag :size="14" />
+                <span>Laporkan Fess</span>
+              </button>
+
+              <template v-if="canTakeDown">
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="admin-menu-item admin-menu-item--danger"
+                  @click="runAction(() => emit('take-down', post.id))"
+                >
+                  <Trash2 :size="14" />
+                  <span>Hapus Fess</span>
+                </button>
+              </template>
+            </div>
+          </Transition>
         </div>
-      </Transition>
-    </div>
-
-    <FessCard v-bind="$attrs" :post="post" :is-admin="true" hide-ig-action />
+      </template>
+    </FessCard>
   </div>
 </template>
 
@@ -75,14 +110,17 @@
 /**
  * AdminFessCard.vue — wrapper FessCard untuk Base Admin.
  *
- * Semua aksi admin (simpan card, salin teks, post IG manual, retry auto-post,
- * lihat laporan) diringkas dalam satu menu titik-3 agar kartu tetap bersih.
+ * Semua aksi admin diringkas dalam satu menu titik-3 yang menempel di header
+ * kartu: Simpan Card, Salin Teks, Post IG Manual, Retry Auto-Post, Lihat
+ * Laporan, Laporkan Fess, dan Hapus Fess. Tombol take down & laporkan bawaan
+ * FessCard digantikan oleh menu ini lewat slot `headerActions`.
  *
  * Aturan tampil:
  *  - "Post IG Manual" & "Retry Auto-Post" hanya saat auto-post GAGAL
  *    (igStatus === 'failed' dan belum terbit ke IG) — bukan saat masih diproses.
  *  - "Lihat Laporan" hanya saat kartu dibuka dari tab Laporan (prop
  *    showReportAction), bukan di semua tab.
+ *  - "Hapus Fess" hanya untuk fess yang sudah terbit (status approved).
  */
 import { computed, onBeforeUnmount, ref } from 'vue';
 import FessCard from '../common/FessCard.vue';
@@ -94,6 +132,7 @@ import {
   Instagram,
   MoreHorizontal,
   RotateCcw,
+  Trash2,
 } from 'lucide-vue-next';
 
 // Listener & attribute dari parent diteruskan manual ke FessCard,
@@ -121,10 +160,12 @@ const emit = defineEmits([
   'manual-ig-post',
   'retry-ig-post',
   'save-card',
+  'take-down',
 ]);
 
 const menuOpen = ref(false);
-const toolbarRef = ref(null);
+const menuAnchorRef = ref(null);
+const fessCardRef = ref(null);
 
 /** Auto-post dianggap gagal hanya bila status failed dan belum terbit ke IG. */
 const autoPostFailed = computed(() => {
@@ -132,6 +173,9 @@ const autoPostFailed = computed(() => {
   if (!p || p.postedToIg) return false;
   return p.igStatus === 'failed';
 });
+
+/** Hapus fess hanya relevan untuk fess yang sudah terbit. */
+const canTakeDown = computed(() => props.post?.status === 'approved');
 
 function toggleMenu() {
   menuOpen.value = !menuOpen.value;
@@ -154,7 +198,7 @@ function detachListeners() {
 }
 
 function onDocumentPointerDown(event) {
-  if (!toolbarRef.value?.contains(event.target)) closeMenu();
+  if (!menuAnchorRef.value?.contains(event.target)) closeMenu();
 }
 
 function onDocumentKeyDown(event) {
@@ -164,6 +208,10 @@ function onDocumentKeyDown(event) {
 function runAction(action) {
   closeMenu();
   action();
+}
+
+function openReportModal() {
+  fessCardRef.value?.openReportModal();
 }
 
 async function copyFessText() {
@@ -193,21 +241,19 @@ onBeforeUnmount(detachListeners);
   width: 100%;
 }
 
-/* Toolbar tipis di atas kartu, hanya berisi satu tombol titik-3. */
-.admin-card-toolbar {
+/* Anchor menu: menempel pada grup aksi kanan header kartu. */
+.admin-card-menu-anchor {
   position: relative;
-  display: flex;
-  justify-content: flex-end;
+  display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  margin-bottom: 2px;
+  flex-shrink: 0;
 }
 
 .admin-kebab-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
+  width: 26px;
   height: 26px;
   padding: 0;
   border: 1px solid transparent;
@@ -235,9 +281,9 @@ onBeforeUnmount(detachListeners);
 
 .admin-card-menu {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   right: 0;
-  z-index: 40;
+  z-index: 60;
   min-width: 208px;
   padding: 6px;
   border: 1px solid var(--border-subtle);
@@ -278,6 +324,14 @@ onBeforeUnmount(detachListeners);
 
 .admin-menu-item--primary {
   color: var(--brand-blue);
+}
+
+.admin-menu-item--danger {
+  color: #f87171;
+}
+
+.admin-menu-item--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
 }
 
 .admin-menu-divider {
