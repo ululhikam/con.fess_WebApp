@@ -208,6 +208,7 @@
             :key="item.id"
             :post="item"
             :is-admin="true"
+            :show-report-action="fessFilter === 'reported'"
             @approve="approveFess"
             @reject="rejectFess"
             @take-down="takeDownFess"

@@ -1,78 +1,104 @@
 <template>
   <div class="admin-fess-card-wrapper">
-    <FessCard v-bind="$props" :is-admin="true" v-on="$attrs" />
-
-    <div v-if="isAdmin && showIgActions" class="admin-ig-actions">
+    <!-- Toolbar admin: satu tombol titik-3, semua aksi masuk dropdown -->
+    <div v-if="isAdmin" ref="toolbarRef" class="admin-card-toolbar">
       <button
         type="button"
-        class="admin-ig-btn admin-ig-btn--manual"
-        title="Post IG Manual"
-        aria-label="Post IG Manual"
-        @click="$emit('manual-ig-post', post.id)"
+        class="admin-kebab-btn"
+        :class="{ 'is-open': menuOpen }"
+        :aria-expanded="menuOpen"
+        aria-haspopup="menu"
+        aria-label="Aksi admin untuk fess ini"
+        title="Aksi admin"
+        @click.stop="toggleMenu"
       >
-        <Instagram :size="12" />
-        <span>Post IG Manual</span>
+        <MoreHorizontal :size="18" />
       </button>
 
-      <button
-        type="button"
-        class="admin-ig-btn admin-ig-btn--retry"
-        title="Retry Auto-Post IG"
-        aria-label="Retry Auto-Post IG"
-        @click="$emit('retry-ig-post', post.id)"
-      >
-        <RotateCcw :size="12" />
-        <span>Retry Auto-Post</span>
-      </button>
+      <Transition name="admin-menu">
+        <div v-if="menuOpen" class="admin-card-menu" role="menu" aria-label="Aksi admin">
+          <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(saveFessCard)">
+            <Download :size="14" />
+            <span>Simpan Card</span>
+          </button>
 
-      <button
-        type="button"
-        class="admin-ig-btn admin-ig-btn--copy"
-        title="Salin Teks Fess"
-        aria-label="Salin Teks Fess"
-        @click="copyFessText"
-      >
-        <Copy :size="12" />
-        <span>Salin</span>
-      </button>
+          <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(copyFessText)">
+            <Copy :size="14" />
+            <span>Salin Teks Fess</span>
+          </button>
 
-      <button
-        type="button"
-        class="admin-ig-btn admin-ig-btn--save"
-        title="Simpan Card Fess"
-        aria-label="Simpan Card Fess"
-        @click="saveFessCard"
-      >
-        <Download :size="12" />
-        <span>Simpan Card</span>
-      </button>
+          <!-- Aksi IG hanya relevan saat auto-post GAGAL -->
+          <template v-if="autoPostFailed">
+            <div class="admin-menu-divider" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              class="admin-menu-item admin-menu-item--warn"
+              @click="runAction(() => emit('manual-ig-post', post.id))"
+            >
+              <Instagram :size="14" />
+              <span>Post IG Manual</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              class="admin-menu-item admin-menu-item--primary"
+              @click="runAction(() => emit('retry-ig-post', post.id))"
+            >
+              <RotateCcw :size="14" />
+              <span>Retry Auto-Post</span>
+            </button>
+          </template>
+
+          <!-- Kelola laporan hanya di tab Laporan -->
+          <template v-if="showReportAction">
+            <div class="admin-menu-divider" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              class="admin-menu-item"
+              @click="runAction(() => emit('view-reports', post.id))"
+            >
+              <Flag :size="14" />
+              <span>Lihat Laporan</span>
+            </button>
+          </template>
+        </div>
+      </Transition>
     </div>
 
-    <button
-      v-if="isAdmin"
-      type="button"
-      class="btn-view-reports"
-      title="Lihat dan kelola laporan fess ini"
-      aria-label="Lihat dan kelola laporan fess ini"
-      @click="$emit('view-reports', post.id)"
-    >
-      <Flag :size="13" />
-      <span>Laporan</span>
-    </button>
+    <FessCard v-bind="$attrs" :post="post" :is-admin="true" hide-ig-action />
   </div>
 </template>
 
 <script setup>
 /**
- * AdminFessCard.vue — Aliased wrapper to unified FessCard component.
- * Automatically enables admin moderation actions (Setujui / Tolak).
- * Tambahan: tindakan "Lihat Laporan" untuk mengelola laporan fess.
- * Tambahan: aksi IG (Manual Post, Retry Auto-Post, Salin, Simpan Card) untuk fess yang gagal/belum post IG.
+ * AdminFessCard.vue — wrapper FessCard untuk Base Admin.
+ *
+ * Semua aksi admin (simpan card, salin teks, post IG manual, retry auto-post,
+ * lihat laporan) diringkas dalam satu menu titik-3 agar kartu tetap bersih.
+ *
+ * Aturan tampil:
+ *  - "Post IG Manual" & "Retry Auto-Post" hanya saat auto-post GAGAL
+ *    (igStatus === 'failed' dan belum terbit ke IG) — bukan saat masih diproses.
+ *  - "Lihat Laporan" hanya saat kartu dibuka dari tab Laporan (prop
+ *    showReportAction), bukan di semua tab.
  */
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import FessCard from '../common/FessCard.vue';
 import { toast } from '../../composables/useToast';
-import { Flag, Instagram, RotateCcw, Copy, Download } from 'lucide-vue-next';
+import {
+  Copy,
+  Download,
+  Flag,
+  Instagram,
+  MoreHorizontal,
+  RotateCcw,
+} from 'lucide-vue-next';
+
+// Listener & attribute dari parent diteruskan manual ke FessCard,
+// jadi matikan pewarisan otomatis agar tidak dobel di wrapper.
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps({
   post: {
@@ -83,6 +109,11 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  /** Tampilkan aksi "Lihat Laporan" (dipakai di tab Laporan). */
+  showReportAction: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -92,16 +123,48 @@ const emit = defineEmits([
   'save-card',
 ]);
 
-// Show IG action buttons when: auto-post failed OR not posted yet (and has IG connection)
-const showIgActions = computed(() => {
+const menuOpen = ref(false);
+const toolbarRef = ref(null);
+
+/** Auto-post dianggap gagal hanya bila status failed dan belum terbit ke IG. */
+const autoPostFailed = computed(() => {
   const p = props.post;
-  if (!p) return false;
-  // Show if auto-post failed
-  if (p.igStatus === 'failed') return true;
-  // Show if not posted to IG yet but base has IG connected
-  if (!p.postedToIg && p.canManageInstagram) return true;
-  return false;
+  if (!p || p.postedToIg) return false;
+  return p.igStatus === 'failed';
 });
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value;
+  if (menuOpen.value) {
+    document.addEventListener('pointerdown', onDocumentPointerDown, true);
+    document.addEventListener('keydown', onDocumentKeyDown);
+  } else {
+    detachListeners();
+  }
+}
+
+function closeMenu() {
+  menuOpen.value = false;
+  detachListeners();
+}
+
+function detachListeners() {
+  document.removeEventListener('pointerdown', onDocumentPointerDown, true);
+  document.removeEventListener('keydown', onDocumentKeyDown);
+}
+
+function onDocumentPointerDown(event) {
+  if (!toolbarRef.value?.contains(event.target)) closeMenu();
+}
+
+function onDocumentKeyDown(event) {
+  if (event.key === 'Escape') closeMenu();
+}
+
+function runAction(action) {
+  closeMenu();
+  action();
+}
 
 async function copyFessText() {
   const text = props.post?.content || '';
@@ -114,99 +177,132 @@ async function copyFessText() {
   }
 }
 
-async function saveFessCard() {
-  // Render card ditangani parent lewat event (butuh panggilan API + auth).
+function saveFessCard() {
+  // Render card ditangani parent (butuh API + auth).
   emit('save-card', props.post.id);
 }
+
+onBeforeUnmount(detachListeners);
 </script>
 
 <style scoped>
 .admin-fess-card-wrapper {
   position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.admin-ig-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
   width: 100%;
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px solid var(--shell-border);
 }
 
-.admin-ig-btn {
+/* Toolbar tipis di atas kartu, hanya berisi satu tombol titik-3. */
+.admin-card-toolbar {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 24px;
+  margin-bottom: 2px;
+}
+
+.admin-kebab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  border: 1px solid var(--shell-border);
-  border-radius: 6px;
-  background: var(--shell-bg);
-  color: var(--shell-text);
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--shell-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
-.admin-ig-btn:hover {
-  border-color: var(--shell-text-muted);
+.admin-kebab-btn:hover,
+.admin-kebab-btn.is-open {
+  background: var(--shell-chip);
+  border-color: var(--shell-border);
+  color: var(--shell-text);
+}
+
+.admin-kebab-btn:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+
+.admin-card-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  min-width: 208px;
+  padding: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-raised);
+  box-shadow: 0 14px 32px var(--shadow-color);
+}
+
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.admin-menu-item:hover {
   background: var(--shell-chip);
 }
 
-.admin-ig-btn--manual {
-  border-color: var(--shell-sub-accent);
-  color: var(--shell-sub-accent);
+.admin-menu-item:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: -2px;
 }
 
-.admin-ig-btn--manual:hover {
-  background: var(--shell-sub-accent);
-  color: white;
-  border-color: var(--shell-sub-accent);
+.admin-menu-item--warn {
+  color: var(--warning, #f59e0b);
 }
 
-.admin-ig-btn--retry {
-  border-color: var(--brand-blue);
+.admin-menu-item--primary {
   color: var(--brand-blue);
 }
 
-.admin-ig-btn--retry:hover {
-  background: var(--brand-blue);
-  color: white;
-  border-color: var(--brand-blue);
+.admin-menu-divider {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--border-subtle);
 }
 
-.admin-ig-btn--copy {
-  border-color: var(--shell-text-muted);
+.admin-menu-enter-active,
+.admin-menu-leave-active {
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
-.admin-ig-btn--save {
-  border-color: var(--shell-text-muted);
+.admin-menu-enter-from,
+.admin-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 
-.btn-view-reports {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  padding: 5px 10px;
-  font-size: 11.5px;
-  font-weight: 700;
-  border: 1px solid var(--shell-border);
-  border-radius: 8px;
-  background: var(--shell-bg);
-  color: var(--shell-text);
-  cursor: pointer;
-}
-
-.btn-view-reports:hover {
-  border-color: var(--shell-text-muted);
-  background: var(--shell-chip);
+@media (prefers-reduced-motion: reduce) {
+  .admin-menu-enter-active,
+  .admin-menu-leave-active {
+    transition: none;
+  }
 }
 </style>

@@ -220,7 +220,7 @@
         <span>{{ post.igError }}</span>
         <small v-if="post.igAttempts">Sudah dicoba {{ post.igAttempts }}×.</small>
       </div>
-      <button type="button" class="btn-ig-retry" @click="shareToInstagram">
+      <button v-if="!hideIgAction" type="button" class="btn-ig-retry" @click="shareToInstagram">
         <RotateCcw :size="13" />
         <span>Coba lagi</span>
       </button>
@@ -287,7 +287,7 @@
             <span>Salin Tautan</span>
           </button>
           <button
-            v-if="canManageInstagram"
+            v-if="canManageInstagram && !hideIgAction"
             type="button"
             class="share-menu-item"
             @click="shareToInstagram"
@@ -337,7 +337,7 @@
           </button>
         </template>
         <button
-          v-if="canManageInstagram"
+          v-if="canManageInstagram && !hideIgAction"
           type="button"
           class="btn-mod-ig"
           :class="{ 'is-posted': post.postedToIg }"
@@ -627,6 +627,12 @@ const props = defineProps({
   },
   /** Halaman detail fess (/fess/:id): buka thread komentar otomatis. */
   commentsOpen: {
+    type: Boolean,
+    default: false,
+  },
+  /** Sembunyikan aksi Post/Retry IG di dalam kartu (dipakai AdminFessCard
+   *  yang memindahkan aksi tersebut ke menu titik-3). */
+  hideIgAction: {
     type: Boolean,
     default: false,
   },
