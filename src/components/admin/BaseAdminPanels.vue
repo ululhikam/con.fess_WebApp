@@ -244,7 +244,69 @@
         />
 
         <template v-else>
-          <div class="section-title-sm mb-3">Fess Paling Populer</div>
+          <div class="chart-head">
+            <div>
+              <div class="section-title-sm mb-1">Fess Terbit per Tanggal</div>
+              <p class="text-xs text-muted mb-0">
+                Fess berstatus <strong>terbit</strong> hari demi hari ({{ fessRangeLabel }}).
+              </p>
+            </div>
+
+            <div class="chart-range-tabs" role="group" aria-label="Rentang waktu grafik">
+              <button
+                v-for="option in FESS_RANGE_OPTIONS"
+                :key="`range-${option}`"
+                type="button"
+                class="chart-range-btn"
+                :class="{ active: fessDays === option }"
+                :aria-pressed="fessDays === option"
+                @click="setFessDays(option)"
+              >
+                {{ option }} hari
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-feature-card mb-3 chart-card">
+            <FessTrendChart v-if="!fessLoading || analyticsFess.length" :points="fessTrendPoints" />
+            <p v-else class="text-xs text-muted chart-loading">Memuat grafik…</p>
+
+            <div class="chart-insights">
+              <div class="chart-insight">
+                <span class="chart-insight-label">Total fess</span>
+                <span class="chart-insight-value">{{ fessTotalInRange }}</span>
+              </div>
+              <div class="chart-insight">
+                <span class="chart-insight-label">Rata-rata / hari</span>
+                <span class="chart-insight-value">{{ fessDailyAverage }}</span>
+              </div>
+              <div class="chart-insight">
+                <span class="chart-insight-label">Hari tersibuk</span>
+                <span class="chart-insight-value">{{ fessPeakDayLabel }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chart-head mt-4">
+            <div>
+              <div class="section-title-sm mb-1">Jam Rame Fess</div>
+              <p class="text-xs text-muted mb-0">
+                Jumlah fess per jam (WIB) — lihat kapan user paling aktif membuat fess.
+              </p>
+            </div>
+          </div>
+
+          <div class="admin-feature-card mb-4 chart-card">
+            <FessHourlyChart :hours="fessHours" />
+            <p class="text-xs text-muted chart-caption mb-0">
+              Jam tersibuk: <strong>{{ fessPeakHourLabel }}</strong>
+              <template v-if="fessPeakHourCount > 0">
+                ({{ fessPeakHourCount }} fess)
+              </template>
+            </p>
+          </div>
+
+          <div class="section-title-sm mb-3 mt-4">Fess Paling Populer</div>
 
           <div v-if="analyticsPopular.length" class="viral-fess-list">
             <div v-for="(v, i) in analyticsPopular" :key="v.id" class="viral-fess-item">
@@ -495,60 +557,6 @@
         </template>
       </template>
 
-      <!-- ANALITIK: FESS PER PERIODE -->
-      <template v-else-if="modelValue === 'analitik_fess'">
-        <ContentSkeleton
-          v-if="analyticsLoading && !analyticsFess.length"
-          type="list"
-          :count="4"
-          label="Memuat analitik fess…"
-        />
-
-        <AppStateView
-          v-else-if="analyticsError && !analyticsFess.length"
-          variant="error"
-          title="Gagal memuat analitik fess"
-          description="Tidak bisa mengambil agregasi fess per periode dari server."
-          action-label="Coba lagi"
-          @action="loadAnalytics"
-        />
-
-        <template v-else>
-          <div class="section-title-sm mb-3">Fess Terbit per Periode</div>
-          <p class="text-xs text-muted mb-3">
-            Jumlah fess dengan status <strong>published / approved</strong> per periode
-            (range: {{ analyticsRangeLabel }}).
-          </p>
-
-          <div v-if="analyticsFess.length" class="admin-feature-card mb-4">
-            <div class="fess-analytics-list">
-              <div v-for="(d, i) in analyticsFess" :key="`fess-analytics-${i}`" class="analytics-row">
-                <span class="analytics-period">{{ d.period }}</span>
-                <span class="analytics-count font-bold">{{ d.count }}</span>
-                <div class="analytics-bar">
-                  <div
-                    class="analytics-bar-fill"
-                    :style="{ width: barWidth(d.count) + '%' }"
-                  />
-                </div>
-              </div>
-            </div>
-            <p class="text-xs text-muted mt-2">
-              Bar dibandingkan dengan periode paling tinggi dalam rentang yang sama.
-            </p>
-          </div>
-
-          <div v-else class="admin-feature-card mb-4">
-            <p class="text-muted">Belum ada fess terbit untuk base ini dalam periode yang dipilih.</p>
-          </div>
-
-          <InstagramAnalytics
-            section="content"
-            @open-connections="$emit('update:modelValue', 'medsos')"
-          />
-        </template>
-      </template>
-
       <!-- ========================================================
            4. PENGATURAN (Tampilan, Notif, Bantuan, Ketentuan, Privasi, Keamanan)
            ======================================================== -->
@@ -770,6 +778,8 @@ import { toast } from '../../composables/useToast';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import InstagramAnalytics from './InstagramAnalytics.vue';
+import FessTrendChart from './FessTrendChart.vue';
+import FessHourlyChart from './FessHourlyChart.vue';
 import BaseRevenuePanel from './BaseRevenuePanel.vue';
 import { useAuthStore } from '../../stores/authStore';
 import { useTheme } from '../../composables/useTheme';
@@ -799,7 +809,6 @@ const panelTitle = computed(() => {
     analitik_konten: 'Analitik Konten Fess',
     analitik_moderasi: 'Moderasi & Filter Kata',
     analitik_komunitas: 'Analitik Komunitas Base',
-    analitik_fess: 'Analitik Fess per Periode',
     pengaturan_tampilan: 'Tampilan Tema',
     pengaturan_notif: 'Pengaturan Notifikasi',
     pengaturan_bantuan: 'Pusat Bantuan Pengelola',
@@ -951,12 +960,161 @@ const analyticsFess = ref([]); // fess-analytics per periode
 const analyticsLoading = ref(false);
 const analyticsError = ref(null);
 
-const analyticsRangeLabel = computed(() => 'Hari');
+/* Grafik analitik konten: tren per tanggal + distribusi per jam. */
+const FESS_RANGE_OPTIONS = [7, 30, 90];
+const fessDays = ref(30);
+const fessHours = ref([]);
+const fessFrom = ref(null);
+const fessTo = ref(null);
+const fessLoading = ref(false);
 
-/** Lebar bar analitik relatif terhadap periode tertinggi. */
-function barWidth(count) {
-  const max = Math.max(1, ...analyticsFess.value.map((d) => Number(d.count || 0)));
-  return Math.round((Number(count || 0) / max) * 100);
+const MONTH_SHORT_ID = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
+/** Tanggal kalender Asia/Jakarta (YYYY-MM-DD) — selaras dengan agregasi backend. */
+const jakartaDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Jakarta',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function jakartaDateString(instant = new Date()) {
+  return jakartaDateFormatter.format(instant);
+}
+
+/** Daftar tanggal 'YYYY-MM-DD' dari `from` sampai `to` (inklusif). */
+function buildDateRange(from, to) {
+  if (!from || !to) return [];
+  const [fy, fm, fd] = String(from).split('-').map(Number);
+  const [ty, tm, td] = String(to).split('-').map(Number);
+  if ([fy, fm, fd, ty, tm, td].some((n) => !Number.isFinite(n))) return [];
+  const start = Date.UTC(fy, fm - 1, fd);
+  const end = Date.UTC(ty, tm - 1, td);
+  const dates = [];
+  for (let time = start; time <= end && dates.length <= 400; time += 86400000) {
+    const d = new Date(time);
+    dates.push({
+      key: `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(
+        d.getUTCDate(),
+      ).padStart(2, '0')}`,
+      day: d.getUTCDate(),
+      month: d.getUTCMonth(),
+      year: d.getUTCFullYear(),
+    });
+  }
+  return dates;
+}
+
+/** Titik grafik tren: satu titik per tanggal, hari tanpa fess = 0. */
+const fessTrendPoints = computed(() => {
+  const counts = new Map(
+    (analyticsFess.value || []).map((row) => [String(row.period), Number(row.count) || 0]),
+  );
+  const dates = buildDateRange(fessFrom.value, fessTo.value);
+  const points = dates.length
+    ? dates
+    : (analyticsFess.value || []).map((row) => ({ key: String(row.period) }));
+
+  return points.map((item) => {
+    const value = counts.get(item.key) || 0;
+    const label =
+      item.day !== undefined ? `${item.day} ${MONTH_SHORT_ID[item.month]}` : item.key;
+    const full =
+      item.day !== undefined ? `${label} ${item.year}` : item.key;
+    return { label, tooltip: `${full}: ${value} fess`, value };
+  });
+});
+
+const fessRangeLabel = computed(() => {
+  if (!fessFrom.value || !fessTo.value) return `${fessDays.value} hari terakhir`;
+  const [fy, fm, fd] = String(fessFrom.value).split('-').map(Number);
+  const [ty, tm, td] = String(fessTo.value).split('-').map(Number);
+  if (fessFrom.value === fessTo.value) return `${fd} ${MONTH_SHORT_ID[fm - 1]} ${ty}`;
+  return `${fd} ${MONTH_SHORT_ID[fm - 1]} – ${td} ${MONTH_SHORT_ID[tm - 1]} ${ty}`;
+});
+
+const fessTotalInRange = computed(() =>
+  fessTrendPoints.value.reduce((sum, point) => sum + (Number(point.value) || 0), 0),
+);
+
+const fessDailyAverage = computed(() => {
+  const days = fessTrendPoints.value.length;
+  if (!days) return '0';
+  const avg = fessTotalInRange.value / days;
+  return avg.toFixed(1).replace('.', ',');
+});
+
+const fessPeakDayLabel = computed(() => {
+  const top = fessTrendPoints.value.reduce(
+    (best, point) => (Number(point.value) > Number(best?.value ?? -1) ? point : best),
+    null,
+  );
+  if (!top || Number(top.value) <= 0) return '—';
+  return top.label;
+});
+
+const fessPeakHour = computed(() => {
+  const rows = fessHours.value || [];
+  return rows.reduce(
+    (best, row) => (Number(row.count) > Number(best?.count ?? -1) ? row : best),
+    null,
+  );
+});
+
+const fessPeakHourCount = computed(() => Number(fessPeakHour.value?.count) || 0);
+
+const fessPeakHourLabel = computed(() => {
+  if (!fessPeakHour.value || fessPeakHourCount.value <= 0) return 'belum ada data';
+  const hour = Number(fessPeakHour.value.hour);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(hour)}.00–${pad((hour + 1) % 24)}.00`;
+});
+
+async function loadFessAnalytics() {
+  fessLoading.value = true;
+  try {
+    const response = await api.getFessAnalytics({
+      range: 'day',
+      days: fessDays.value,
+      baseHandle: baseHandle.value || undefined,
+    });
+    const payload = response || {};
+    analyticsFess.value = Array.isArray(payload.data) ? payload.data : [];
+    fessHours.value = Array.isArray(payload.hours) ? payload.hours : [];
+    fessFrom.value =
+      payload.from ||
+      (fessDays.value
+        ? jakartaDateString(new Date(Date.now() - (fessDays.value - 1) * 86400000))
+        : null);
+    fessTo.value = payload.to || jakartaDateString();
+  } catch {
+    // Non-fatal: grafik tetap tampil kosong tanpa memblokir panel lain.
+    analyticsFess.value = [];
+    fessHours.value = [];
+    fessFrom.value = null;
+    fessTo.value = null;
+  } finally {
+    fessLoading.value = false;
+  }
+}
+
+function setFessDays(days) {
+  if (fessDays.value === days) return;
+  fessDays.value = days;
+  loadFessAnalytics();
 }
 
 async function loadAnalytics() {
@@ -1004,12 +1162,7 @@ async function loadAnalytics() {
         ? (pendingOutcome.value?.data || []).filter((f) => f.auto_flagged)
         : [];
     // Fess analytics per periode (GET /admin/stats/fess-analytics)
-    try {
-      const fa = await api.getFessAnalytics({ range: 'day', baseHandle: baseHandle.value || undefined });
-      analyticsFess.value = Array.isArray(fa?.data) ? fa.data : [];
-    } catch {
-      // Non-fatal — fess-analytics panel remains empty.
-    }
+    await loadFessAnalytics();
     if (popularOutcome?.status === 'rejected' || pendingOutcome?.status === 'rejected') {
       console.warn('[moderasi] Sebagian data analitik gagal dimuat (daftar populer/pending).');
     }
@@ -2094,49 +2247,96 @@ watch(
   padding: 12px 14px;
 }
 
-/* ===== Fess Analytics panel ===== */
-.fess-analytics-list {
+/* ===== Analitik Konten — grafik tren & distribusi jam ===== */
+.chart-head {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.analytics-row {
-  display: flex;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 12px;
-  padding: 8px 10px;
-  background: var(--shell-bg);
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.chart-range-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
   border: 1px solid var(--shell-border);
-  border-radius: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
-.analytics-period {
-  min-width: 90px;
-  font-size: 12px;
-  font-weight: 700;
+.chart-range-btn {
+  border: 0;
+  background: transparent;
   color: var(--shell-text-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-.analytics-count {
-  min-width: 48px;
-  text-align: right;
-  font-size: 13px;
+.chart-range-btn:hover {
   color: var(--shell-text);
 }
 
-.analytics-bar {
-  flex: 1;
-  height: 10px;
-  background: var(--shell-border);
-  border-radius: 5px;
-  overflow: hidden;
+.chart-range-btn.active {
+  background: var(--shell-accent, #baff00);
+  color: #000;
 }
 
-.analytics-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--shell-accent, #0055ff), #3b82f6);
-  border-radius: 5px;
-  transition: width 0.3s ease;
+.chart-range-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.chart-card {
+  padding: 14px 14px 12px;
+}
+
+.chart-loading {
+  padding: 42px 0;
+  text-align: center;
+}
+
+.chart-insights {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.chart-insight {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--shell-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.chart-insight-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--shell-text-muted);
+}
+
+.chart-insight-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--shell-text);
+}
+
+.chart-caption {
+  margin-top: 10px;
 }
 </style>

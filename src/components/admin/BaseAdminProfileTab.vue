@@ -352,7 +352,7 @@
                 <FileText :size="18" class="row-ico-blue" />
                 <div>
                   <div class="menu-row-label">Analitik Konten</div>
-                  <div class="menu-row-desc">Fess paling viral & kata kunci teratas</div>
+                  <div class="menu-row-desc">Grafik fess per tanggal &amp; per jam, plus fess populer</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -375,17 +375,6 @@
                 <div>
                   <div class="menu-row-label">Analitik Komunitas</div>
                   <div class="menu-row-desc">Statistik anggota &amp; aktivitas komunitas</div>
-                </div>
-              </div>
-              <ChevronRight :size="16" class="row-chevron" />
-            </button>
-
-            <button type="button" class="menu-row-btn" @click="openModal('analitik_fess')">
-              <div class="menu-row-left">
-                <BarChart3 :size="18" class="row-ico-blue" />
-                <div>
-                  <div class="menu-row-label">Analitik Fess per Periode</div>
-                  <div class="menu-row-desc">Agregasi fess terbit per hari/bulan/tahun</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
