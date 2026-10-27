@@ -212,6 +212,9 @@
             @reject="rejectFess"
             @take-down="takeDownFess"
             @view-reports="openReportCenter"
+            @manual-ig-post="openManualIgPostModal"
+            @retry-ig-post="retryAutoIgPost"
+            @save-card="saveFessCard"
           />
 
           <!-- Lazy load: sentinel + status footer -->
@@ -627,13 +630,13 @@
       @changed="loadMyFollowingCount"
     />
 
-    <!-- MODAL LAPORAN FESS & POST IG MANUAL -->
+    <!-- MODAL LAPORAN FESS (tanpa manual IG post) -->
     <div
       v-if="showReportCenter"
       class="modal-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-label="Laporan Fess & Post IG Manual"
+      aria-label="Laporan Fess"
       @click.self="showReportCenter = false"
     >
       <div class="modal-card">
@@ -693,48 +696,76 @@
               <p class="text-muted">Belum ada laporan untuk fess ini.</p>
             </div>
 
-            <div class="mt-5 mb-2" style="border-top: 1px solid var(--shell-border);" />
-
-            <div class="section-title-sm mb-2">Tandai Post Instagram Manual</div>
-            <p class="text-xs text-muted mb-3">
-              Simpan URL postingan Instagram hasil post manual untuk tracking. <br />
-              <span class="text-danger">URL bersifat final dan tidak dapat diubah lagi.</span>
-            </p>
-            <div class="form-group">
-              <label for="report-center-ig-url" class="form-label">URL Postingan Instagram</label>
-              <input
-                id="report-center-ig-url"
-                v-model="manualIgUrl"
-                type="text"
-                class="form-input"
-                placeholder="https://instagram.com/p/XXXX/"
-                @keyup.enter="submitManualIgPost"
-              />
-            </div>
-            <div class="form-group mt-3">
-              <label for="report-center-ig-note" class="form-label">Catatan (opsional)</label>
-              <input
-                id="report-center-ig-note"
-                v-model="manualIgNote"
-                type="text"
-                class="form-input"
-                placeholder="Catatan admin..."
-              />
-            </div>
             <div class="mt-3 flex gap-2">
-              <button
-                type="button"
-                class="btn-primary-pill"
-                :disabled="manualIgBusy || !manualIgUrl.trim()"
-                @click="submitManualIgPost"
-              >
-                {{ manualIgBusy ? 'Menyimpan…' : 'Tandai sebagai Post IG Manual' }}
-              </button>
               <button type="button" class="btn-outline-pill" @click="showReportCenter = false">
                 Tutup
               </button>
             </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL POST IG MANUAL (terpisah) -->
+    <div
+      v-if="showManualIgModal"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Post IG Manual"
+      @click.self="showManualIgModal = false"
+    >
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Post IG Manual — Fess #{{ manualIgFessId }}</h3>
+          <button type="button" class="btn-close-modal" @click="showManualIgModal = false">
+            <X :size="18" />
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div v-if="manualIgError" class="state-banner state-banner-error mb-3">
+            {{ manualIgError }}
+          </div>
+
+          <p class="text-xs text-muted mb-3">
+            Simpan URL postingan Instagram hasil post manual untuk tracking.<br />
+            <span class="text-danger">URL bersifat final dan tidak dapat diubah lagi.</span>
+          </p>
+          <div class="form-group">
+            <label for="manual-ig-url" class="form-label">URL Postingan Instagram</label>
+            <input
+              id="manual-ig-url"
+              v-model="manualIgUrl"
+              type="text"
+              class="form-input"
+              placeholder="https://instagram.com/p/XXXX/"
+              @keyup.enter="submitManualIgPost"
+            />
+          </div>
+          <div class="form-group mt-3">
+            <label for="manual-ig-note" class="form-label">Catatan (opsional)</label>
+            <input
+              id="manual-ig-note"
+              v-model="manualIgNote"
+              type="text"
+              class="form-input"
+              placeholder="Catatan admin..."
+            />
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button
+              type="button"
+              class="btn-primary-pill"
+              :disabled="manualIgBusy || !manualIgUrl.trim()"
+              @click="submitManualIgPost"
+            >
+              {{ manualIgBusy ? 'Menyimpan…' : 'Tandai sebagai Post IG Manual' }}
+            </button>
+            <button type="button" class="btn-outline-pill" @click="showManualIgModal = false">
+              Batal
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -816,6 +847,11 @@ const reportCenterError = ref(null);
 const manualIgUrl = ref('');
 const manualIgNote = ref('');
 const manualIgBusy = ref(false);
+
+/* ---------- Manual IG Post Modal (terpisah dari report center) ---------- */
+const showManualIgModal = ref(false);
+const manualIgFessId = ref(null);
+const manualIgError = ref(null);
 
 const managedHandle = computed(
   () => base.value?.handle || authStore.user?.managedBases?.[0] || null,
@@ -1235,7 +1271,7 @@ async function loadFessReports() {
   reportCenterError.value = null;
   try {
     const res = await api.getFessReports(id);
-    fessReports.value = res?.data?.reports || [];
+    fessReports.value = res?.reports || [];
   } catch (e) {
     reportCenterError.value = e?.message || 'Gagal memuat daftar laporan.';
   } finally {
@@ -1268,20 +1304,88 @@ async function resolveAllReports(reason) {
 }
 
 async function submitManualIgPost() {
-  const id = reportCenterFessId.value;
+  const id = manualIgFessId.value;
   const url = manualIgUrl.value.trim();
   if (!id || !url) return;
   manualIgBusy.value = true;
+  manualIgError.value = null;
   try {
     await api.manualIgPost(id, { ig_post_url: url, note: manualIgNote.value || null });
     toast.success('Fess ditandai sebagai post manual ke Instagram.');
     manualIgUrl.value = '';
     manualIgNote.value = '';
-    await loadFessReports();
+    showManualIgModal.value = false;
+    // Refresh fess list to update IG status
+    await loadFesses();
   } catch (e) {
-    toast.error(e?.message || 'Gagal menyimpan post IG manual.');
+    manualIgError.value = e?.message || 'Gagal menyimpan post IG manual.';
+    toast.error(manualIgError.value);
   } finally {
     manualIgBusy.value = false;
+  }
+}
+
+/* ---------- Manual IG Post Modal Handlers (terpisah dari report center) ---------- */
+function openManualIgPostModal(fessId) {
+  manualIgFessId.value = fessId;
+  manualIgUrl.value = '';
+  manualIgNote.value = '';
+  manualIgError.value = null;
+  showManualIgModal.value = true;
+}
+
+async function retryAutoIgPost(fessId) {
+  const confirmed = await confirmDialog({
+    title: 'Retry Auto-Post Instagram',
+    message: 'Mencoba post ulang ke Instagram via auto-post? Ini akan menjalankan ulang proses publish ke Instagram Graph API.',
+    confirmLabel: 'Retry',
+    variant: 'primary',
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await api.postFessToInstagram(String(fessId), { aspect: 'portrait' });
+    const data = res?.data || res;
+    if (data?.meta_published) {
+      toast.success('Posting Instagram berhasil diterbitkan.');
+    } else if (data?.ig_pending) {
+      toast.pending('Video sedang diproses Instagram. Postingan akan terbit otomatis.');
+    } else if (data?.ig_status === 'skipped' || data?.skipped) {
+      toast.info(
+        data?.message || 'Fess hanya terbit di FnC karena Instagram belum terhubung.',
+      );
+    } else {
+      toast.error(data?.ig_error || 'Posting ke Instagram belum berhasil.');
+    }
+    await Promise.all([loadFesses(), loadStats()]);
+  } catch (e) {
+    toast.error(e?.message || 'Gagal memulai retry auto-post.');
+  }
+}
+
+async function saveFessCard(fessId) {
+  try {
+    // Render card memakai endpoint export yang sama dengan panel moderasi.
+    const res = await api.exportCanvas({
+      fess_id: String(fessId),
+      aspect: 'portrait',
+    });
+    const imageUrl = res?.image_url || res?.data?.image_url;
+    if (!imageUrl) {
+      toast.error('Card fess tidak tersedia. Coba lagi.');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = imageUrl;
+    a.download = `fess-${fessId}-card.png`;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('Card fess berhasil disiapkan.');
+  } catch (e) {
+    toast.error(e?.message || 'Gagal menyimpan card fess.');
   }
 }
 

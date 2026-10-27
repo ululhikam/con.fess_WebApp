@@ -1006,7 +1006,7 @@ async function loadAnalytics() {
     // Fess analytics per periode (GET /admin/stats/fess-analytics)
     try {
       const fa = await api.getFessAnalytics({ range: 'day', baseHandle: baseHandle.value || undefined });
-      analyticsFess.value = fa?.data?.data || [];
+      analyticsFess.value = Array.isArray(fa?.data) ? fa.data : [];
     } catch {
       // Non-fatal — fess-analytics panel remains empty.
     }

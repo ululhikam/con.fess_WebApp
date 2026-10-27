@@ -140,8 +140,13 @@ const notif = useNotifications();
 /** Fess yang dilaporkan user saat sesi ini — hilang dari feed pelapor. */
 const reportedIds = ref(new Set());
 
-function handleReport(postId) {
-  reportedIds.value.add(String(postId));
+function handleReport(payload) {
+  const id =
+    typeof payload === 'object' && payload !== null
+      ? payload.postId ?? payload.id
+      : payload;
+  if (id === undefined || id === null) return;
+  reportedIds.value.add(String(id));
   toast.success('Fess disembunyikan dari feed kamu.', { duration: 2500 });
 }
 

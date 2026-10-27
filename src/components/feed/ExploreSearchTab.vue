@@ -229,10 +229,15 @@ const fessSentinel = ref(null);
 /** Menfess yang dilaporkan user dalam sesi pencarian ini — disembunyikan dari daftar. */
 const reportedMenfessIds = ref(new Set());
 
-function handleMenfessReport(postId) {
-  reportedMenfessIds.value.add(String(postId));
+function handleMenfessReport(payload) {
+  const id =
+    typeof payload === 'object' && payload !== null
+      ? payload.postId ?? payload.id
+      : payload;
+  if (id === undefined || id === null) return;
+  reportedMenfessIds.value.add(String(id));
   toast.success('Fess disembunyikan dari hasil pencarian.', { duration: 2500 });
-  emit('report', { postId: String(postId) });
+  emit('report', { postId: String(id) });
 }
 
 let debounceTimer = null;
