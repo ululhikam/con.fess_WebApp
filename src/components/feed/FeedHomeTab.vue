@@ -47,6 +47,7 @@
         :is-admin="isAdmin"
         @like="$emit('like', $event)"
         @takeDown="$emit('takeDown', $event)"
+        @report="$emit('report', $event)"
       />
 
       <!-- Lazy load: sentinel + status footer -->
@@ -94,7 +95,15 @@ const props = defineProps({
   loadMoreError: { type: [Error, Object, String], default: null },
 });
 
-const emit = defineEmits(['update:modelValue', 'like', 'findMore', 'retry', 'loadMore', 'takeDown']);
+const emit = defineEmits([
+  'update:modelValue',
+  'like',
+  'findMore',
+  'retry',
+  'loadMore',
+  'takeDown',
+  'report',
+]);
 
 /** Infinite scroll: load the next page when the footer sentinel appears. */
 const loadSentinel = ref(null);

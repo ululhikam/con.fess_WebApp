@@ -147,6 +147,7 @@
           :key="post.id"
           :post="post"
           :is-admin="false"
+          @report="handleMenfessReport"
         />
 
         <!-- Lazy load: sentinel + status footer -->
@@ -177,6 +178,7 @@ import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import FessCard from '../common/FessCard.vue';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
 import { mapBase } from '../../composables/useBases';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { mapFessToPost } from '../../utils/fessMapper';
@@ -204,7 +206,13 @@ const props = defineProps({
   isFollowing: { type: Function, default: () => () => false },
 });
 
-defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow']);
+defineEmits([
+  'update:query',
+  'update:category',
+  'update:mode',
+  'toggleFollow',
+  'report',
+]);
 
 /* ---------- Menfess search (GET /fesses, debounced + lazy load) ---------- */
 const MENFESS_DEBOUNCE_MS = 300;
@@ -217,6 +225,15 @@ const fessLoadMoreError = ref(null);
 const fessError = ref(null);
 const fessTotal = ref(0);
 const fessSentinel = ref(null);
+
+/** Menfess yang dilaporkan user dalam sesi pencarian ini — disembunyikan dari daftar. */
+const reportedMenfessIds = ref(new Set());
+
+function handleMenfessReport(postId) {
+  reportedMenfessIds.value.add(String(postId));
+  toast.success('Fess disembunyikan dari hasil pencarian.', { duration: 2500 });
+  emit('report', { postId: String(postId) });
+}
 
 let debounceTimer = null;
 let requestSeq = 0;
@@ -327,8 +344,11 @@ onBeforeUnmount(() => {
 
 /** Category pills narrow the result list client-side (server has no pill taxonomy). */
 const visibleMenfess = computed(() => {
+  const list = fessPosts.value.filter(
+    (p) => !reportedMenfessIds.value.has(String(p.id)),
+  );
   const cat = props.category;
-  if (!cat || cat === 'Semua') return fessPosts.value;
+  if (!cat || cat === 'Semua') return list;
   const needle = cat.toLowerCase();
   return fessPosts.value.filter(
     (m) =>

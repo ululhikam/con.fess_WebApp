@@ -38,11 +38,13 @@
             @findMore="onNavChange('search')"
             @retry="reloadHome"
             @loadMore="loadMoreHome"
+            @report="handleReport"
           />
 
           <ExploreSearchTab
             v-else-if="activeNav === 'search'"
             v-model:query="searchQuery"
+            @report="handleReport"
             v-model:category="selectedCategory"
             v-model:mode="searchTab"
             :bases="filteredBases"
@@ -135,6 +137,14 @@ const authStore = useAuthStore();
 const { mode: themeMode, setMode } = useTheme();
 const notif = useNotifications();
 
+/** Fess yang dilaporkan user saat sesi ini — hilang dari feed pelapor. */
+const reportedIds = ref(new Set());
+
+function handleReport(postId) {
+  reportedIds.value.add(String(postId));
+  toast.success('Fess disembunyikan dari feed kamu.', { duration: 2500 });
+}
+
 /* ---------- domain state ---------- */
 const {
   feedPosts,
@@ -194,7 +204,11 @@ function handleLike(payload) {
   Promise.resolve(toggleLike(id)).catch(() => {});
 }
 
-/* ---------- navigation ---------- */
+/* ---------- feed list (dilaporkan disaring dari feed pelapor) ---------- */
+const activeFeedPosts = computed(() => {
+  const list = homeTab.value === 'mengikuti' ? followingPosts.value : feedPosts.value;
+  return list.filter((p) => !reportedIds.value.has(String(p.id)));
+});
 const VALID_TABS = ['home', 'search', 'notif', 'profile'];
 const initialTab = VALID_TABS.includes(route.query.tab)
   ? route.query.tab
@@ -209,9 +223,6 @@ const searchTab = ref('base');
 const aktivitasTab = ref('semua');
 
 /* ---------- Home sub-tabs: "For You" / "Mengikuti" ---------- */
-const activeFeedPosts = computed(() =>
-  homeTab.value === 'mengikuti' ? followingPosts.value : feedPosts.value,
-);
 const activeFeedLoading = computed(() =>
   homeTab.value === 'mengikuti' ? followingLoading.value : loading.value,
 );

@@ -1,5 +1,5 @@
 <template>
-  <article ref="cardRootRef" class="fess-feed-card">
+  <article ref="cardRootRef" class="fess-feed-card" v-if="!isReported">
     <!-- Header: Author, Tag / Status, Report Button -->
     <header class="card-header-row">
       <div
@@ -1614,6 +1614,7 @@ async function submitComment() {
 
 /* 5. REPORT MODAL STATE */
 const showReportModal = ref(false);
+const isReported = ref(false);
 
 async function handleReportSubmitted(payload) {
   showReportModal.value = false;
@@ -1623,6 +1624,7 @@ async function handleReportSubmitted(payload) {
       reason: payload.reason,
       note: payload.note || null,
     });
+    isReported.value = true;
     triggerToast('Laporan berhasil dikirim ke moderator');
     emit('report', { postId: props.post.id, ...payload });
   } catch {

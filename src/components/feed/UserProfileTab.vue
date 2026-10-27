@@ -194,6 +194,11 @@
               :post="item"
               :show-own-status="true"
               @like="handleMyFessLike"
+              @report="(e) => {
+                myFesses.value = myFesses.value.filter(
+                  (f) => String(f.id) !== String(e.postId),
+                );
+              }"
             />
 
             <!-- Lazy load: sentinel + status footer -->
@@ -267,6 +272,11 @@
               :post="item"
               @like="handleSavedLike"
               @bookmark="handleSavedBookmark"
+              @report="(e) => {
+                savedFesses.value = savedFesses.value.filter(
+                  (f) => String(f.id) !== String(e.postId),
+                );
+              }"
             />
 
             <div ref="savedSentinel" class="feed-load-sentinel" aria-hidden="true"></div>

@@ -67,8 +67,14 @@ export const api = {
   approveFess: (id) => client.post(`/fesses/${id}/approve`),
   rejectFess: (id) => client.post(`/fesses/${id}/reject`),
   reportFess: (id, payload) => client.post(`/fesses/${id}/report`, payload),
+  getFessReports: (id) => client.get(`/fesses/${id}/reports`),
+  dismissFessReport: (id, payload) =>
+    client.post(`/fesses/${id}/reports/dismiss`, payload),
+  resolveFessReport: (id, payload) =>
+    client.post(`/fesses/${id}/reports/resolve`, payload),
   deleteFess: (id) => client.delete(`/fesses/${id}/delete`),
   postFessToInstagram: (id, payload) => client.post(`/fesses/${id}/instagram-post`, payload),
+  manualIgPost: (id, payload) => client.post(`/fesses/${id}/manual-ig-post`, payload),
   previewFessCanvas: (payload) => client.post('/fesses/canvas/preview', payload),
 
   /* COMMENTS */
@@ -123,6 +129,8 @@ export const api = {
 
   /* ADMIN — base dashboard */
   getStats: () => client.get('/admin/stats'),
+  getFessAnalytics: (params) =>
+    client.get('/admin/stats/fess-analytics', { params }),
   getModerationQueue: (params) => client.get('/admin/moderation', { params }),
   exportCanvas: (payload) => client.post('/admin/canvas/export', payload),
 

@@ -353,6 +353,11 @@
               :post="post"
               :is-admin="false"
               @like="handleLikePost"
+              @report="(e) => {
+                baseFesses.value = baseFesses.value.filter(
+                  (f) => String(f.id) !== String(e.postId),
+                );
+              }"
             />
           </div>
 

@@ -62,6 +62,7 @@
           :post="post"
           comments-open
           @like="handleLike"
+          @report="handleReportDetail"
         />
       </div>
     </main>
@@ -166,6 +167,14 @@ async function handleLike({ id, isLiked }) {
     item.likes = previous.likes;
     toast.error('Gagal menyimpan like. Coba lagi.');
   }
+}
+
+/* ---------- Report (detail view) ---------- */
+function handleReportDetail(e) {
+  const id = e && e.postId ? String(e.postId) : String(post.value?.id);
+  toast.success('Laporan berhasil dikirim ke moderator.', { duration: 2500 });
+  // Kartu sudah menyembunyikan dirinya; kembali ke feed agar halaman tidak kosong.
+  router.push('/');
 }
 
 /* ---------- Back & share ---------- */

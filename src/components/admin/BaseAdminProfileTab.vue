@@ -211,6 +211,7 @@
             @approve="approveFess"
             @reject="rejectFess"
             @take-down="takeDownFess"
+            @view-reports="openReportCenter"
           />
 
           <!-- Lazy load: sentinel + status footer -->
@@ -370,6 +371,17 @@
                 <div>
                   <div class="menu-row-label">Analitik Komunitas</div>
                   <div class="menu-row-desc">Statistik anggota &amp; aktivitas komunitas</div>
+                </div>
+              </div>
+              <ChevronRight :size="16" class="row-chevron" />
+            </button>
+
+            <button type="button" class="menu-row-btn" @click="openModal('analitik_fess')">
+              <div class="menu-row-left">
+                <BarChart3 :size="18" class="row-ico-blue" />
+                <div>
+                  <div class="menu-row-label">Analitik Fess per Periode</div>
+                  <div class="menu-row-desc">Agregasi fess terbit per hari/bulan/tahun</div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -614,6 +626,118 @@
       following-source="me"
       @changed="loadMyFollowingCount"
     />
+
+    <!-- MODAL LAPORAN FESS & POST IG MANUAL -->
+    <div
+      v-if="showReportCenter"
+      class="modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Laporan Fess & Post IG Manual"
+      @click.self="showReportCenter = false"
+    >
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Laporan Fess #{{ reportCenterFessId }}</h3>
+          <button type="button" class="btn-close-modal" @click="showReportCenter = false">
+            <X :size="18" />
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div
+            v-if="reportCenterLoading"
+            class="profile-loading-skeleton mb-3"
+            role="status"
+            aria-busy="true"
+          >
+            <span class="sk-block sk-block--line" />
+            <span class="sk-block sk-block--line is-short" />
+          </div>
+
+          <div v-else-if="reportCenterError" class="state-banner state-banner-error mb-3">
+            {{ reportCenterError }}
+            <button type="button" class="btn-banner-retry" @click="loadFessReports">Coba lagi</button>
+          </div>
+
+          <template v-else>
+            <div v-if="fessReports.length" class="mb-3">
+              <div class="section-title-sm mb-2">Daftar Laporan</div>
+              <div v-for="r in fessReports" :key="r.id" class="report-item">
+                <div class="report-meta">
+                  <span class="report-user">{{ r.user?.username || r.user?.handle || '—' }}</span>
+                  <span class="report-reason">{{ r.reason }}</span>
+                  <span class="report-badge" :class="`status-${r.status}`">{{ r.status }}</span>
+                </div>
+                <div v-if="r.note" class="report-note text-xs text-muted">{{ r.note }}</div>
+              </div>
+              <div v-if="fessReports.some((r) => r.status === 'pending')" class="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  class="btn-report-act btn-dismiss"
+                  @click="dismissAllReports('Melanggar ketentuan komunitas')"
+                >
+                  Tolak Semua yang Pending
+                </button>
+                <button
+                  type="button"
+                  class="btn-report-act btn-resolve"
+                  @click="resolveAllReports('Direview dan ditindaklanjuti')"
+                >
+                  Selesaikan Semua yang Pending
+                </button>
+              </div>
+            </div>
+
+            <div v-else class="empty-report-state mb-3 text-center">
+              <p class="text-muted">Belum ada laporan untuk fess ini.</p>
+            </div>
+
+            <div class="mt-5 mb-2" style="border-top: 1px solid var(--shell-border);" />
+
+            <div class="section-title-sm mb-2">Tandai Post Instagram Manual</div>
+            <p class="text-xs text-muted mb-3">
+              Simpan URL postingan Instagram hasil post manual untuk tracking. <br />
+              <span class="text-danger">URL bersifat final dan tidak dapat diubah lagi.</span>
+            </p>
+            <div class="form-group">
+              <label for="report-center-ig-url" class="form-label">URL Postingan Instagram</label>
+              <input
+                id="report-center-ig-url"
+                v-model="manualIgUrl"
+                type="text"
+                class="form-input"
+                placeholder="https://instagram.com/p/XXXX/"
+                @keyup.enter="submitManualIgPost"
+              />
+            </div>
+            <div class="form-group mt-3">
+              <label for="report-center-ig-note" class="form-label">Catatan (opsional)</label>
+              <input
+                id="report-center-ig-note"
+                v-model="manualIgNote"
+                type="text"
+                class="form-input"
+                placeholder="Catatan admin..."
+              />
+            </div>
+            <div class="mt-3 flex gap-2">
+              <button
+                type="button"
+                class="btn-primary-pill"
+                :disabled="manualIgBusy || !manualIgUrl.trim()"
+                @click="submitManualIgPost"
+              >
+                {{ manualIgBusy ? 'Menyimpan…' : 'Tandai sebagai Post IG Manual' }}
+              </button>
+              <button type="button" class="btn-outline-pill" @click="showReportCenter = false">
+                Tutup
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -682,6 +806,16 @@ const stats = ref(null);
 const fesses = ref([]);
 const actionError = ref('');
 const actionNotice = ref('');
+
+/* ---------- Laporan fess & post IG manual (center moderasi) ---------- */
+const showReportCenter = ref(false);
+const reportCenterFessId = ref(null);
+const fessReports = ref([]);
+const reportCenterLoading = ref(false);
+const reportCenterError = ref(null);
+const manualIgUrl = ref('');
+const manualIgNote = ref('');
+const manualIgBusy = ref(false);
 
 const managedHandle = computed(
   () => base.value?.handle || authStore.user?.managedBases?.[0] || null,
@@ -1080,6 +1214,74 @@ async function takeDownFess(id) {
   } catch (e) {
     actionError.value = e?.message || 'Gagal melakukan take down.';
     toast.error(actionError.value);
+  }
+}
+
+/* ---------- Laporan fess: daftar, dismiss, resolve (POST /fesses/:id/reports/*) ---------- */
+function openReportCenter(fessId) {
+  reportCenterFessId.value = fessId;
+  fessReports.value = [];
+  reportCenterError.value = null;
+  manualIgUrl.value = '';
+  manualIgNote.value = '';
+  showReportCenter.value = true;
+  loadFessReports();
+}
+
+async function loadFessReports() {
+  const id = reportCenterFessId.value;
+  if (!id) return;
+  reportCenterLoading.value = true;
+  reportCenterError.value = null;
+  try {
+    const res = await api.getFessReports(id);
+    fessReports.value = res?.data?.reports || [];
+  } catch (e) {
+    reportCenterError.value = e?.message || 'Gagal memuat daftar laporan.';
+  } finally {
+    reportCenterLoading.value = false;
+  }
+}
+
+async function dismissAllReports(reason) {
+  const id = reportCenterFessId.value;
+  if (!id) return;
+  try {
+    await api.dismissFessReport(id, { reason });
+    toast.success('Semua laporan pending ditandai ditolak.');
+    await loadFessReports();
+  } catch (e) {
+    toast.error(e?.message || 'Gagal menolak laporan.');
+  }
+}
+
+async function resolveAllReports(reason) {
+  const id = reportCenterFessId.value;
+  if (!id) return;
+  try {
+    await api.resolveFessReport(id, { reason });
+    toast.success('Semua laporan pending ditandai selesai.');
+    await loadFessReports();
+  } catch (e) {
+    toast.error(e?.message || 'Gagal menyelesaikan laporan.');
+  }
+}
+
+async function submitManualIgPost() {
+  const id = reportCenterFessId.value;
+  const url = manualIgUrl.value.trim();
+  if (!id || !url) return;
+  manualIgBusy.value = true;
+  try {
+    await api.manualIgPost(id, { ig_post_url: url, note: manualIgNote.value || null });
+    toast.success('Fess ditandai sebagai post manual ke Instagram.');
+    manualIgUrl.value = '';
+    manualIgNote.value = '';
+    await loadFessReports();
+  } catch (e) {
+    toast.error(e?.message || 'Gagal menyimpan post IG manual.');
+  } finally {
+    manualIgBusy.value = false;
   }
 }
 
@@ -2529,5 +2731,102 @@ async function handleAdminLogout() {
   color: #f87171;
   font-size: 12.5px;
   font-weight: 600;
+}
+
+/* ===== Report Center modal ===== */
+.report-item {
+  border: 1px solid var(--shell-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--shell-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-user {
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.report-reason {
+  font-size: 12px;
+  color: var(--shell-text-muted);
+}
+
+.report-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid;
+  margin-left: auto;
+}
+
+.report-badge.status-pending {
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.2);
+}
+.report-badge.status-dismissed {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+  border-color: rgba(107, 114, 128, 0.2);
+}
+.report-badge.status-resolved {
+  color: #15803d;
+  background: rgba(21, 128, 61, 0.1);
+  border-color: rgba(21, 128, 61, 0.2);
+}
+
+.report-note {
+  font-size: 11.5px;
+  white-space: pre-wrap;
+}
+
+.empty-report-state {
+  padding: 16px 0;
+}
+
+.btn-report-act {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-dismiss {
+  background: var(--shell-chip);
+  color: var(--shell-text);
+}
+.btn-resolve {
+  background: #15803d;
+  color: #fff;
+}
+
+.btn-outline-pill {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid var(--shell-border);
+  border-radius: 999px;
+  background: var(--shell-bg);
+  color: var(--shell-text);
+  cursor: pointer;
+}
+.btn-outline-pill:hover {
+  background: var(--shell-chip);
 }
 </style>

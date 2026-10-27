@@ -495,6 +495,60 @@
         </template>
       </template>
 
+      <!-- ANALITIK: FESS PER PERIODE -->
+      <template v-else-if="modelValue === 'analitik_fess'">
+        <ContentSkeleton
+          v-if="analyticsLoading && !analyticsFess.length"
+          type="list"
+          :count="4"
+          label="Memuat analitik fess…"
+        />
+
+        <AppStateView
+          v-else-if="analyticsError && !analyticsFess.length"
+          variant="error"
+          title="Gagal memuat analitik fess"
+          description="Tidak bisa mengambil agregasi fess per periode dari server."
+          action-label="Coba lagi"
+          @action="loadAnalytics"
+        />
+
+        <template v-else>
+          <div class="section-title-sm mb-3">Fess Terbit per Periode</div>
+          <p class="text-xs text-muted mb-3">
+            Jumlah fess dengan status <strong>published / approved</strong> per periode
+            (range: {{ analyticsRangeLabel }}).
+          </p>
+
+          <div v-if="analyticsFess.length" class="admin-feature-card mb-4">
+            <div class="fess-analytics-list">
+              <div v-for="(d, i) in analyticsFess" :key="`fess-analytics-${i}`" class="analytics-row">
+                <span class="analytics-period">{{ d.period }}</span>
+                <span class="analytics-count font-bold">{{ d.count }}</span>
+                <div class="analytics-bar">
+                  <div
+                    class="analytics-bar-fill"
+                    :style="{ width: barWidth(d.count) + '%' }"
+                  />
+                </div>
+              </div>
+            </div>
+            <p class="text-xs text-muted mt-2">
+              Bar dibandingkan dengan periode paling tinggi dalam rentang yang sama.
+            </p>
+          </div>
+
+          <div v-else class="admin-feature-card mb-4">
+            <p class="text-muted">Belum ada fess terbit untuk base ini dalam periode yang dipilih.</p>
+          </div>
+
+          <InstagramAnalytics
+            section="content"
+            @open-connections="$emit('update:modelValue', 'medsos')"
+          />
+        </template>
+      </template>
+
       <!-- ========================================================
            4. PENGATURAN (Tampilan, Notif, Bantuan, Ketentuan, Privasi, Keamanan)
            ======================================================== -->
@@ -745,6 +799,7 @@ const panelTitle = computed(() => {
     analitik_konten: 'Analitik Konten Fess',
     analitik_moderasi: 'Moderasi & Filter Kata',
     analitik_komunitas: 'Analitik Komunitas Base',
+    analitik_fess: 'Analitik Fess per Periode',
     pengaturan_tampilan: 'Tampilan Tema',
     pengaturan_notif: 'Pengaturan Notifikasi',
     pengaturan_bantuan: 'Pusat Bantuan Pengelola',
@@ -892,8 +947,17 @@ const analyticsStats = ref(null);
 const analyticsBase = ref(null);
 const analyticsPopular = ref([]);
 const analyticsFlagged = ref([]);
+const analyticsFess = ref([]); // fess-analytics per periode
 const analyticsLoading = ref(false);
 const analyticsError = ref(null);
+
+const analyticsRangeLabel = computed(() => 'Hari');
+
+/** Lebar bar analitik relatif terhadap periode tertinggi. */
+function barWidth(count) {
+  const max = Math.max(1, ...analyticsFess.value.map((d) => Number(d.count || 0)));
+  return Math.round((Number(count || 0) / max) * 100);
+}
 
 async function loadAnalytics() {
   analyticsLoading.value = true;
@@ -939,6 +1003,13 @@ async function loadAnalytics() {
       pendingOutcome?.status === 'fulfilled'
         ? (pendingOutcome.value?.data || []).filter((f) => f.auto_flagged)
         : [];
+    // Fess analytics per periode (GET /admin/stats/fess-analytics)
+    try {
+      const fa = await api.getFessAnalytics({ range: 'day', baseHandle: baseHandle.value || undefined });
+      analyticsFess.value = fa?.data?.data || [];
+    } catch {
+      // Non-fatal — fess-analytics panel remains empty.
+    }
     if (popularOutcome?.status === 'rejected' || pendingOutcome?.status === 'rejected') {
       console.warn('[moderasi] Sebagian data analitik gagal dimuat (daftar populer/pending).');
     }
@@ -2021,5 +2092,51 @@ watch(
   border: 1px solid var(--shell-border);
   border-radius: 12px;
   padding: 12px 14px;
+}
+
+/* ===== Fess Analytics panel ===== */
+.fess-analytics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analytics-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--shell-bg);
+  border: 1px solid var(--shell-border);
+  border-radius: 8px;
+}
+
+.analytics-period {
+  min-width: 90px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--shell-text-muted);
+}
+
+.analytics-count {
+  min-width: 48px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--shell-text);
+}
+
+.analytics-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--shell-border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.analytics-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--shell-accent, #0055ff), #3b82f6);
+  border-radius: 5px;
+  transition: width 0.3s ease;
 }
 </style>
