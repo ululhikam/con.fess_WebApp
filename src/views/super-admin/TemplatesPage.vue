@@ -517,7 +517,7 @@
             type="number"
             min="0"
             max="99999"
-            step="10"
+            step="1"
             placeholder="Otomatis"
           />
           <p class="pc-help">Angka kecil tampil lebih dulu di katalog.</p>
