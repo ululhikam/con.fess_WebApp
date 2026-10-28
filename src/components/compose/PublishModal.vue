@@ -47,11 +47,19 @@
                 v-if="previewImages.length || mediaCount > 0"
                 :media="form.media"
                 :template="form.template"
-                :card-images="previewImages"
+                :card-images="pageImages"
+                :cover-image="coverImage"
                 :carousel-order="form.carouselOrder || []"
                 reorderable
                 @reorder-slides="$emit('reorder-slides', $event)"
               />
+              <p v-if="coverImage" class="preview-cover-note">
+                <Lock :size="13" />
+                <span>
+                  Slide 1 adalah cover otomatis: judul dibuat sistem dan tidak bisa diedit. Slide
+                  ini selalu di urutan pertama.
+                </span>
+              </p>
               <p v-if="mediaCount > 0 && !previewError" class="preview-hint">
                 <GripVertical :size="13" />
                 <span>
@@ -170,6 +178,7 @@ import {
   GripVertical,
   Wallet,
   Coins,
+  Lock,
 } from 'lucide-vue-next';
 import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
@@ -244,12 +253,25 @@ const topicLabel = computed(() => {
 const previewImages = ref([]);
 const previewLoading = ref(false);
 const previewError = ref('');
+const hasThumbnail = ref(false);
 let previewReqId = 0;
+
+/** Media yang ikut diposting (subset payload agar ringan & cukup untuk renderer). */
+function previewMediaPayload() {
+  return (Array.isArray(props.form.media) ? props.form.media : [])
+    .filter((item) => item && item.url)
+    .map((item) => ({
+      id: item.id || undefined,
+      type: item.type === 'video' ? 'video' : 'image',
+      url: item.url,
+    }));
+}
 
 async function loadPreview() {
   const reqId = ++previewReqId;
   previewImages.value = [];
   previewError.value = '';
+  hasThumbnail.value = false;
   previewLoading.value = true;
   try {
     const res = await api.previewFessCanvas({
@@ -258,9 +280,13 @@ async function loadPreview() {
       template: props.form.template,
       topic: props.form.topic || null,
       quoted_fess: props.form.quotedFess || null,
+      media: previewMediaPayload(),
+      // Slide cover hanya dibuat bila base mengizinkan dan ada foto.
+      with_thumbnail: true,
     });
     if (reqId !== previewReqId) return;
     previewImages.value = Array.isArray(res?.images) ? res.images : [];
+    hasThumbnail.value = res?.has_thumbnail === true;
   } catch (err) {
     if (reqId !== previewReqId) return;
     previewError.value =
@@ -285,6 +311,7 @@ watch(
       previewReqId += 1;
       previewImages.value = [];
       previewError.value = '';
+      hasThumbnail.value = false;
       previewLoading.value = false;
     }
   },
@@ -293,15 +320,23 @@ watch(
 
 const mediaCount = computed(() => (Array.isArray(props.form.media) ? props.form.media.length : 0));
 
-/** Simpan halaman 1 kartu sebagai PNG — persis gambar yang dirender backend. */
+/** Slide cover (indeks 0) dipisah agar bisa diberi badge "Cover" & tidak di-drag. */
+const coverImage = computed(() =>
+  hasThumbnail.value && previewImages.value.length ? previewImages.value[0] : '',
+);
+const pageImages = computed(() =>
+  hasThumbnail.value ? previewImages.value.slice(1) : previewImages.value,
+);
+
+// Simpan slide 1 (cover bila ada) sebagai PNG — persis gambar yang dirender backend.
 function downloadFirstPage() {
   const src = previewImages.value[0];
   if (!src) return;
   const link = document.createElement('a');
   link.href = src;
-  link.download = `fess-${props.form.template}-halaman-1.png`;
+  link.download = `fess-${props.form.template}-slide-1.png`;
   link.click();
-  toast.success('Gambar halaman 1 berhasil diunduh.');
+  toast.success('Gambar slide 1 berhasil diunduh.');
 }
 
 function getBaseName(handle) {
@@ -513,6 +548,26 @@ function close() {
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--text-muted);
+}
+
+.preview-cover-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface-2);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.preview-cover-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--lime-text, var(--text-secondary));
 }
 
 .preview-hint svg {

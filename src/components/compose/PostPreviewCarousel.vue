@@ -17,9 +17,21 @@
         class="post-carousel__slide"
         :data-slide-token="slide.token"
       >
+        <!-- Cover otomatis (thumbnail): selalu indeks 0, tidak bisa di-drag -->
+        <div v-if="slide.kind === 'cover'" class="post-carousel__cover">
+          <img
+            class="post-carousel__card-image"
+            :src="slide.src"
+            alt="Cover otomatis postingan Instagram"
+            :style="{ aspectRatio: cardAspectRatio }"
+            draggable="false"
+          />
+          <span class="post-carousel__kind">Cover</span>
+        </div>
+
         <!-- Kartu hasil render backend (identik dengan PNG yang diposting) -->
         <img
-          v-if="slide.kind === 'card-image'"
+          v-else-if="slide.kind === 'card-image'"
           class="post-carousel__card-image"
           :src="slide.src"
           :alt="`Kartu fess halaman ${slide.pageIndex + 1}`"
@@ -122,6 +134,11 @@ const props = defineProps({
    * menampilkan error + tombol coba lagi.
    */
   cardImages: { type: Array, default: () => [] },
+  /**
+   * Slide cover otomatis (PNG data URI, indeks 0). Bila diisi, cover selalu
+   * tampil pertama, tidak bisa di-drag, dan tidak memakai token `carousel_order`.
+   */
+  coverImage: { type: String, default: '' },
 });
 
 const emit = defineEmits(['reorder-slides']);
@@ -150,7 +167,10 @@ const postableCount = computed(() => postableMedia.value.length);
 const skippedMediaCount = computed(() => mediaCount.value - postableCount.value);
 
 // Batas 10 slide Instagram: kartu dapat sisa slot (minimal 1), media ikut semua.
-const cardSlotLimit = computed(() => Math.max(1, 10 - postableCount.value));
+// Cover otomatis (bila ada) juga memakan satu slot di indeks 0.
+const cardSlotLimit = computed(() =>
+  Math.max(1, 10 - postableCount.value - (props.coverImage ? 1 : 0)),
+);
 
 /* ---- Urutan slide bebas (kartu + media) ---------------------------------- */
 
@@ -223,6 +243,9 @@ const resolvedOrder = computed(() => {
 
 const slides = computed(() => {
   const list = [];
+  if (props.coverImage) {
+    list.push({ kind: 'cover', src: props.coverImage, token: 'cover', slideIndex: 0 });
+  }
   for (const token of resolvedOrder.value) {
     const card = cardByToken.value.get(token);
     if (card) {
@@ -250,14 +273,18 @@ const reorderEnabled = computed(
 const legend = computed(() => {
   const cards = cardCount.value;
   const mediaTotal = postableCount.value;
-  if (!mediaTotal) {
-    if (!cards) return 'Kartu belum tersedia';
+  const cover = props.coverImage ? 1 : 0;
+  const parts = [];
+  if (cover) parts.push('cover otomatis');
+  if (cards) parts.push(`${cards} kartu`);
+  if (mediaTotal) parts.push(`${mediaTotal} media`);
+  if (!parts.length) return 'Kartu belum tersedia';
+  if (parts.length === 1 && !cover) {
     return cards > 1
       ? `${cards} kartu fess, diposting berurutan seperti ini`
       : 'Beginilah kartu yang diposting ke Instagram';
   }
-  if (!cards) return `${mediaTotal} media — urutan slide bebas seperti di Instagram`;
-  return `${cards} kartu + ${mediaTotal} media — urutan slide bebas seperti di Instagram`;
+  return `${parts.join(' + ')} — urutan media bebas seperti di Instagram`;
 });
 
 const note = computed(() => {
@@ -456,6 +483,10 @@ onBeforeUnmount(() => {
 }
 
 /* ---- slide kartu hasil render ---- */
+.post-carousel__cover {
+  position: relative;
+}
+
 .post-carousel__card-image {
   display: block;
   width: 100%;
