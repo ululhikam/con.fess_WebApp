@@ -241,16 +241,15 @@ import { useFeedPosts } from '../composables/useFeedPosts';
 import { useBases, mapBase } from '../composables/useBases';
 import { useTopics } from '../composables/useTopics';
 import { useFollowBase } from '../composables/useFollowBase';
+import { useTemplateStore } from '../stores/templateStore';
 import { api } from '../api';
 import { validateFessContent, generateClientId } from '../utils/format';
 import { mapFessToPost, mapQuotedFess } from '../utils/fessMapper';
 
-// Config
-import { TEMPLATES, pickRandomTemplateKey } from '../config/templates';
-
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const templateStore = useTemplateStore();
 const { publish } = useFeedPosts();
 const { syncFollowing } = useFollowBase();
 
@@ -263,7 +262,7 @@ const form = ref({
   topic: '',
   scheduledAt: null,
   song: null,
-  template: pickRandomTemplateKey(),
+  template: 'default',
   quotedFess: null,
 });
 
@@ -460,7 +459,7 @@ const getPlaceholder = computed(() => {
 });
 
 const getTemplateLabel = (key) => {
-  return TEMPLATES.find((t) => t.key === key)?.label || key;
+  return templateStore.label(key);
 };
 
 // Template: pilihan manual vs acak (default composer).
@@ -752,6 +751,13 @@ onMounted(async () => {
   // Load pickers from the API
   ensureTopicsLoaded().catch(() => {});
   await loadAvailableBases();
+
+  // Katalog template dari database. Composer memilih satu secara acak bila
+  // user belum pernah memilih template sendiri.
+  await templateStore.load().catch(() => {});
+  if (isRandomTemplate.value) {
+    form.value.template = templateStore.randomKey() || form.value.template;
+  }
 
   // Pre-fill base handle: query param > admin's managed base > first available.
   // Saat ada kutipan, base sudah terkunci ke base asal kutipan — jangan ditimpa.

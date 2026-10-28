@@ -1,5 +1,5 @@
 <template>
-  <div class="post-carousel" :class="{ 'is-exporting': exporting }">
+  <div class="post-carousel">
     <!-- Jalur slide: kartu fess (1..N halaman) dan media user dalam urutan
          bebas, persis seperti carousel yang diposting (maks 10 slide). -->
     <div
@@ -12,32 +12,14 @@
       @pointercancel="endViewportDrag"
     >
       <div
-        v-for="(slide, idx) in slides"
+        v-for="slide in slides"
         :key="slide.token"
         class="post-carousel__slide"
         :data-slide-token="slide.token"
       >
-        <PostPreview
-          v-if="slide.kind === 'card'"
-          :ref="(el) => registerCardRef(el, idx)"
-          :content="content"
-          :base-handle="baseHandle"
-          :topic="topic"
-          :song="song"
-          :template="template"
-          :author="author"
-          :quoted-fess="quotedFess"
-          :is-preview="isPreview"
-          :exporting="exporting"
-          :page-lines="slide.lines"
-          :page-font="pageFont"
-          :page-index="slide.pageIndex"
-          :page-total="pageTotal"
-        />
-
         <!-- Kartu hasil render backend (identik dengan PNG yang diposting) -->
         <img
-          v-else-if="slide.kind === 'card-image'"
+          v-if="slide.kind === 'card-image'"
           class="post-carousel__card-image"
           :src="slide.src"
           :alt="`Kartu fess halaman ${slide.pageIndex + 1}`"
@@ -115,7 +97,7 @@
  * PostPreviewCarousel — pratinjau postingan sebagai carousel.
  *
  * Struktur slide dibuat sama dengan yang dikirim ke Instagram:
- *   kartu fess halaman 1..N (paginasi cermin backend, lihat cardPagination.js)
+ *   kartu fess halaman 1..N (PNG hasil render backend, bukan replay DOM)
  *   dan media user dalam urutan bebas — maksimal total 10 slide.
  *
  * Media TIDAK digambar di dalam kartu karena di Instagram media menjadi slide
@@ -123,68 +105,31 @@
  * pun, termasuk menjadi slide pertama (emit `reorder-slides`). Halaman kartu
  * tetap berurutan agar isi cerita tidak tertukar.
  */
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue';
 import { GripVertical, Loader2, AlertCircle } from 'lucide-vue-next';
-import PostPreview from './PostPreview.vue';
-import { getTemplateByKey, getTemplateAspectRatio } from '../../config/templates';
-import { paginateCardContent, ensureMeasurementFonts } from '../../utils/cardPagination';
+import { useTemplateStore } from '../../stores/templateStore';
 
 const props = defineProps({
-  content: { type: String, default: '' },
   media: { type: Array, default: () => [] },
-  baseHandle: { type: String, default: '@anonfess' },
-  topic: { type: String, default: '' },
-  song: { type: Object, default: null },
   template: { type: String, default: 'default' },
-  author: { type: Object, default: null },
-  quotedFess: { type: Object, default: null },
-  isPreview: { type: Boolean, default: true },
-  /** True while html-to-image is rasterising — freezes animations/jitter. */
-  exporting: { type: Boolean, default: false },
   /** Aktifkan pengaturan urutan slide media via geser (khusus composer). */
   reorderable: { type: Boolean, default: false },
   /** Urutan slide tersimpan: ["media:<id>", "card:0", ...]. */
   carouselOrder: { type: Array, default: () => [] },
   /**
-   * Kartu hasil render backend (PNG data URI). Bila diisi, slide kartu memakai
-   * gambar ini — bukan replay DOM — supaya pratinjau identik dengan hasil
-   * render yang diposting.
+   * Kartu hasil render backend (PNG data URI) — satu-satunya sumber slide
+   * kartu. Frontend tidak punya cadangan DOM: bila render gagal, modal
+   * menampilkan error + tombol coba lagi.
    */
   cardImages: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['reorder-slides']);
 
-const templateDef = computed(() => getTemplateByKey(props.template));
-const aspectKey = computed(() => templateDef.value.aspect || 'portrait');
-const cardAspectRatio = computed(() => getTemplateAspectRatio(templateDef.value));
+const templateStore = useTemplateStore();
+const cardAspectRatio = computed(() => templateStore.aspectRatio(props.template));
 
-/* ---- Paginasi kartu (cermin mesin backend) -------------------------------- */
-
-const fontsReady = ref(false);
-
-onMounted(async () => {
-  await ensureMeasurementFonts();
-  fontsReady.value = true;
-});
-
-const pagination = computed(() => {
-  // `fontsReady` sengaja dibaca: begitu Poppins selesai dimuat, paginasi
-  // dihitung ulang dengan ukuran teks yang akurat (sama seperti backend).
-  void fontsReady.value;
-  return paginateCardContent({
-    content: String(props.content || ''),
-    aspectKey: aspectKey.value,
-    quote: props.quotedFess || null,
-  });
-});
-
-const pages = computed(() => pagination.value.pages);
-const pageTotal = computed(() => pagination.value.totalPages);
-const pageFont = computed(() => ({
-  size: pagination.value.fontSize,
-  lineHeight: pagination.value.lineHeight,
-}));
+/* ---- Slide kartu (hasil render backend) ---------------------------------- */
 
 const mediaList = computed(() => (Array.isArray(props.media) ? props.media : []));
 const mediaCount = computed(() => mediaList.value.length);
@@ -206,20 +151,14 @@ const skippedMediaCount = computed(() => mediaCount.value - postableCount.value)
 
 // Batas 10 slide Instagram: kartu dapat sisa slot (minimal 1), media ikut semua.
 const cardSlotLimit = computed(() => Math.max(1, 10 - postableCount.value));
-const cardSlides = computed(() => pages.value.slice(0, cardSlotLimit.value));
 
 /* ---- Urutan slide bebas (kartu + media) ---------------------------------- */
 
 const dragToken = ref('');
 const dragOrder = ref(null);
 
-/** Render backend siap dipakai → slide kartu memakai PNG hasil render. */
-const hasRenderedCards = computed(
-  () => Array.isArray(props.cardImages) && props.cardImages.length > 0,
-);
-
-const renderedCardSlides = computed(() =>
-  (hasRenderedCards.value ? props.cardImages : [])
+const cardSlideDefs = computed(() =>
+  (Array.isArray(props.cardImages) ? props.cardImages : [])
     .slice(0, cardSlotLimit.value)
     .map((src, index) => ({
       kind: 'card-image',
@@ -228,22 +167,13 @@ const renderedCardSlides = computed(() =>
     })),
 );
 
-const cardSlideDefs = computed(() =>
-  hasRenderedCards.value
-    ? renderedCardSlides.value
-    : cardSlides.value.map((lines, index) => ({
-        kind: 'card',
-        lines,
-        pageIndex: index,
-      })),
-);
-
 const cardCount = computed(() => cardSlideDefs.value.length);
 
 const hiddenPageCount = computed(() =>
-  hasRenderedCards.value
-    ? Math.max(0, props.cardImages.length - renderedCardSlides.value.length)
-    : Math.max(0, pages.value.length - cardSlides.value.length),
+  Math.max(
+    0,
+    (Array.isArray(props.cardImages) ? props.cardImages.length : 0) - cardSlideDefs.value.length,
+  ),
 );
 
 function mediaToken(item, index) {
@@ -314,22 +244,19 @@ const slides = computed(() => {
 });
 
 const reorderEnabled = computed(
-  () =>
-    props.reorderable &&
-    props.isPreview &&
-    !props.exporting &&
-    postableCount.value > 0 &&
-    slides.value.length > 1,
+  () => props.reorderable && postableCount.value > 0 && slides.value.length > 1,
 );
 
 const legend = computed(() => {
   const cards = cardCount.value;
   const mediaTotal = postableCount.value;
   if (!mediaTotal) {
+    if (!cards) return 'Kartu belum tersedia';
     return cards > 1
       ? `${cards} kartu fess, diposting berurutan seperti ini`
       : 'Beginilah kartu yang diposting ke Instagram';
   }
+  if (!cards) return `${mediaTotal} media — urutan slide bebas seperti di Instagram`;
   return `${cards} kartu + ${mediaTotal} media — urutan slide bebas seperti di Instagram`;
 });
 
@@ -483,22 +410,6 @@ function finishReorder() {
     dragOrder.value = null;
   }
 }
-
-/* ---- Referensi kartu halaman pertama (untuk ekspor PNG) ------------------- */
-
-const cardRefs = new Map();
-
-function registerCardRef(el, index) {
-  const node = (el && (el.cardEl || el.$el)) || null;
-  if (node) cardRefs.set(index, node);
-  else cardRefs.delete(index);
-}
-
-defineExpose({
-  get cardEl() {
-    return cardRefs.get(0) || null;
-  },
-});
 
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onReorderMove);
