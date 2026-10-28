@@ -21,9 +21,23 @@
         </header>
 
         <div class="modal-body">
-          <div class="template-grid">
+          <div v-if="templateStore.loading && !templateStore.items.length" class="template-state">
+            <Loader2 :size="18" class="spin" />
+            <span>Memuat template…</span>
+          </div>
+
+          <div
+            v-else-if="templateStore.error && !templateStore.items.length"
+            class="template-state is-error"
+          >
+            <AlertCircle :size="16" />
+            <span>{{ templateStore.error }}</span>
+            <button type="button" class="btn-secondary" @click="reload">Coba lagi</button>
+          </div>
+
+          <div v-else class="template-grid">
             <button
-              v-for="t in TEMPLATES"
+              v-for="t in templateStore.items"
               :key="t.key"
               type="button"
               class="template-card"
@@ -31,35 +45,39 @@
               :aria-pressed="template === t.key"
               @click="select(t.key)"
             >
-              <!-- Real background thumbnail -->
-              <span
-                class="template-thumb"
-                :class="`ink-${t.ink}`"
-                :style="{
-                  aspectRatio: getTemplateAspectRatio(t),
-                  background: getTemplateBackground(t),
-                }"
-              >
-                <span class="template-thumb__head">
-                  <span class="template-thumb__dot" />
-                  <span class="template-thumb__line is-short" />
-                </span>
-                <span class="template-thumb__body">
-                  <span class="template-thumb__line" />
-                  <span class="template-thumb__line" />
-                  <span class="template-thumb__line is-short" />
-                </span>
-                <span class="template-thumb__foot" />
-                <span class="template-thumb__type" :style="typeSampleStyle(t)">Aa</span>
+              <!-- Thumbnail resmi bila tersedia; jika belum, kartu warna palet. -->
+              <span class="template-thumb" :style="thumbStyle(t)">
+                <img
+                  v-if="t.thumbnail_url"
+                  class="template-thumb__img"
+                  :src="t.thumbnail_url"
+                  :alt="t.label"
+                  loading="lazy"
+                />
+                <template v-else>
+                  <span class="template-thumb__head">
+                    <span class="template-thumb__dot" />
+                    <span class="template-thumb__line is-short" />
+                  </span>
+                  <span class="template-thumb__body">
+                    <span class="template-thumb__line" />
+                    <span class="template-thumb__line" />
+                    <span class="template-thumb__line is-short" />
+                  </span>
+                  <span class="template-thumb__foot" />
+                </template>
               </span>
 
               <span class="template-card__info">
                 <span class="template-card__name">{{ t.label }}</span>
-                <span class="template-card__desc">{{ t.description }}</span>
+                <span v-if="t.description" class="template-card__desc">{{ t.description }}</span>
               </span>
 
               <div class="template-card__tags">
                 <span class="template-card__badge">{{ aspectLabel(t) }}</span>
+                <span v-if="t.category" class="template-card__badge">{{
+                  categoryLabel(t.category)
+                }}</span>
               </div>
 
               <span v-if="template === t.key" class="template-card__check">
@@ -79,40 +97,64 @@
 </template>
 
 <script setup>
-import { X, Check } from 'lucide-vue-next';
-import {
-  TEMPLATES,
-  ASPECTS,
-  FONT_STACKS,
-  getTemplateBackground,
-  getTemplateAspectRatio,
-  getTemplateTypography,
-} from '../../config/templates';
+import { watch } from 'vue';
+import { X, Check, Loader2, AlertCircle } from 'lucide-vue-next';
+import { useTemplateStore } from '../../stores/templateStore';
 
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   template: { type: String, default: 'default' },
 });
 
 const emit = defineEmits(['update:show', 'update:template']);
 
+const templateStore = useTemplateStore();
+
+watch(
+  () => props.show,
+  (show) => {
+    if (show) templateStore.load().catch(() => {});
+  },
+  { immediate: true },
+);
+
+function reload() {
+  templateStore.load(true).catch(() => {});
+}
+
 function select(key) {
   emit('update:template', key);
 }
 
-/** Contoh "Aa" memakai keluarga/weight/kapital template — biar format teks terlihat. */
-function typeSampleStyle(t) {
-  const typo = getTemplateTypography(t);
+/** Warna kartu contoh memakai palette dari database (bukan salinan di frontend). */
+function thumbStyle(t) {
+  const palette = t.palette || {};
   return {
-    fontFamily: FONT_STACKS[typo.family] || FONT_STACKS.sans,
-    fontWeight: String(typo.weight),
-    textTransform: typo.uppercase ? 'uppercase' : 'none',
-    letterSpacing: `${typo.letterSpacing}em`,
+    background: palette.bg || 'var(--bg-inset, rgba(255, 255, 255, 0.05))',
+    color: palette.ink || 'var(--text-main, #ffffff)',
+    '--tpl-accent': palette.accent || 'var(--brand-blue, #0055ff)',
   };
 }
 
+const ASPECT_LABELS = {
+  portrait: 'Feed Potret 4:5',
+  square: 'Feed Persegi 1:1',
+  story: 'Story 9:16',
+};
+
+const CATEGORY_LABELS = {
+  classic: 'Klasik',
+  campus: 'Kampus',
+  playful: 'Playful',
+  editorial: 'Editorial',
+};
+
 function aspectLabel(t) {
-  return (ASPECTS[t.aspect] || ASPECTS.portrait).label;
+  return ASPECT_LABELS[t.aspect] || 'Feed Potret 4:5';
+}
+
+function categoryLabel(category) {
+  return CATEGORY_LABELS[category] || category;
 }
 
 function confirm() {
@@ -235,17 +277,25 @@ function close() {
   border-color: var(--brand-blue, #0055ff);
 }
 
-/* ---- live thumbnail ---- */
+/* ---- thumbnail kartu ---- */
 .template-thumb {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 5px;
   width: 100%;
+  aspect-ratio: 4 / 5;
   padding: 9px;
   border-radius: 9px;
   overflow: hidden;
-  background-repeat: repeat;
+}
+
+.template-thumb__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .template-thumb__head,
@@ -267,8 +317,8 @@ function close() {
   height: 11px;
   border-radius: 3px;
   flex-shrink: 0;
-  background: currentColor;
-  opacity: 0.85;
+  background: var(--tpl-accent, currentColor);
+  opacity: 0.9;
 }
 
 .template-thumb__line {
@@ -291,26 +341,35 @@ function close() {
   height: 4px;
   width: 40%;
   border-radius: 2px;
-  background: currentColor;
-  opacity: 0.4;
+  background: var(--tpl-accent, currentColor);
+  opacity: 0.75;
 }
 
-/* Contoh tipografi template — huruf "Aa" memakai keluarga & weight aslinya. */
-.template-thumb__type {
-  position: absolute;
-  right: 9px;
-  bottom: 7px;
-  font-size: 24px;
-  line-height: 1;
-  opacity: 0.9;
-  pointer-events: none;
+/* ---- state memuat / gagal ---- */
+.template-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 36px 12px;
+  color: var(--text-muted, rgba(255, 255, 255, 0.65));
+  font-size: 13px;
+  text-align: center;
 }
 
-.ink-light .template-thumb {
-  color: #ffffff;
+.template-state.is-error {
+  flex-direction: column;
+  color: var(--danger-text, #ff8b8b);
 }
-.ink-dark .template-thumb {
-  color: #1c1917;
+
+.spin {
+  animation: template-spin 0.8s linear infinite;
+}
+
+@keyframes template-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---- info ---- */

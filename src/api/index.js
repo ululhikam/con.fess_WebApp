@@ -127,6 +127,10 @@ export const api = {
   getSongs: (params) => client.get('/songs', { params }),
   getTopics: () => client.get('/topics'),
 
+  /* TEMPLATES — katalog kartu dari tabel Template (satu sumber kebenaran) */
+  getTemplates: () => client.get('/templates'),
+  getTemplate: (key) => client.get(`/templates/${encodeURIComponent(key)}`),
+
   /* ADMIN — base dashboard */
   getStats: () => client.get('/admin/stats'),
   getFessAnalytics: (params) =>

@@ -38,26 +38,21 @@
               <span>Merender kartu persis seperti hasil posting…</span>
             </div>
             <template v-else>
-              <p v-if="previewError" class="preview-error">
+              <div v-if="previewError" class="preview-error">
                 <AlertCircle :size="14" />
                 <span>{{ previewError }}</span>
-              </p>
+                <button type="button" class="preview-retry" @click="loadPreview">Coba lagi</button>
+              </div>
               <PostPreviewCarousel
-                :content="form.content"
+                v-if="previewImages.length || mediaCount > 0"
                 :media="form.media"
-                :base-handle="form.baseHandle"
-                :topic="form.topic"
-                :song="form.song"
                 :template="form.template"
-                :author="author"
-                :quoted-fess="form.quotedFess"
-                :is-preview="true"
                 :card-images="previewImages"
                 :carousel-order="form.carouselOrder || []"
                 reorderable
                 @reorder-slides="$emit('reorder-slides', $event)"
               />
-              <p v-if="mediaCount > 0" class="preview-hint">
+              <p v-if="mediaCount > 0 && !previewError" class="preview-hint">
                 <GripVertical :size="13" />
                 <span>
                   Geser pegangan media ke posisi mana pun — media bisa jadi slide pertama, di antara
@@ -127,9 +122,7 @@
           <!-- Penegasan biaya: charge terjadi saat request fess dikirim. -->
           <div v-if="billingRequiresPayment && !insufficientCtf" class="billing-charge-note">
             <Coins :size="16" />
-            <span>
-              {{ billingCtfCost }} CTF akan dipotong dari saldo kamu saat fess dikirim.
-            </span>
+            <span> {{ billingCtfCost }} CTF akan dipotong dari saldo kamu saat fess dikirim. </span>
           </div>
 
           <!-- Saldo kurang: hentikan konfirmasi dan arahkan ke top-up. -->
@@ -168,10 +161,19 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { X, Calendar, Loader2, AlertCircle, Download, GripVertical, Wallet, Coins } from 'lucide-vue-next';
+import {
+  X,
+  Calendar,
+  Loader2,
+  AlertCircle,
+  Download,
+  GripVertical,
+  Wallet,
+  Coins,
+} from 'lucide-vue-next';
 import PostPreviewCarousel from './PostPreviewCarousel.vue';
 import { useTopics } from '../../composables/useTopics';
-import { TEMPLATES } from '../../config/templates';
+import { useTemplateStore } from '../../stores/templateStore';
 import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 
@@ -190,6 +192,7 @@ const props = defineProps({
 const emit = defineEmits(['update:show', 'confirm', 'cancel', 'top-up', 'reorder-slides']);
 
 const { getTopicById } = useTopics();
+const templateStore = useTemplateStore();
 
 const billingCtfCost = computed(() => {
   const cost = Number(props.billing?.ctf_cost ?? 1);
@@ -216,9 +219,7 @@ const billingRequiresPayment = computed(() => props.billing?.requires_payment ==
 
 const balanceAfter = computed(() => Number(props.ctfBalance ?? 0) - billingCtfCost.value);
 
-const balanceAfterLabel = computed(() =>
-  Math.max(0, balanceAfter.value).toLocaleString('id-ID')
-);
+const balanceAfterLabel = computed(() => Math.max(0, balanceAfter.value).toLocaleString('id-ID'));
 
 /** Tombol konfirmasi menyebut nominal yang dipotong agar tidak ambigu. */
 const confirmButtonLabel = computed(() => {
@@ -237,11 +238,6 @@ const topicLabel = computed(() => {
   if (!id) return '';
   return getTopicById(id)?.label || id;
 });
-
-const author = computed(() => ({
-  username: 'Kamu',
-  handle: '@kamu',
-}));
 
 /* ---- Pratinjau hasil render (identik dengan PNG yang diposting) ---------- */
 
@@ -268,7 +264,7 @@ async function loadPreview() {
   } catch (err) {
     if (reqId !== previewReqId) return;
     previewError.value =
-      'Gagal memuat pratinjau hasil render. Pratinjau ringan ditampilkan sebagai cadangan.';
+      'Gagal memuat pratinjau kartu dari server. Periksa koneksi lalu coba lagi.';
     toast.warning(previewError.value);
     console.warn('[PublishModal] render pratinjau gagal:', err?.message || err);
   } finally {
@@ -281,6 +277,9 @@ watch(
   () => props.show,
   (show) => {
     if (show) {
+      // Label template di ringkasan butuh katalog; kegagalan diabaikan karena
+      // pratinjau tetap punya jalur error sendiri.
+      templateStore.load().catch(() => {});
       loadPreview();
     } else {
       previewReqId += 1;
@@ -317,7 +316,7 @@ function getBaseName(handle) {
 }
 
 function getTemplateLabel(key) {
-  return TEMPLATES.find((t) => t.key === key)?.label || key;
+  return templateStore.label(key);
 }
 
 function formatScheduleDate(dateStr) {
@@ -473,17 +472,37 @@ function close() {
 
 .preview-error {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-2);
   font-size: 11.5px;
   line-height: 1.45;
-  color: var(--warning, #f59e0b);
+  color: var(--warning-text, #f5b74e);
 }
 
 .preview-error svg {
   flex-shrink: 0;
-  margin-top: 1px;
+}
+
+.preview-retry {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-inset);
+  color: var(--text-main);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.preview-retry:hover {
+  border-color: var(--border-strong);
 }
 
 .preview-hint {
