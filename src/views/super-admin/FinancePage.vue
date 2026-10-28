@@ -620,8 +620,9 @@
         <div class="pc-callout" style="margin-bottom: 16px">
           <ReceiptText :size="16" />
           <div>
-            Monitoring pembayaran bersifat read-only. Refund dan chargeback belum tersedia di v1.
-            Reconcile manual tetap memakai runbook terpisah.
+            Monitoring order pembayaran bersifat read-only. Paket top-up bisa diubah di kartu "Paket
+            top-up CTF" di atas. Refund dan chargeback belum tersedia di v1. Reconcile manual tetap
+            memakai runbook terpisah.
             <template v-if="systemSettings">
               <strong>
                 PAYMENTS_ENABLED={{
@@ -633,6 +634,125 @@
             </template>
           </div>
         </div>
+
+        <section class="pc-card">
+          <div class="pc-card__head">
+            <div>
+              <h2 class="pc-card__title">Paket top-up CTF</h2>
+              <p class="pc-card__desc">
+                Nominal dan jumlah CTF bisa diubah tanpa deploy. Order yang sudah dibuat memakai
+                snapshot harga saat dibeli, jadi perubahan hanya berlaku untuk pembelian baru.
+              </p>
+            </div>
+            <div class="pc-card__actions">
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="packagesLoading"
+                @click="loadPackages"
+              >
+                <RefreshCw :size="12" :class="{ 'pc-spin': packagesLoading }" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                class="pc-btn pc-btn--primary pc-btn--sm"
+                :disabled="packageSource === 'fallback'"
+                @click="openPackageDialog()"
+              >
+                <Plus :size="12" />
+                Tambah paket
+              </button>
+            </div>
+          </div>
+
+          <div v-if="packageSource === 'fallback'" class="pc-card__body">
+            <div class="pc-callout pc-callout--warning">
+              <AlertTriangle :size="16" />
+              <div>
+                Tabel <code>PaymentPackage</code> belum ada di database, jadi daftar ini masih
+                dibaca dari konstanta kode dan belum bisa diubah. Jalankan
+                <code>prisma migrate deploy</code> lebih dulu.
+              </div>
+            </div>
+          </div>
+
+          <div v-if="packagesError" class="pc-card__body">
+            <div class="pc-error">
+              <AlertTriangle :size="16" />
+              <div>
+                <strong>Paket top-up gagal dimuat.</strong>
+                <p>{{ packagesError }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="packagesLoading && !packages.length" class="pc-card__body pc-stack">
+            <div v-for="index in 3" :key="index" class="pc-skeleton pc-skeleton--line" />
+          </div>
+
+          <div v-else-if="!packages.length" class="pc-empty">
+            <span class="pc-empty__icon"><Wallet :size="18" /></span>
+            Belum ada paket top-up. Tambahkan minimal satu paket aktif agar pengguna bisa top-up.
+          </div>
+
+          <div v-else class="pc-table-wrap">
+            <table class="pc-table">
+              <thead>
+                <tr>
+                  <th>Paket</th>
+                  <th>Harga</th>
+                  <th>CTF</th>
+                  <th>Efektif / CTF</th>
+                  <th>Status</th>
+                  <th class="pc-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="pkg in packages" :key="pkg.code">
+                  <td>
+                    <span class="pc-table__primary">{{ pkg.name }}</span>
+                    <span class="pc-table__sub pc-mono">{{ pkg.code }}</span>
+                    <span v-if="pkg.description" class="pc-table__sub">
+                      {{ pkg.description }}
+                    </span>
+                  </td>
+                  <td class="pc-table__number">{{ formatIdr(pkg.amount_idr) }}</td>
+                  <td class="pc-table__number">{{ formatNumber(pkg.ctf_amount) }}</td>
+                  <td class="pc-table__number">{{ effectiveCtfPrice(pkg) }}</td>
+                  <td>
+                    <ConsoleStatusBadge
+                      :status="pkg.is_active ? 'active' : 'inactive'"
+                      :label="pkg.is_active ? 'Aktif' : 'Nonaktif'"
+                      :tone="pkg.is_active ? 'lime' : 'neutral'"
+                    />
+                  </td>
+                  <td>
+                    <div class="pc-table__actions">
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="packageSource === 'fallback'"
+                        @click="openPackageDialog(pkg)"
+                      >
+                        <Pencil :size="12" />
+                        Ubah
+                      </button>
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="packageSource === 'fallback'"
+                        @click="openPackageStatus(pkg)"
+                      >
+                        {{ pkg.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="pc-card">
           <div class="pc-card__head">
@@ -1135,6 +1255,183 @@
       </div>
     </ConsoleDialog>
 
+    <ConsoleDialog
+      v-model="packageDialog.open"
+      :title="packageDialog.mode === 'create' ? 'Tambah paket top-up' : 'Ubah paket top-up'"
+      :subtitle="
+        packageDialog.mode === 'create'
+          ? 'Paket baru langsung tampil di halaman top-up'
+          : `${packageDialog.code} · berlaku untuk pembelian berikutnya`
+      "
+      eyebrow="Paket top-up · re-auth"
+      :confirm-label="packageDialog.mode === 'create' ? 'Simpan paket' : 'Simpan perubahan'"
+      tone="primary"
+      :loading="packageDialog.loading"
+      :confirm-disabled="!packageCanSubmit"
+      :error="packageDialog.error"
+      @confirm="submitPackage"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field">
+          <label class="pc-label" for="package-code">Kode paket</label>
+          <input
+            id="package-code"
+            v-model="packageDialog.code"
+            class="pc-input pc-mono"
+            maxlength="32"
+            placeholder="mis. hemat_2"
+            :disabled="packageDialog.mode === 'edit'"
+          />
+          <p class="pc-help">
+            Huruf kecil, angka, garis bawah. Kode tidak bisa diubah setelah dibuat.
+          </p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-name">Nama paket</label>
+          <input
+            id="package-name"
+            v-model="packageDialog.name"
+            class="pc-input"
+            maxlength="40"
+            placeholder="mis. Hemat"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-amount">Harga (Rp)</label>
+          <input
+            id="package-amount"
+            v-model="packageDialog.amount"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="10000"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-ctf">CTF diterima</label>
+          <input
+            id="package-ctf"
+            v-model="packageDialog.ctf"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="55"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-sort">Urutan tampil</label>
+          <input
+            id="package-sort"
+            v-model="packageDialog.sortOrder"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="20"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-active">Status</label>
+          <select id="package-active" v-model="packageDialog.isActive" class="pc-select">
+            <option :value="true">Aktif</option>
+            <option :value="false">Nonaktif</option>
+          </select>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-desc">Deskripsi</label>
+          <input
+            id="package-desc"
+            v-model="packageDialog.description"
+            class="pc-input"
+            maxlength="160"
+            placeholder="Tampil di kartu paket halaman top-up"
+          />
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-reason">Alasan perubahan</label>
+          <textarea
+            id="package-reason"
+            v-model="packageDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: penyesuaian harga kuartal IV."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-password">Kata sandi Super Admin</label>
+          <input
+            id="package-password"
+            v-model="packageDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="packageRatioIsWorse ? 'pc-callout--warning' : 'pc-callout--lime'"
+      >
+        <Sparkles :size="15" />
+        <div>{{ packagePreview }}</div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
+      v-model="packageStatusDialog.open"
+      :title="packageStatusDialog.nextActive ? 'Aktifkan paket' : 'Nonaktifkan paket'"
+      :subtitle="
+        packageStatusDialog.pkg
+          ? `${packageStatusDialog.pkg.name} · ${packageStatusDialog.pkg.code}`
+          : ''
+      "
+      eyebrow="Status paket · re-auth"
+      :confirm-label="packageStatusDialog.nextActive ? 'Aktifkan paket' : 'Nonaktifkan paket'"
+      :tone="packageStatusDialog.nextActive ? 'primary' : 'danger'"
+      :loading="packageStatusDialog.loading"
+      :confirm-disabled="!packageStatusCanSubmit"
+      :error="packageStatusDialog.error"
+      @confirm="submitPackageStatus"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-status-reason">Alasan perubahan</label>
+          <textarea
+            id="package-status-reason"
+            v-model="packageStatusDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: paket digabung ke Bundling."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-status-password">Kata sandi Super Admin</label>
+          <input
+            id="package-status-password"
+            v-model="packageStatusDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="packageStatusDialog.nextActive ? 'pc-callout--lime' : 'pc-callout--warning'"
+      >
+        <Info :size="15" />
+        <div>
+          {{
+            packageStatusDialog.nextActive
+              ? 'Paket akan tampil lagi di halaman top-up dan bisa dibeli.'
+              : 'Paket disembunyikan dari halaman top-up dan tidak bisa dibeli lagi. Order lama tetap menyimpan nominal saat dibeli.'
+          }}
+        </div>
+      </div>
+    </ConsoleDialog>
+
     <ConsoleDrawer
       v-model="paymentDetailOpen"
       eyebrow="Payment monitoring · read-only"
@@ -1297,6 +1594,8 @@ import {
   KeyRound,
   Landmark,
   LockKeyhole,
+  Pencil,
+  Plus,
   ReceiptText,
   RefreshCw,
   Search,
@@ -1393,6 +1692,38 @@ const kycDialog = reactive({
   base: null,
   status: 'verified',
   note: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+const packages = ref([]);
+const packageSource = ref('database');
+const packagesLoading = ref(false);
+const packagesError = ref('');
+
+const packageDialog = reactive({
+  open: false,
+  mode: 'create',
+  code: '',
+  name: '',
+  amount: '',
+  ctf: '',
+  description: '',
+  sortOrder: '',
+  isActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+  original: null,
+});
+
+const packageStatusDialog = reactive({
+  open: false,
+  pkg: null,
+  nextActive: true,
+  reason: '',
   password: '',
   loading: false,
   error: '',
@@ -1536,6 +1867,55 @@ const priceCanSubmit = computed(
     priceDialog.reason.trim().length >= 5,
 );
 
+/* -------------------------------------------------------------------------
+ * Paket top-up CTF (bisa diubah tanpa deploy; order lama pakai snapshot)
+ * ---------------------------------------------------------------------- */
+const packageDraft = computed(() => {
+  const amount = Number(String(packageDialog.amount).replace(/[^\d]/g, ''));
+  const ctf = Number(String(packageDialog.ctf).replace(/[^\d]/g, ''));
+  const valid = amount >= 1000 && ctf >= 1;
+  return { amount, ctf, perCtf: valid ? amount / ctf : null };
+});
+
+const packageCanSubmit = computed(() => {
+  if (packageDialog.mode === 'create') {
+    const code = String(packageDialog.code).trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,32}$/.test(code)) return false;
+  }
+  if (packageDialog.name.trim().length < 2) return false;
+  const { amount, ctf, perCtf } = packageDraft.value;
+  if (!perCtf) return false;
+  if (amount > 10_000_000 || ctf > 1_000_000) return false;
+  if (packageDialog.reason.trim().length < 5) return false;
+  return Boolean(packageDialog.password.trim());
+});
+
+const packagePreview = computed(() => {
+  const { amount, ctf, perCtf } = packageDraft.value;
+  if (!perCtf) return 'Isi harga dan jumlah CTF untuk melihat harga efektif per CTF.';
+  const base = `Rp${formatNumber(amount)} → ${formatNumber(ctf)} CTF · efektif Rp${formatNumber(
+    Math.round(perCtf),
+  )} per CTF.`;
+  const original = packageDialog.original;
+  if (!original || !original.ctf_amount) return base;
+  const previous = original.amount_idr / original.ctf_amount;
+  return `${base} Sebelumnya Rp${formatNumber(Math.round(previous))} per CTF.`;
+});
+
+const packageRatioIsWorse = computed(() => {
+  const original = packageDialog.original;
+  const { perCtf } = packageDraft.value;
+  if (!original || !perCtf || !original.ctf_amount) return false;
+  return perCtf > original.amount_idr / original.ctf_amount;
+});
+
+const packageStatusCanSubmit = computed(
+  () =>
+    Boolean(packageStatusDialog.pkg) &&
+    Boolean(packageStatusDialog.password.trim()) &&
+    packageStatusDialog.reason.trim().length >= 5,
+);
+
 let payoutSearchTimer = null;
 let paymentSearchTimer = null;
 
@@ -1550,6 +1930,7 @@ function ensureTab(tab) {
   if (tab !== 'payments' || tabLoaded.payments) return;
   tabLoaded.payments = true;
   loadSystemSettings();
+  loadPackages();
   loadPaymentOrders();
   loadPaymentEvents();
 }
@@ -1620,7 +2001,7 @@ async function loadSystemSettings() {
 
 async function refreshPage() {
   if (activeTab.value === 'payments') {
-    await Promise.all([loadWorkspace(), loadPaymentOrders(), loadPaymentEvents()]);
+    await Promise.all([loadWorkspace(), loadPackages(), loadPaymentOrders(), loadPaymentEvents()]);
     return;
   }
   if (activeTab.value === 'payouts') {
@@ -1751,6 +2132,116 @@ async function submitFessPrice() {
     priceDialog.error = err?.message || 'Perubahan harga fess gagal disimpan.';
   } finally {
     priceDialog.loading = false;
+  }
+}
+
+function effectiveCtfPrice(pkg) {
+  const amount = Number(pkg?.amount_idr) || 0;
+  const ctf = Number(pkg?.ctf_amount) || 0;
+  if (!ctf) return '—';
+  return `Rp${formatNumber(Math.round(amount / ctf))}`;
+}
+
+async function loadPackages() {
+  packagesLoading.value = true;
+  packagesError.value = '';
+  try {
+    const result = await api.getAdminPaymentPackages();
+    packages.value = Array.isArray(result?.packages) ? result.packages : [];
+    packageSource.value = result?.source === 'fallback' ? 'fallback' : 'database';
+  } catch (err) {
+    packagesError.value = err?.message || 'Gagal memuat paket top-up.';
+  } finally {
+    packagesLoading.value = false;
+  }
+}
+
+function openPackageDialog(pkg = null) {
+  packageDialog.mode = pkg ? 'edit' : 'create';
+  packageDialog.code = pkg?.code || '';
+  packageDialog.name = pkg?.name || '';
+  packageDialog.amount = pkg ? String(pkg.amount_idr) : '';
+  packageDialog.ctf = pkg ? String(pkg.ctf_amount) : '';
+  packageDialog.description = pkg?.description || '';
+  packageDialog.sortOrder = pkg ? String(pkg.sort_order) : '';
+  packageDialog.isActive = pkg ? Boolean(pkg.is_active) : true;
+  packageDialog.reason = '';
+  packageDialog.password = '';
+  packageDialog.error = '';
+  packageDialog.loading = false;
+  packageDialog.original = pkg ? { ...pkg } : null;
+  packageDialog.open = true;
+}
+
+async function submitPackage() {
+  if (!packageCanSubmit.value) return;
+  packageDialog.loading = true;
+  packageDialog.error = '';
+  const { amount, ctf } = packageDraft.value;
+  const sortOrder = Number(String(packageDialog.sortOrder).replace(/[^\d]/g, ''));
+  const payload = {
+    name: packageDialog.name.trim(),
+    amount_idr: amount,
+    ctf_amount: ctf,
+    description: packageDialog.description.trim(),
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    is_active: packageDialog.isActive,
+    reason: packageDialog.reason.trim(),
+    password: packageDialog.password,
+  };
+
+  try {
+    if (packageDialog.mode === 'create') {
+      await api.createAdminPaymentPackage({
+        code: packageDialog.code.trim().toLowerCase(),
+        ...payload,
+      });
+      toast.success(`Paket ${payload.name} ditambahkan dan langsung tampil di top-up.`);
+    } else {
+      await api.updateAdminPaymentPackage(packageDialog.code, payload);
+      toast.success(`Paket ${payload.name} diperbarui.`);
+    }
+    packageDialog.open = false;
+    await loadPackages();
+  } catch (err) {
+    packageDialog.error = err?.message || 'Perubahan paket gagal disimpan.';
+  } finally {
+    packageDialog.loading = false;
+  }
+}
+
+function openPackageStatus(pkg) {
+  packageStatusDialog.pkg = pkg;
+  packageStatusDialog.nextActive = !pkg?.is_active;
+  packageStatusDialog.reason = '';
+  packageStatusDialog.password = '';
+  packageStatusDialog.error = '';
+  packageStatusDialog.loading = false;
+  packageStatusDialog.open = true;
+}
+
+async function submitPackageStatus() {
+  if (!packageStatusCanSubmit.value || !packageStatusDialog.pkg) return;
+  packageStatusDialog.loading = true;
+  packageStatusDialog.error = '';
+  const pkg = packageStatusDialog.pkg;
+  try {
+    await api.setAdminPaymentPackageStatus(pkg.code, {
+      is_active: packageStatusDialog.nextActive,
+      reason: packageStatusDialog.reason.trim(),
+      password: packageStatusDialog.password,
+    });
+    toast.success(
+      packageStatusDialog.nextActive
+        ? `Paket ${pkg.name} diaktifkan kembali.`
+        : `Paket ${pkg.name} dinonaktifkan.`,
+    );
+    packageStatusDialog.open = false;
+    await loadPackages();
+  } catch (err) {
+    packageStatusDialog.error = err?.message || 'Status paket gagal disimpan.';
+  } finally {
+    packageStatusDialog.loading = false;
   }
 }
 
