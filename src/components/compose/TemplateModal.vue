@@ -104,6 +104,8 @@ import { useTemplateStore } from '../../stores/templateStore';
 const props = defineProps({
   show: { type: Boolean, default: false },
   template: { type: String, default: 'default' },
+  /** Scope katalog: kosong = bersama, '@base' = milik base + bersama. */
+  baseHandle: { type: String, default: '' },
 });
 
 const emit = defineEmits(['update:show', 'update:template']);
@@ -111,15 +113,15 @@ const emit = defineEmits(['update:show', 'update:template']);
 const templateStore = useTemplateStore();
 
 watch(
-  () => props.show,
-  (show) => {
-    if (show) templateStore.load().catch(() => {});
+  [() => props.show, () => props.baseHandle],
+  ([show, baseHandle]) => {
+    if (show) templateStore.loadForBase(baseHandle).catch(() => {});
   },
   { immediate: true },
 );
 
 function reload() {
-  templateStore.load(true).catch(() => {});
+  templateStore.loadForBase(props.baseHandle, true).catch(() => {});
 }
 
 function select(key) {

@@ -68,10 +68,8 @@ export const api = {
   rejectFess: (id) => client.post(`/fesses/${id}/reject`),
   reportFess: (id, payload) => client.post(`/fesses/${id}/report`, payload),
   getFessReports: (id) => client.get(`/fesses/${id}/reports`),
-  dismissFessReport: (id, payload) =>
-    client.post(`/fesses/${id}/reports/dismiss`, payload),
-  resolveFessReport: (id, payload) =>
-    client.post(`/fesses/${id}/reports/resolve`, payload),
+  dismissFessReport: (id, payload) => client.post(`/fesses/${id}/reports/dismiss`, payload),
+  resolveFessReport: (id, payload) => client.post(`/fesses/${id}/reports/resolve`, payload),
   deleteFess: (id) => client.delete(`/fesses/${id}/delete`),
   postFessToInstagram: (id, payload) => client.post(`/fesses/${id}/instagram-post`, payload),
   manualIgPost: (id, payload) => client.post(`/fesses/${id}/manual-ig-post`, payload),
@@ -122,19 +120,35 @@ export const api = {
     client.post('/payments/orders', payload, {
       headers: { 'Idempotency-Key': idempotencyKey },
     }),
+  previewPaymentCoupon: (payload) => client.post('/payments/coupons/preview', payload),
 
   /* SONGS & TOPICS */
   getSongs: (params) => client.get('/songs', { params }),
   getTopics: () => client.get('/topics'),
 
   /* TEMPLATES — katalog kartu dari tabel Template (satu sumber kebenaran) */
-  getTemplates: () => client.get('/templates'),
-  getTemplate: (key) => client.get(`/templates/${encodeURIComponent(key)}`),
+  getTemplates: (baseHandle) =>
+    client.get('/templates', baseHandle ? { params: { base_handle: baseHandle } } : undefined),
+  getTemplate: (key, baseHandle) =>
+    client.get(
+      `/templates/${encodeURIComponent(key)}`,
+      baseHandle ? { params: { base_handle: baseHandle } } : undefined,
+    ),
+
+  /* ADMIN — template kartu (Super Admin) */
+  getAdminTemplates: () => client.get('/admin/templates'),
+  createAdminTemplate: (payload) => client.post('/admin/templates', payload),
+  updateAdminTemplate: (key, payload) =>
+    client.patch(`/admin/templates/${encodeURIComponent(key)}`, payload),
+  replaceAdminTemplateSvg: (key, payload) =>
+    client.put(`/admin/templates/${encodeURIComponent(key)}/svg`, payload),
+  regenerateAdminTemplateThumbnail: (key) =>
+    client.post(`/admin/templates/${encodeURIComponent(key)}/thumbnail`),
+  archiveAdminTemplate: (key) => client.delete(`/admin/templates/${encodeURIComponent(key)}`),
 
   /* ADMIN — base dashboard */
   getStats: () => client.get('/admin/stats'),
-  getFessAnalytics: (params) =>
-    client.get('/admin/stats/fess-analytics', { params }),
+  getFessAnalytics: (params) => client.get('/admin/stats/fess-analytics', { params }),
   getModerationQueue: (params) => client.get('/admin/moderation', { params }),
   exportCanvas: (payload) => client.post('/admin/canvas/export', payload),
 
@@ -166,16 +180,27 @@ export const api = {
   getAdminOpsSummary: () => client.get('/admin/ops/summary'),
   getAdminAuditLogs: (params) => client.get('/admin/audit-logs', { params }),
   getAdminUsers: (params) => client.get('/admin/users', { params }),
-  banAdminUser: (id, payload) =>
-    client.post(`/admin/users/${encodeURIComponent(id)}/ban`, payload),
+  banAdminUser: (id, payload) => client.post(`/admin/users/${encodeURIComponent(id)}/ban`, payload),
   unbanAdminUser: (id, payload) =>
     client.post(`/admin/users/${encodeURIComponent(id)}/unban`, payload),
-  getAdminBaseSupport: (handle) =>
-    client.get(`/admin/bases/${encodeURIComponent(handle)}/support`),
+  getAdminBaseSupport: (handle) => client.get(`/admin/bases/${encodeURIComponent(handle)}/support`),
   getAdminPaymentOrders: (params) => client.get('/admin/payments/orders', { params }),
-  getAdminPaymentOrder: (id) =>
-    client.get(`/admin/payments/orders/${encodeURIComponent(id)}`),
+  getAdminPaymentOrder: (id) => client.get(`/admin/payments/orders/${encodeURIComponent(id)}`),
   getAdminPaymentEvents: (params) => client.get('/admin/payments/events', { params }),
+  /* ADMIN — paket top-up CTF (Super Admin, re-auth untuk setiap perubahan) */
+  getAdminPaymentPackages: () => client.get('/admin/payments/packages'),
+  createAdminPaymentPackage: (payload) => client.post('/admin/payments/packages', payload),
+  updateAdminPaymentPackage: (code, payload) =>
+    client.patch(`/admin/payments/packages/${encodeURIComponent(code)}`, payload),
+  setAdminPaymentPackageStatus: (code, payload) =>
+    client.post(`/admin/payments/packages/${encodeURIComponent(code)}/status`, payload),
+  /* ADMIN — kupon promo top-up (Super Admin, re-auth untuk setiap perubahan) */
+  getAdminCoupons: () => client.get('/admin/payments/coupons'),
+  createAdminCoupon: (payload) => client.post('/admin/payments/coupons', payload),
+  updateAdminCoupon: (code, payload) =>
+    client.patch(`/admin/payments/coupons/${encodeURIComponent(code)}`, payload),
+  setAdminCouponStatus: (code, payload) =>
+    client.post(`/admin/payments/coupons/${encodeURIComponent(code)}/status`, payload),
   getAdminSystemSettings: () => client.get('/admin/system/settings'),
 };
 

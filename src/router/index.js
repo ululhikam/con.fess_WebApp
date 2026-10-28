@@ -144,6 +144,12 @@ const routes = [
         meta: { title: 'Ringkasan Platform' },
       },
       {
+        path: 'templates',
+        name: 'SuperAdminTemplates',
+        component: () => import('../views/super-admin/TemplatesPage.vue'),
+        meta: { title: 'Template Kartu' },
+      },
+      {
         path: 'keuangan',
         name: 'SuperAdminFinance',
         component: () => import('../views/super-admin/FinancePage.vue'),

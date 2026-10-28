@@ -3,7 +3,7 @@
     <ConsolePageHeader
       eyebrow="Finance & billing"
       title="Keuangan Platform"
-      subtitle="Review payout manual, verifikasi KYC, kelola freeForever, dan pantau pendapatan serta pembayaran base. Semua aksi berisiko meminta kata sandi ulang."
+      subtitle="Review payout manual, verifikasi KYC, atur harga fess per base (termasuk gratis untuk mitra), dan pantau pendapatan serta pembayaran base. Semua aksi berisiko meminta kata sandi ulang."
       :health="payoutHealthLabel"
       :health-tone="workspace ? (workspace.enabled ? 'success' : 'danger') : 'neutral'"
     >
@@ -63,9 +63,7 @@
           <p>{{ workspaceError }}</p>
         </div>
       </div>
-      <button type="button" class="pc-btn pc-btn--ghost" @click="loadWorkspace">
-        Coba lagi
-      </button>
+      <button type="button" class="pc-btn pc-btn--ghost" @click="loadWorkspace">Coba lagi</button>
     </div>
 
     <template v-else-if="workspace">
@@ -77,9 +75,9 @@
         <LockKeyhole :size="16" />
         <div>
           <strong>BASE_PAYOUTS_ENABLED=false.</strong>
-          Antrean payout tetap bisa dibaca, tetapi approve, reject, dan transfer tidak
-          dapat diproses sampai flag diaktifkan lewat deploy. KYC dan freeForever tetap
-          tersedia sebagai kontrol platform.
+          Antrean payout tetap bisa dibaca, tetapi approve, reject, dan transfer tidak dapat
+          diproses sampai flag diaktifkan lewat deploy. KYC dan pengaturan harga fess tetap tersedia
+          sebagai kontrol platform.
         </div>
       </div>
 
@@ -112,8 +110,8 @@
           <div>
             <h2 class="pc-card__title">Review payout manual</h2>
             <p class="pc-card__desc">
-              Setujui, tolak, atau tandai transfer. Setiap aksi membutuhkan kata sandi
-              ulang dan tercatat di audit.
+              Setujui, tolak, atau tandai transfer. Setiap aksi membutuhkan kata sandi ulang dan
+              tercatat di audit.
             </p>
           </div>
           <ConsoleStatusBadge
@@ -308,8 +306,8 @@
           <ShieldCheck :size="16" />
           <div>
             <strong>Kontrol KYC platform.</strong>
-            Verifikasi hanya untuk base dengan rekening lengkap dan saldo memenuhi minimum.
-            Alasan perubahan harus jelas karena masuk ke audit permanen.
+            Verifikasi hanya untuk base dengan rekening lengkap dan saldo memenuhi minimum. Alasan
+            perubahan harus jelas karena masuk ke audit permanen.
           </div>
         </div>
 
@@ -318,8 +316,7 @@
             <div>
               <h2 class="pc-card__title">Antrean KYC</h2>
               <p class="pc-card__desc">
-                {{ kycQueue.length }} base memiliki rekening lengkap tetapi belum
-                terverifikasi.
+                {{ kycQueue.length }} base memiliki rekening lengkap tetapi belum terverifikasi.
               </p>
             </div>
             <ConsoleStatusBadge
@@ -397,10 +394,10 @@
         <section class="pc-card">
           <div class="pc-card__head">
             <div>
-              <h2 class="pc-card__title">Billing base</h2>
+              <h2 class="pc-card__title">Harga fess & billing base</h2>
               <p class="pc-card__desc">
-                Status trial, freeForever, KYC, dan saldo seluruh base. Klik base untuk
-                membuka panel dukungan read-only.
+                Harga fess yang berlaku, status trial, KYC, dan saldo seluruh base. Base mitra FnC
+                bisa digratiskan tanpa memotong CTF pengirim.
               </p>
             </div>
             <div class="pc-field" style="width: 220px; max-width: 100%">
@@ -426,7 +423,7 @@
                 <tr>
                   <th>Base</th>
                   <th>KYC</th>
-                  <th>Plan</th>
+                  <th>Harga fess</th>
                   <th>Trial berakhir</th>
                   <th>Available</th>
                   <th class="pc-right">Aksi</th>
@@ -448,13 +445,13 @@
                   </td>
                   <td>
                     <ConsoleStatusBadge
-                      v-if="base.free_forever"
+                      v-if="base.fess_price_ctf === 0"
                       status="free"
-                      label="freeForever"
+                      label="Gratis"
                       tone="lime"
                     />
-                    <span v-else class="pc-small pc-muted">
-                      {{ base.trial_source === 'grace' ? 'Grace' : 'Trial' }}
+                    <span v-else class="pc-table__primary">
+                      {{ base.fess_price_ctf }} CTF / fess
                     </span>
                     <span v-if="base.free_forever_reason" class="pc-table__sub">
                       {{ base.free_forever_reason }}
@@ -480,10 +477,10 @@
                       <button
                         type="button"
                         class="pc-btn pc-btn--ghost pc-btn--sm"
-                        @click="openFreeForever(base)"
+                        @click="openFessPrice(base)"
                       >
                         <Sparkles :size="12" />
-                        freeForever
+                        Harga fess
                       </button>
                     </div>
                   </td>
@@ -554,7 +551,11 @@
                 <tbody>
                   <tr v-for="base in visibleBillingBases" :key="base.id">
                     <td>
-                      <button type="button" class="pc-entity-link" @click="openSupport(base.handle)">
+                      <button
+                        type="button"
+                        class="pc-entity-link"
+                        @click="openSupport(base.handle)"
+                      >
                         {{ base.handle }}
                       </button>
                       <span class="pc-table__sub">{{ base.name }}</span>
@@ -606,8 +607,8 @@
             <div class="pc-callout pc-callout--lime">
               <CircleDollarSign :size="16" />
               <div>
-                1 CTF = 1 fess menghasilkan pendapatan IDR untuk base. Saldo base tidak
-                dapat diubah langsung dari konsol ini.
+                1 CTF = 1 fess menghasilkan pendapatan IDR untuk base. Saldo base tidak dapat diubah
+                langsung dari konsol ini.
               </div>
             </div>
           </aside>
@@ -619,11 +620,14 @@
         <div class="pc-callout" style="margin-bottom: 16px">
           <ReceiptText :size="16" />
           <div>
-            Monitoring pembayaran bersifat read-only. Refund dan chargeback belum tersedia
-            di v1. Reconcile manual tetap memakai runbook terpisah.
+            Monitoring order pembayaran bersifat read-only. Paket top-up bisa diubah di kartu "Paket
+            top-up CTF" di atas. Refund dan chargeback belum tersedia di v1. Reconcile manual tetap
+            memakai runbook terpisah.
             <template v-if="systemSettings">
               <strong>
-                PAYMENTS_ENABLED={{ systemSettings.environment.payments_enabled ? 'true' : 'false' }}
+                PAYMENTS_ENABLED={{
+                  systemSettings.environment.payments_enabled ? 'true' : 'false'
+                }}
               </strong>
               · Midtrans
               {{ systemSettings.integrations.midtrans.mode }}.
@@ -634,10 +638,248 @@
         <section class="pc-card">
           <div class="pc-card__head">
             <div>
+              <h2 class="pc-card__title">Paket top-up CTF</h2>
+              <p class="pc-card__desc">
+                Nominal dan jumlah CTF bisa diubah tanpa deploy. Order yang sudah dibuat memakai
+                snapshot harga saat dibeli, jadi perubahan hanya berlaku untuk pembelian baru.
+              </p>
+            </div>
+            <div class="pc-card__actions">
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="packagesLoading"
+                @click="loadPackages"
+              >
+                <RefreshCw :size="12" :class="{ 'pc-spin': packagesLoading }" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                class="pc-btn pc-btn--primary pc-btn--sm"
+                :disabled="packageSource === 'fallback'"
+                @click="openPackageDialog()"
+              >
+                <Plus :size="12" />
+                Tambah paket
+              </button>
+            </div>
+          </div>
+
+          <div v-if="packageSource === 'fallback'" class="pc-card__body">
+            <div class="pc-callout pc-callout--warning">
+              <AlertTriangle :size="16" />
+              <div>
+                Tabel <code>PaymentPackage</code> belum ada di database, jadi daftar ini masih
+                dibaca dari konstanta kode dan belum bisa diubah. Jalankan
+                <code>prisma migrate deploy</code> lebih dulu.
+              </div>
+            </div>
+          </div>
+
+          <div v-if="packagesError" class="pc-card__body">
+            <div class="pc-error">
+              <AlertTriangle :size="16" />
+              <div>
+                <strong>Paket top-up gagal dimuat.</strong>
+                <p>{{ packagesError }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="packagesLoading && !packages.length" class="pc-card__body pc-stack">
+            <div v-for="index in 3" :key="index" class="pc-skeleton pc-skeleton--line" />
+          </div>
+
+          <div v-else-if="!packages.length" class="pc-empty">
+            <span class="pc-empty__icon"><Wallet :size="18" /></span>
+            Belum ada paket top-up. Tambahkan minimal satu paket aktif agar pengguna bisa top-up.
+          </div>
+
+          <div v-else class="pc-table-wrap">
+            <table class="pc-table">
+              <thead>
+                <tr>
+                  <th>Paket</th>
+                  <th>Harga</th>
+                  <th>CTF</th>
+                  <th>Efektif / CTF</th>
+                  <th>Status</th>
+                  <th class="pc-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="pkg in packages" :key="pkg.code">
+                  <td>
+                    <span class="pc-table__primary">{{ pkg.name }}</span>
+                    <span class="pc-table__sub pc-mono">{{ pkg.code }}</span>
+                    <span v-if="pkg.description" class="pc-table__sub">
+                      {{ pkg.description }}
+                    </span>
+                  </td>
+                  <td class="pc-table__number">{{ formatIdr(pkg.amount_idr) }}</td>
+                  <td class="pc-table__number">{{ formatNumber(pkg.ctf_amount) }}</td>
+                  <td class="pc-table__number">{{ effectiveCtfPrice(pkg) }}</td>
+                  <td>
+                    <ConsoleStatusBadge
+                      :status="pkg.is_active ? 'active' : 'inactive'"
+                      :label="pkg.is_active ? 'Aktif' : 'Nonaktif'"
+                      :tone="pkg.is_active ? 'lime' : 'neutral'"
+                    />
+                  </td>
+                  <td>
+                    <div class="pc-table__actions">
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="packageSource === 'fallback'"
+                        @click="openPackageDialog(pkg)"
+                      >
+                        <Pencil :size="12" />
+                        Ubah
+                      </button>
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="packageSource === 'fallback'"
+                        @click="openPackageStatus(pkg)"
+                      >
+                        {{ pkg.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="pc-card">
+          <div class="pc-card__head">
+            <div>
+              <h2 class="pc-card__title">Kupon promo</h2>
+              <p class="pc-card__desc">
+                Diskon mengurangi harga bayar, bukan jumlah CTF. Setiap kupon dibatasi satu kali per
+                akun dan kuota totalnya bisa diatur. Order yang sudah dibuat tidak terpengaruh.
+              </p>
+            </div>
+            <div class="pc-card__actions">
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="couponsLoading"
+                @click="loadCoupons"
+              >
+                <RefreshCw :size="12" :class="{ 'pc-spin': couponsLoading }" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                class="pc-btn pc-btn--primary pc-btn--sm"
+                :disabled="couponSource === 'fallback'"
+                @click="openCouponDialog()"
+              >
+                <Plus :size="12" />
+                Tambah kupon
+              </button>
+            </div>
+          </div>
+
+          <div v-if="couponSource === 'fallback'" class="pc-card__body">
+            <div class="pc-callout pc-callout--warning">
+              <AlertTriangle :size="16" />
+              <div>
+                Tabel <code>Coupon</code> belum ada di database, jadi kupon belum bisa dibuat.
+                Jalankan <code>prisma migrate deploy</code> lebih dulu.
+              </div>
+            </div>
+          </div>
+
+          <div v-if="couponsError" class="pc-card__body">
+            <div class="pc-error">
+              <AlertTriangle :size="16" />
+              <div>
+                <strong>Kupon gagal dimuat.</strong>
+                <p>{{ couponsError }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="couponsLoading && !coupons.length" class="pc-card__body pc-stack">
+            <div v-for="index in 2" :key="index" class="pc-skeleton pc-skeleton--line" />
+          </div>
+
+          <div v-else-if="!coupons.length" class="pc-empty">
+            <span class="pc-empty__icon"><Ticket :size="18" /></span>
+            Belum ada kupon. Tambahkan kode promo untuk memberi potongan harga top-up.
+          </div>
+
+          <div v-else class="pc-table-wrap">
+            <table class="pc-table">
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th>Diskon</th>
+                  <th>Terpakai</th>
+                  <th>Masa berlaku</th>
+                  <th>Status</th>
+                  <th class="pc-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="coupon in coupons" :key="coupon.code">
+                  <td>
+                    <span class="pc-table__primary pc-mono">{{ coupon.code }}</span>
+                    <span v-if="coupon.label" class="pc-table__sub">{{ coupon.label }}</span>
+                  </td>
+                  <td>{{ couponDiscountLabel(coupon) }}</td>
+                  <td class="pc-table__number">
+                    {{ coupon.redemption_count }}
+                    <span class="pc-table__sub">
+                      / {{ coupon.max_redemptions === null ? '∞' : coupon.max_redemptions }}
+                    </span>
+                  </td>
+                  <td>{{ couponValidityLabel(coupon) }}</td>
+                  <td>
+                    <ConsoleStatusBadge
+                      :status="coupon.is_active ? 'active' : 'inactive'"
+                      :label="coupon.is_active ? 'Aktif' : 'Nonaktif'"
+                      :tone="coupon.is_active ? 'lime' : 'neutral'"
+                    />
+                  </td>
+                  <td>
+                    <div class="pc-table__actions">
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="couponSource === 'fallback'"
+                        @click="openCouponDialog(coupon)"
+                      >
+                        <Pencil :size="12" />
+                        Ubah
+                      </button>
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="couponSource === 'fallback'"
+                        @click="openCouponStatus(coupon)"
+                      >
+                        {{ coupon.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="pc-card">
+          <div class="pc-card__head">
+            <div>
               <h2 class="pc-card__title">Order pembayaran</h2>
               <p class="pc-card__desc">
-                {{ paymentOrders.total }} order tercatat. Klik order untuk melihat event
-                webhook.
+                {{ paymentOrders.total }} order tercatat. Klik order untuk melihat event webhook.
               </p>
             </div>
             <button
@@ -690,7 +932,10 @@
             </div>
           </div>
 
-          <div v-else-if="paymentsLoading && !paymentOrders.data.length" class="pc-card__body pc-stack">
+          <div
+            v-else-if="paymentsLoading && !paymentOrders.data.length"
+            class="pc-card__body pc-stack"
+          >
             <div v-for="index in 4" :key="index" class="pc-skeleton pc-skeleton--line" />
           </div>
 
@@ -715,7 +960,11 @@
               <tbody>
                 <tr v-for="order in paymentOrders.data" :key="order.id">
                   <td>
-                    <button type="button" class="pc-entity-link pc-mono" @click="openPayment(order)">
+                    <button
+                      type="button"
+                      class="pc-entity-link pc-mono"
+                      @click="openPayment(order)"
+                    >
                       {{ order.order_id }}
                     </button>
                     <span class="pc-table__sub">
@@ -819,7 +1068,10 @@
             </div>
           </div>
 
-          <div v-else-if="eventsLoading && !paymentEvents.data.length" class="pc-card__body pc-stack">
+          <div
+            v-else-if="eventsLoading && !paymentEvents.data.length"
+            class="pc-card__body pc-stack"
+          >
             <div v-for="index in 3" :key="index" class="pc-skeleton pc-skeleton--line" />
           </div>
 
@@ -915,7 +1167,8 @@
         <div class="pc-summary__row">
           <span class="pc-summary__label">Rekening</span>
           <span class="pc-summary__value">
-            {{ payoutDialog.payout.bank_name }} · {{ payoutDialog.payout.bank_account_number_masked }}
+            {{ payoutDialog.payout.bank_name }} ·
+            {{ payoutDialog.payout.bank_account_number_masked }}
           </span>
         </div>
         <div class="pc-summary__row">
@@ -992,7 +1245,11 @@
     <ConsoleDialog
       v-model="kycDialog.open"
       title="Kelola KYC base"
-      :subtitle="kycDialog.base ? `${kycDialog.base.handle} · ${formatIdr(kycDialog.base.available_idr)} available` : ''"
+      :subtitle="
+        kycDialog.base
+          ? `${kycDialog.base.handle} · ${formatIdr(kycDialog.base.available_idr)} available`
+          : ''
+      "
       eyebrow="KYC payout · re-auth"
       confirm-label="Simpan status KYC"
       tone="primary"
@@ -1036,56 +1293,65 @@
       <div class="pc-callout" style="margin-top: 12px">
         <ShieldCheck :size="15" />
         <div>
-          Verifikasi KYC membuka kemampuan payout base. Pastikan nama rekening dan
-          kepemilikan base sudah sesuai.
+          Verifikasi KYC membuka kemampuan payout base. Pastikan nama rekening dan kepemilikan base
+          sudah sesuai.
         </div>
       </div>
     </ConsoleDialog>
 
     <ConsoleDialog
-      v-model="freeDialog.open"
-      :title="freeDialog.value ? 'Aktifkan freeForever' : 'Cabut freeForever'"
-      :subtitle="freeDialog.base ? `${freeDialog.base.handle} · ${freeDialog.base.name}` : ''"
-      eyebrow="Billing platform · re-auth"
-      :confirm-label="freeDialog.value ? 'Aktifkan freeForever' : 'Cabut freeForever'"
-      :tone="freeDialog.value ? 'primary' : 'danger'"
-      :loading="freeDialog.loading"
-      :confirm-disabled="!freeCanSubmit"
-      :error="freeDialog.error"
-      @confirm="submitFreeForever"
+      v-model="priceDialog.open"
+      title="Atur harga fess"
+      :subtitle="priceDialog.base ? `${priceDialog.base.handle} · ${priceDialog.base.name}` : ''"
+      eyebrow="Harga fess · re-auth"
+      confirm-label="Simpan harga fess"
+      tone="primary"
+      :loading="priceDialog.loading"
+      :confirm-disabled="!priceCanSubmit"
+      :error="priceDialog.error"
+      @confirm="submitFessPrice"
     >
       <div class="pc-summary">
         <div class="pc-summary__row">
-          <span class="pc-summary__label">Status saat ini</span>
-          <span class="pc-summary__value">
-            {{ freeDialog.base?.free_forever ? 'freeForever aktif' : 'Tidak aktif' }}
-          </span>
+          <span class="pc-summary__label">Harga saat ini</span>
+          <span class="pc-summary__value">{{ fessPriceLabel(priceDialog.base) }}</span>
         </div>
         <div class="pc-summary__row">
           <span class="pc-summary__label">Trial berakhir</span>
           <span class="pc-summary__value">
-            {{ formatDateTime(freeDialog.base?.trial_ends_at) }}
+            {{ formatDateTime(priceDialog.base?.trial_ends_at) }}
           </span>
         </div>
       </div>
 
       <div class="pc-dialog-grid">
         <div class="pc-field pc-field--full">
-          <label class="pc-label" for="free-reason">Alasan perubahan</label>
+          <label class="pc-label" for="fess-price">Harga fess</label>
+          <select id="fess-price" v-model="priceDialog.freeForever" class="pc-select">
+            <option :value="false">Normal — {{ platformFessPrice }} CTF per fess</option>
+            <option :value="true">Gratis permanen — 0 CTF (base mitra)</option>
+          </select>
+          <p class="pc-help">
+            Harga normal mengikuti konstanta platform CTF_PER_PAID_FESS ({{ platformFessPrice }}
+            CTF). Hanya status gratis yang bisa diubah per base.
+          </p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="price-reason">Alasan perubahan</label>
           <textarea
-            id="free-reason"
-            v-model="freeDialog.reason"
+            id="price-reason"
+            v-model="priceDialog.reason"
             class="pc-textarea"
             maxlength="500"
-            placeholder="Contoh: kompensasi migrasi, partner konten, atau koreksi billing."
+            placeholder="Contoh: base mitra FnC, kompensasi migrasi, atau koreksi billing."
           />
           <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
         </div>
         <div class="pc-field pc-field--full">
-          <label class="pc-label" for="free-password">Kata sandi Super Admin</label>
+          <label class="pc-label" for="price-password">Kata sandi Super Admin</label>
           <input
-            id="free-password"
-            v-model="freeDialog.password"
+            id="price-password"
+            v-model="priceDialog.password"
             class="pc-input"
             type="password"
             autocomplete="current-password"
@@ -1094,12 +1360,393 @@
         </div>
       </div>
 
-      <div class="pc-callout" :class="freeDialog.value ? 'pc-callout--lime' : 'pc-callout--warning'">
+      <div
+        class="pc-callout"
+        :class="priceDialog.freeForever ? 'pc-callout--lime' : 'pc-callout--warning'"
+      >
         <Sparkles :size="15" />
         <div>
-          {{ freeDialog.value
-            ? 'freeForever membebaskan base dari billing langganan. Pendapatan fess tetap mengikuti aturan platform.'
-            : 'Mencabut freeForever akan mengembalikan base ke siklus billing normal.' }}
+          {{
+            priceDialog.freeForever
+              ? 'Base mitra: pengirim tidak dipotong CTF. Base ini juga tidak menerima pendapatan fess dari platform.'
+              : `Base kembali berbayar: setiap fess memotong ${platformFessPrice} CTF dari saldo pengirim dan base menerima pendapatan platform.`
+          }}
+        </div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
+      v-model="packageDialog.open"
+      :title="packageDialog.mode === 'create' ? 'Tambah paket top-up' : 'Ubah paket top-up'"
+      :subtitle="
+        packageDialog.mode === 'create'
+          ? 'Paket baru langsung tampil di halaman top-up'
+          : `${packageDialog.code} · berlaku untuk pembelian berikutnya`
+      "
+      eyebrow="Paket top-up · re-auth"
+      :confirm-label="packageDialog.mode === 'create' ? 'Simpan paket' : 'Simpan perubahan'"
+      tone="primary"
+      :loading="packageDialog.loading"
+      :confirm-disabled="!packageCanSubmit"
+      :error="packageDialog.error"
+      @confirm="submitPackage"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field">
+          <label class="pc-label" for="package-code">Kode paket</label>
+          <input
+            id="package-code"
+            v-model="packageDialog.code"
+            class="pc-input pc-mono"
+            maxlength="32"
+            placeholder="mis. hemat_2"
+            :disabled="packageDialog.mode === 'edit'"
+          />
+          <p class="pc-help">
+            Huruf kecil, angka, garis bawah. Kode tidak bisa diubah setelah dibuat.
+          </p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-name">Nama paket</label>
+          <input
+            id="package-name"
+            v-model="packageDialog.name"
+            class="pc-input"
+            maxlength="40"
+            placeholder="mis. Hemat"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-amount">Harga (Rp)</label>
+          <input
+            id="package-amount"
+            v-model="packageDialog.amount"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="10000"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-ctf">CTF diterima</label>
+          <input
+            id="package-ctf"
+            v-model="packageDialog.ctf"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="55"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-sort">Urutan tampil</label>
+          <input
+            id="package-sort"
+            v-model="packageDialog.sortOrder"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="20"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="package-active">Status</label>
+          <select id="package-active" v-model="packageDialog.isActive" class="pc-select">
+            <option :value="true">Aktif</option>
+            <option :value="false">Nonaktif</option>
+          </select>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-desc">Deskripsi</label>
+          <input
+            id="package-desc"
+            v-model="packageDialog.description"
+            class="pc-input"
+            maxlength="160"
+            placeholder="Tampil di kartu paket halaman top-up"
+          />
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-reason">Alasan perubahan</label>
+          <textarea
+            id="package-reason"
+            v-model="packageDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: penyesuaian harga kuartal IV."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-password">Kata sandi Super Admin</label>
+          <input
+            id="package-password"
+            v-model="packageDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="packageRatioIsWorse ? 'pc-callout--warning' : 'pc-callout--lime'"
+      >
+        <Sparkles :size="15" />
+        <div>{{ packagePreview }}</div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
+      v-model="packageStatusDialog.open"
+      :title="packageStatusDialog.nextActive ? 'Aktifkan paket' : 'Nonaktifkan paket'"
+      :subtitle="
+        packageStatusDialog.pkg
+          ? `${packageStatusDialog.pkg.name} · ${packageStatusDialog.pkg.code}`
+          : ''
+      "
+      eyebrow="Status paket · re-auth"
+      :confirm-label="packageStatusDialog.nextActive ? 'Aktifkan paket' : 'Nonaktifkan paket'"
+      :tone="packageStatusDialog.nextActive ? 'primary' : 'danger'"
+      :loading="packageStatusDialog.loading"
+      :confirm-disabled="!packageStatusCanSubmit"
+      :error="packageStatusDialog.error"
+      @confirm="submitPackageStatus"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-status-reason">Alasan perubahan</label>
+          <textarea
+            id="package-status-reason"
+            v-model="packageStatusDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: paket digabung ke Bundling."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="package-status-password">Kata sandi Super Admin</label>
+          <input
+            id="package-status-password"
+            v-model="packageStatusDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="packageStatusDialog.nextActive ? 'pc-callout--lime' : 'pc-callout--warning'"
+      >
+        <Info :size="15" />
+        <div>
+          {{
+            packageStatusDialog.nextActive
+              ? 'Paket akan tampil lagi di halaman top-up dan bisa dibeli.'
+              : 'Paket disembunyikan dari halaman top-up dan tidak bisa dibeli lagi. Order lama tetap menyimpan nominal saat dibeli.'
+          }}
+        </div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
+      v-model="couponDialog.open"
+      :title="couponDialog.mode === 'create' ? 'Tambah kupon promo' : 'Ubah kupon promo'"
+      :subtitle="
+        couponDialog.mode === 'create'
+          ? 'Kupon langsung bisa dipakai setelah disimpan'
+          : `${couponDialog.code} · hanya berlaku untuk pembelian berikutnya`
+      "
+      eyebrow="Kupon promo · re-auth"
+      :confirm-label="couponDialog.mode === 'create' ? 'Simpan kupon' : 'Simpan perubahan'"
+      tone="primary"
+      :loading="couponDialog.loading"
+      :confirm-disabled="!couponCanSubmit"
+      :error="couponDialog.error"
+      @confirm="submitCoupon"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-code">Kode kupon</label>
+          <input
+            id="coupon-code"
+            v-model="couponDialog.code"
+            class="pc-input pc-mono"
+            maxlength="32"
+            placeholder="mis. HEMAT2026"
+            :disabled="couponDialog.mode === 'edit'"
+          />
+          <p class="pc-help">
+            Huruf, angka, garis bawah, atau strip. Kode tidak bisa diubah setelah dibuat.
+          </p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-label">Label</label>
+          <input
+            id="coupon-label"
+            v-model="couponDialog.label"
+            class="pc-input"
+            maxlength="60"
+            placeholder="mis. Promo akhir tahun"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-type">Tipe diskon</label>
+          <select id="coupon-type" v-model="couponDialog.discountType" class="pc-select">
+            <option value="FIXED">Nominal rupiah</option>
+            <option value="PERCENT">Persen</option>
+          </select>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-value">
+            {{ couponDialog.discountType === 'PERCENT' ? 'Diskon (%)' : 'Diskon (Rp)' }}
+          </label>
+          <input
+            id="coupon-value"
+            v-model="couponDialog.discountValue"
+            class="pc-input"
+            inputmode="numeric"
+            :placeholder="couponDialog.discountType === 'PERCENT' ? '20' : '2000'"
+          />
+        </div>
+        <div v-if="couponDialog.discountType === 'PERCENT'" class="pc-field">
+          <label class="pc-label" for="coupon-max">Maks potongan (Rp)</label>
+          <input
+            id="coupon-max"
+            v-model="couponDialog.maxDiscount"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="Kosongkan bila tanpa batas"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-min">Minimum pembelian (Rp)</label>
+          <input
+            id="coupon-min"
+            v-model="couponDialog.minAmount"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="0"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-quota">Kuota total</label>
+          <input
+            id="coupon-quota"
+            v-model="couponDialog.maxRedemptions"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="Kosongkan bila tanpa batas"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-active">Status</label>
+          <select id="coupon-active" v-model="couponDialog.isActive" class="pc-select">
+            <option :value="true">Aktif</option>
+            <option :value="false">Nonaktif</option>
+          </select>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-start">Mulai berlaku</label>
+          <input
+            id="coupon-start"
+            v-model="couponDialog.startsAt"
+            class="pc-input"
+            type="datetime-local"
+          />
+          <p class="pc-help">Kosongkan agar langsung berlaku.</p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-end">Berakhir</label>
+          <input
+            id="coupon-end"
+            v-model="couponDialog.endsAt"
+            class="pc-input"
+            type="datetime-local"
+          />
+          <p class="pc-help">Kosongkan agar tanpa batas waktu.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-reason">Alasan perubahan</label>
+          <textarea
+            id="coupon-reason"
+            v-model="couponDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: promo akhir tahun untuk pengguna baru."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-password">Kata sandi Super Admin</label>
+          <input
+            id="coupon-password"
+            v-model="couponDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div class="pc-callout" :class="couponPreviewTone">
+        <Sparkles :size="15" />
+        <div>{{ couponPreview }}</div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
+      v-model="couponStatusDialog.open"
+      :title="couponStatusDialog.nextActive ? 'Aktifkan kupon' : 'Nonaktifkan kupon'"
+      :subtitle="couponStatusDialog.coupon ? couponStatusDialog.coupon.code : ''"
+      eyebrow="Status kupon · re-auth"
+      :confirm-label="couponStatusDialog.nextActive ? 'Aktifkan kupon' : 'Nonaktifkan kupon'"
+      :tone="couponStatusDialog.nextActive ? 'primary' : 'danger'"
+      :loading="couponStatusDialog.loading"
+      :confirm-disabled="!couponStatusCanSubmit"
+      :error="couponStatusDialog.error"
+      @confirm="submitCouponStatus"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-status-reason">Alasan perubahan</label>
+          <textarea
+            id="coupon-status-reason"
+            v-model="couponStatusDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: promo sudah berakhir."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-status-password">Kata sandi Super Admin</label>
+          <input
+            id="coupon-status-password"
+            v-model="couponStatusDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="couponStatusDialog.nextActive ? 'pc-callout--lime' : 'pc-callout--warning'"
+      >
+        <Info :size="15" />
+        <div>
+          {{
+            couponStatusDialog.nextActive
+              ? 'Kupon bisa dipakai lagi oleh pengguna selama kuota dan masa berlakunya masih ada.'
+              : 'Kupon tidak bisa dipakai lagi. Order yang sudah memakai kupon ini tetap berlaku.'
+          }}
         </div>
       </div>
     </ConsoleDialog>
@@ -1108,7 +1755,11 @@
       v-model="paymentDetailOpen"
       eyebrow="Payment monitoring · read-only"
       :title="paymentDetail?.order_id || 'Detail pembayaran'"
-      :subtitle="paymentDetail ? `${paymentDetail.package_name} · ${paymentDetail.user?.handle || 'Pengguna'}` : 'Memuat detail order…'"
+      :subtitle="
+        paymentDetail
+          ? `${paymentDetail.package_name} · ${paymentDetail.user?.handle || 'Pengguna'}`
+          : 'Memuat detail order…'
+      "
     >
       <div v-if="paymentDetailLoading" class="pc-stack">
         <div class="pc-skeleton pc-skeleton--stat" />
@@ -1231,8 +1882,8 @@
         <div class="pc-callout">
           <Info :size="15" />
           <div>
-            Monitoring ini tidak mengubah status pembayaran. Refund/chargeback belum
-            termasuk dalam v1.
+            Monitoring ini tidak mengubah status pembayaran. Refund/chargeback belum termasuk dalam
+            v1.
           </div>
         </div>
       </div>
@@ -1262,11 +1913,14 @@ import {
   KeyRound,
   Landmark,
   LockKeyhole,
+  Pencil,
+  Plus,
   ReceiptText,
   RefreshCw,
   Search,
   ShieldCheck,
   Sparkles,
+  Ticket,
   Wallet,
   XCircle,
 } from 'lucide-vue-next';
@@ -1363,15 +2017,94 @@ const kycDialog = reactive({
   error: '',
 });
 
-const freeDialog = reactive({
+const packages = ref([]);
+const packageSource = ref('database');
+const packagesLoading = ref(false);
+const packagesError = ref('');
+
+const packageDialog = reactive({
   open: false,
-  base: null,
-  value: false,
+  mode: 'create',
+  code: '',
+  name: '',
+  amount: '',
+  ctf: '',
+  description: '',
+  sortOrder: '',
+  isActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+  original: null,
+});
+
+const packageStatusDialog = reactive({
+  open: false,
+  pkg: null,
+  nextActive: true,
   reason: '',
   password: '',
   loading: false,
   error: '',
 });
+
+const coupons = ref([]);
+const couponSource = ref('database');
+const couponsLoading = ref(false);
+const couponsError = ref('');
+
+const couponDialog = reactive({
+  open: false,
+  mode: 'create',
+  code: '',
+  label: '',
+  discountType: 'FIXED',
+  discountValue: '',
+  maxDiscount: '',
+  minAmount: '',
+  maxRedemptions: '',
+  startsAt: '',
+  endsAt: '',
+  isActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+const couponStatusDialog = reactive({
+  open: false,
+  coupon: null,
+  nextActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+const priceDialog = reactive({
+  open: false,
+  base: null,
+  freeForever: false,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+/** Harga fess normal dari backend (CTF_PER_PAID_FESS), bukan hardcode di UI. */
+const platformFessPrice = computed(() => {
+  const price = Number(workspace.value?.fess_price_ctf ?? 1);
+  return Number.isFinite(price) && price > 0 ? price : 1;
+});
+
+function fessPriceLabel(base) {
+  if (!base) return '-';
+  return Number(base.fess_price_ctf) === 0
+    ? 'Gratis permanen (0 CTF)'
+    : `${base.fess_price_ctf} CTF per fess`;
+}
 
 const totals = computed(
   () =>
@@ -1380,7 +2113,7 @@ const totals = computed(
       available_idr: 0,
       reserved_idr: 0,
       lifetime_idr: 0,
-    }
+    },
 );
 
 const payoutHealthLabel = computed(() => {
@@ -1397,9 +2130,9 @@ const kycQueue = computed(() =>
         base.bank_name &&
         base.bank_account_name &&
         base.bank_account_number_masked &&
-        base.payout_kyc_status !== 'verified'
+        base.payout_kyc_status !== 'verified',
     )
-    .sort((a, b) => (b.available_idr || 0) - (a.available_idr || 0))
+    .sort((a, b) => (b.available_idr || 0) - (a.available_idr || 0)),
 );
 
 const filteredBillingBases = computed(() => {
@@ -1407,27 +2140,26 @@ const filteredBillingBases = computed(() => {
   if (!query) return bases.value;
   return bases.value.filter(
     (base) =>
-      String(base.handle || '').toLowerCase().includes(query) ||
-      String(base.name || '').toLowerCase().includes(query)
+      String(base.handle || '')
+        .toLowerCase()
+        .includes(query) ||
+      String(base.name || '')
+        .toLowerCase()
+        .includes(query),
   );
 });
 
-const visibleBillingBases = computed(() =>
-  filteredBillingBases.value.slice(0, billingLimit.value)
-);
+const visibleBillingBases = computed(() => filteredBillingBases.value.slice(0, billingLimit.value));
 
 const refreshing = computed(
   () =>
-    workspaceLoading.value ||
-    payoutsLoading.value ||
-    paymentsLoading.value ||
-    eventsLoading.value
+    workspaceLoading.value || payoutsLoading.value || paymentsLoading.value || eventsLoading.value,
 );
 
 const payoutDialogNeedsFee = computed(() => payoutDialog.action === 'approve');
 const payoutDialogNeedsReference = computed(() => payoutDialog.action === 'mark_paid');
 const payoutDialogNeedsReason = computed(() =>
-  ['reject', 'mark_failed'].includes(payoutDialog.action)
+  ['reject', 'mark_failed'].includes(payoutDialog.action),
 );
 
 const payoutDialogTitle = computed(() => payoutActionLabel(payoutDialog.action));
@@ -1482,11 +2214,148 @@ const payoutImpactNote = computed(() => {
 });
 
 const kycCanSubmit = computed(() => Boolean(kycDialog.base && kycDialog.password.trim()));
-const freeCanSubmit = computed(
+const priceCanSubmit = computed(
   () =>
-    Boolean(freeDialog.base) &&
-    Boolean(freeDialog.password.trim()) &&
-    freeDialog.reason.trim().length >= 5
+    Boolean(priceDialog.base) &&
+    Boolean(priceDialog.password.trim()) &&
+    priceDialog.reason.trim().length >= 5,
+);
+
+/* -------------------------------------------------------------------------
+ * Paket top-up CTF (bisa diubah tanpa deploy; order lama pakai snapshot)
+ * ---------------------------------------------------------------------- */
+const packageDraft = computed(() => {
+  const amount = Number(String(packageDialog.amount).replace(/[^\d]/g, ''));
+  const ctf = Number(String(packageDialog.ctf).replace(/[^\d]/g, ''));
+  const valid = amount >= 1000 && ctf >= 1;
+  return { amount, ctf, perCtf: valid ? amount / ctf : null };
+});
+
+const packageCanSubmit = computed(() => {
+  if (packageDialog.mode === 'create') {
+    const code = String(packageDialog.code).trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,32}$/.test(code)) return false;
+  }
+  if (packageDialog.name.trim().length < 2) return false;
+  const { amount, ctf, perCtf } = packageDraft.value;
+  if (!perCtf) return false;
+  if (amount > 10_000_000 || ctf > 1_000_000) return false;
+  if (packageDialog.reason.trim().length < 5) return false;
+  return Boolean(packageDialog.password.trim());
+});
+
+const packagePreview = computed(() => {
+  const { amount, ctf, perCtf } = packageDraft.value;
+  if (!perCtf) return 'Isi harga dan jumlah CTF untuk melihat harga efektif per CTF.';
+  const base = `Rp${formatNumber(amount)} → ${formatNumber(ctf)} CTF · efektif Rp${formatNumber(
+    Math.round(perCtf),
+  )} per CTF.`;
+  const original = packageDialog.original;
+  if (!original || !original.ctf_amount) return base;
+  const previous = original.amount_idr / original.ctf_amount;
+  return `${base} Sebelumnya Rp${formatNumber(Math.round(previous))} per CTF.`;
+});
+
+const packageRatioIsWorse = computed(() => {
+  const original = packageDialog.original;
+  const { perCtf } = packageDraft.value;
+  if (!original || !perCtf || !original.ctf_amount) return false;
+  return perCtf > original.amount_idr / original.ctf_amount;
+});
+
+const packageStatusCanSubmit = computed(
+  () =>
+    Boolean(packageStatusDialog.pkg) &&
+    Boolean(packageStatusDialog.password.trim()) &&
+    packageStatusDialog.reason.trim().length >= 5,
+);
+
+/* -------------------------------------------------------------------------
+ * Kupon promo (diskon mengurangi harga bayar, bukan jumlah CTF)
+ * ---------------------------------------------------------------------- */
+/** Ambil digit saja: field rupiah boleh diketik "2.000" atau "Rp2.000". */
+function digits(value) {
+  const clean = String(value ?? '').replace(/[^\d]/g, '');
+  return clean ? Number(clean) : 0;
+}
+
+const cheapestPackage = computed(() => {
+  const active = packages.value.filter((pkg) => pkg.is_active !== false);
+  return active.reduce(
+    (best, pkg) => (!best || pkg.amount_idr < best.amount_idr ? pkg : best),
+    null,
+  );
+});
+
+const couponPreviewState = computed(() => {
+  const pkg = cheapestPackage.value;
+  const value = digits(couponDialog.discountValue);
+  if (!pkg) {
+    return {
+      tone: '',
+      message: 'Belum ada paket top-up aktif, contoh potongan belum bisa dihitung.',
+    };
+  }
+  if (!value) {
+    return {
+      tone: '',
+      message: 'Isi nilai diskon untuk melihat contoh potongan pada paket termurah.',
+    };
+  }
+
+  let discount =
+    couponDialog.discountType === 'PERCENT'
+      ? Math.floor((pkg.amount_idr * Math.min(value, 100)) / 100)
+      : value;
+  const cap = digits(couponDialog.maxDiscount);
+  if (couponDialog.discountType === 'PERCENT' && cap > 0) discount = Math.min(discount, cap);
+  discount = Math.min(discount, pkg.amount_idr);
+  const final = pkg.amount_idr - discount;
+
+  if (discount <= 0) {
+    return { tone: 'pc-callout--warning', message: 'Nilai diskon belum menghasilkan potongan.' };
+  }
+  if (final < 1000) {
+    return {
+      tone: 'pc-callout--warning',
+      message: `Pada ${pkg.name} (${formatIdr(pkg.amount_idr)}), potongan ${formatIdr(
+        discount,
+      )} menyisakan ${formatIdr(final)} — di bawah batas tagih Rp1.000.`,
+    };
+  }
+  return {
+    tone: 'pc-callout--lime',
+    message: `Pada ${pkg.name} (${formatIdr(pkg.amount_idr)}): potongan ${formatIdr(
+      discount,
+    )}, pengguna membayar ${formatIdr(final)} dan tetap menerima ${formatNumber(
+      pkg.ctf_amount,
+    )} CTF.`,
+  };
+});
+
+const couponPreview = computed(() => couponPreviewState.value.message);
+const couponPreviewTone = computed(() => couponPreviewState.value.tone);
+
+const couponCanSubmit = computed(() => {
+  if (couponDialog.mode === 'create') {
+    const code = String(couponDialog.code).trim().toUpperCase();
+    if (!/^[A-Z0-9_-]{3,32}$/.test(code)) return false;
+  }
+  const value = digits(couponDialog.discountValue);
+  if (value < 1) return false;
+  if (couponDialog.discountType === 'PERCENT' && value > 100) return false;
+  const start = couponDialog.startsAt ? new Date(couponDialog.startsAt).getTime() : null;
+  const end = couponDialog.endsAt ? new Date(couponDialog.endsAt).getTime() : null;
+  if (start && end && end <= start) return false;
+  if (couponDialog.reason.trim().length < 5) return false;
+  return Boolean(couponDialog.password.trim());
+});
+
+const couponStatusCanSubmit = computed(
+  () =>
+    Boolean(couponStatusDialog.coupon) &&
+    Boolean(couponStatusDialog.password.trim()) &&
+    couponStatusDialog.reason.trim().length >= 5,
 );
 
 let payoutSearchTimer = null;
@@ -1503,6 +2372,8 @@ function ensureTab(tab) {
   if (tab !== 'payments' || tabLoaded.payments) return;
   tabLoaded.payments = true;
   loadSystemSettings();
+  loadPackages();
+  loadCoupons();
   loadPaymentOrders();
   loadPaymentEvents();
 }
@@ -1573,7 +2444,13 @@ async function loadSystemSettings() {
 
 async function refreshPage() {
   if (activeTab.value === 'payments') {
-    await Promise.all([loadWorkspace(), loadPaymentOrders(), loadPaymentEvents()]);
+    await Promise.all([
+      loadWorkspace(),
+      loadPackages(),
+      loadCoupons(),
+      loadPaymentOrders(),
+      loadPaymentEvents(),
+    ]);
     return;
   }
   if (activeTab.value === 'payouts') {
@@ -1643,9 +2520,7 @@ async function submitPayoutReview() {
 
 function openKycDialog(base, status = 'verified') {
   kycDialog.base = base;
-  kycDialog.status = ['verified', 'rejected', 'unverified'].includes(status)
-    ? status
-    : 'verified';
+  kycDialog.status = ['verified', 'rejected', 'unverified'].includes(status) ? status : 'verified';
   kycDialog.note = base.payout_kyc_note || '';
   kycDialog.password = '';
   kycDialog.error = '';
@@ -1674,36 +2549,295 @@ async function submitKyc() {
   }
 }
 
-function openFreeForever(base) {
-  freeDialog.base = base;
-  freeDialog.value = !base.free_forever;
-  freeDialog.reason = '';
-  freeDialog.password = '';
-  freeDialog.error = '';
-  freeDialog.loading = false;
-  freeDialog.open = true;
+function openFessPrice(base) {
+  priceDialog.base = base;
+  priceDialog.freeForever = Number(base.fess_price_ctf) === 0;
+  priceDialog.reason = '';
+  priceDialog.password = '';
+  priceDialog.error = '';
+  priceDialog.loading = false;
+  priceDialog.open = true;
 }
 
-async function submitFreeForever() {
-  if (!freeCanSubmit.value || !freeDialog.base) return;
-  freeDialog.loading = true;
-  freeDialog.error = '';
+async function submitFessPrice() {
+  if (!priceCanSubmit.value || !priceDialog.base) return;
+  priceDialog.loading = true;
+  priceDialog.error = '';
   try {
     await api.setBaseFreeForever({
-      base_handle: freeDialog.base.handle,
-      free_forever: freeDialog.value,
-      reason: freeDialog.reason.trim(),
-      password: freeDialog.password,
+      base_handle: priceDialog.base.handle,
+      free_forever: priceDialog.freeForever,
+      reason: priceDialog.reason.trim(),
+      password: priceDialog.password,
     });
     toast.success(
-      `freeForever ${freeDialog.base.handle} ${freeDialog.value ? 'diaktifkan' : 'dicabut'}.`
+      `Harga fess ${priceDialog.base.handle} disimpan: ${
+        priceDialog.freeForever ? 'gratis permanen' : `${platformFessPrice.value} CTF per fess`
+      }.`,
     );
-    freeDialog.open = false;
+    priceDialog.open = false;
     await loadWorkspace();
   } catch (err) {
-    freeDialog.error = err?.message || 'Perubahan freeForever gagal disimpan.';
+    priceDialog.error = err?.message || 'Perubahan harga fess gagal disimpan.';
   } finally {
-    freeDialog.loading = false;
+    priceDialog.loading = false;
+  }
+}
+
+function effectiveCtfPrice(pkg) {
+  const amount = Number(pkg?.amount_idr) || 0;
+  const ctf = Number(pkg?.ctf_amount) || 0;
+  if (!ctf) return '—';
+  return `Rp${formatNumber(Math.round(amount / ctf))}`;
+}
+
+async function loadPackages() {
+  packagesLoading.value = true;
+  packagesError.value = '';
+  try {
+    const result = await api.getAdminPaymentPackages();
+    packages.value = Array.isArray(result?.packages) ? result.packages : [];
+    packageSource.value = result?.source === 'fallback' ? 'fallback' : 'database';
+  } catch (err) {
+    packagesError.value = err?.message || 'Gagal memuat paket top-up.';
+  } finally {
+    packagesLoading.value = false;
+  }
+}
+
+function openPackageDialog(pkg = null) {
+  packageDialog.mode = pkg ? 'edit' : 'create';
+  packageDialog.code = pkg?.code || '';
+  packageDialog.name = pkg?.name || '';
+  packageDialog.amount = pkg ? String(pkg.amount_idr) : '';
+  packageDialog.ctf = pkg ? String(pkg.ctf_amount) : '';
+  packageDialog.description = pkg?.description || '';
+  packageDialog.sortOrder = pkg ? String(pkg.sort_order) : '';
+  packageDialog.isActive = pkg ? Boolean(pkg.is_active) : true;
+  packageDialog.reason = '';
+  packageDialog.password = '';
+  packageDialog.error = '';
+  packageDialog.loading = false;
+  packageDialog.original = pkg ? { ...pkg } : null;
+  packageDialog.open = true;
+}
+
+async function submitPackage() {
+  if (!packageCanSubmit.value) return;
+  packageDialog.loading = true;
+  packageDialog.error = '';
+  const { amount, ctf } = packageDraft.value;
+  const sortOrder = Number(String(packageDialog.sortOrder).replace(/[^\d]/g, ''));
+  const payload = {
+    name: packageDialog.name.trim(),
+    amount_idr: amount,
+    ctf_amount: ctf,
+    description: packageDialog.description.trim(),
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+    is_active: packageDialog.isActive,
+    reason: packageDialog.reason.trim(),
+    password: packageDialog.password,
+  };
+
+  try {
+    if (packageDialog.mode === 'create') {
+      await api.createAdminPaymentPackage({
+        code: packageDialog.code.trim().toLowerCase(),
+        ...payload,
+      });
+      toast.success(`Paket ${payload.name} ditambahkan dan langsung tampil di top-up.`);
+    } else {
+      await api.updateAdminPaymentPackage(packageDialog.code, payload);
+      toast.success(`Paket ${payload.name} diperbarui.`);
+    }
+    packageDialog.open = false;
+    await loadPackages();
+  } catch (err) {
+    packageDialog.error = err?.message || 'Perubahan paket gagal disimpan.';
+  } finally {
+    packageDialog.loading = false;
+  }
+}
+
+function openPackageStatus(pkg) {
+  packageStatusDialog.pkg = pkg;
+  packageStatusDialog.nextActive = !pkg?.is_active;
+  packageStatusDialog.reason = '';
+  packageStatusDialog.password = '';
+  packageStatusDialog.error = '';
+  packageStatusDialog.loading = false;
+  packageStatusDialog.open = true;
+}
+
+async function submitPackageStatus() {
+  if (!packageStatusCanSubmit.value || !packageStatusDialog.pkg) return;
+  packageStatusDialog.loading = true;
+  packageStatusDialog.error = '';
+  const pkg = packageStatusDialog.pkg;
+  try {
+    await api.setAdminPaymentPackageStatus(pkg.code, {
+      is_active: packageStatusDialog.nextActive,
+      reason: packageStatusDialog.reason.trim(),
+      password: packageStatusDialog.password,
+    });
+    toast.success(
+      packageStatusDialog.nextActive
+        ? `Paket ${pkg.name} diaktifkan kembali.`
+        : `Paket ${pkg.name} dinonaktifkan.`,
+    );
+    packageStatusDialog.open = false;
+    await loadPackages();
+  } catch (err) {
+    packageStatusDialog.error = err?.message || 'Status paket gagal disimpan.';
+  } finally {
+    packageStatusDialog.loading = false;
+  }
+}
+
+async function loadCoupons() {
+  couponsLoading.value = true;
+  couponsError.value = '';
+  try {
+    const result = await api.getAdminCoupons();
+    coupons.value = Array.isArray(result?.coupons) ? result.coupons : [];
+    couponSource.value = result?.source === 'fallback' ? 'fallback' : 'database';
+  } catch (err) {
+    couponsError.value = err?.message || 'Gagal memuat kupon promo.';
+  } finally {
+    couponsLoading.value = false;
+  }
+}
+
+/** ISO dari server → nilai input `datetime-local` (waktu lokal browser). */
+function isoToLocalInput(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (value) => String(value).padStart(2, '0');
+  return [
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  ].join('T');
+}
+
+/** Nilai `datetime-local` → ISO UTC; kosong berarti tanpa batas. */
+function localToIso(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function couponDiscountLabel(coupon) {
+  if (!coupon) return '—';
+  if (coupon.discount_type === 'PERCENT') {
+    const base = `${formatNumber(coupon.discount_value)}%`;
+    return coupon.max_discount_idr ? `${base} · maks ${formatIdr(coupon.max_discount_idr)}` : base;
+  }
+  return formatIdr(coupon.discount_value);
+}
+
+function couponValidityLabel(coupon) {
+  const start = coupon?.starts_at;
+  const end = coupon?.ends_at;
+  if (!start && !end) return 'Selalu berlaku';
+  if (start && !end) return `Mulai ${formatDateTime(start)}`;
+  if (!start && end) return `Sampai ${formatDateTime(end)}`;
+  return `${formatDateTime(start)} – ${formatDateTime(end)}`;
+}
+
+function openCouponDialog(coupon = null) {
+  couponDialog.mode = coupon ? 'edit' : 'create';
+  couponDialog.code = coupon?.code || '';
+  couponDialog.label = coupon?.label || '';
+  couponDialog.discountType = coupon?.discount_type === 'PERCENT' ? 'PERCENT' : 'FIXED';
+  couponDialog.discountValue = coupon ? String(coupon.discount_value) : '';
+  couponDialog.maxDiscount = coupon?.max_discount_idr ? String(coupon.max_discount_idr) : '';
+  couponDialog.minAmount = coupon?.min_amount_idr ? String(coupon.min_amount_idr) : '';
+  couponDialog.maxRedemptions =
+    coupon?.max_redemptions === null || coupon?.max_redemptions === undefined
+      ? ''
+      : String(coupon.max_redemptions);
+  couponDialog.startsAt = isoToLocalInput(coupon?.starts_at);
+  couponDialog.endsAt = isoToLocalInput(coupon?.ends_at);
+  couponDialog.isActive = coupon ? Boolean(coupon.is_active) : true;
+  couponDialog.reason = '';
+  couponDialog.password = '';
+  couponDialog.error = '';
+  couponDialog.loading = false;
+  couponDialog.open = true;
+}
+
+async function submitCoupon() {
+  if (!couponCanSubmit.value) return;
+  couponDialog.loading = true;
+  couponDialog.error = '';
+  const maxDiscount = digits(couponDialog.maxDiscount);
+  const maxRedemptions = digits(couponDialog.maxRedemptions);
+  const payload = {
+    label: couponDialog.label.trim(),
+    discount_type: couponDialog.discountType,
+    discount_value: digits(couponDialog.discountValue),
+    max_discount_idr:
+      couponDialog.discountType === 'PERCENT' && maxDiscount > 0 ? maxDiscount : null,
+    min_amount_idr: digits(couponDialog.minAmount),
+    starts_at: localToIso(couponDialog.startsAt),
+    ends_at: localToIso(couponDialog.endsAt),
+    max_redemptions: maxRedemptions > 0 ? maxRedemptions : null,
+    is_active: couponDialog.isActive,
+    reason: couponDialog.reason.trim(),
+    password: couponDialog.password,
+  };
+
+  try {
+    if (couponDialog.mode === 'create') {
+      const code = couponDialog.code.trim().toUpperCase();
+      await api.createAdminCoupon({ code, ...payload });
+      toast.success(`Kupon ${code} dibuat dan langsung bisa dipakai.`);
+    } else {
+      await api.updateAdminCoupon(couponDialog.code, payload);
+      toast.success(`Kupon ${couponDialog.code} diperbarui.`);
+    }
+    couponDialog.open = false;
+    await loadCoupons();
+  } catch (err) {
+    couponDialog.error = err?.message || 'Perubahan kupon gagal disimpan.';
+  } finally {
+    couponDialog.loading = false;
+  }
+}
+
+function openCouponStatus(coupon) {
+  couponStatusDialog.coupon = coupon;
+  couponStatusDialog.nextActive = !coupon?.is_active;
+  couponStatusDialog.reason = '';
+  couponStatusDialog.password = '';
+  couponStatusDialog.error = '';
+  couponStatusDialog.loading = false;
+  couponStatusDialog.open = true;
+}
+
+async function submitCouponStatus() {
+  if (!couponStatusCanSubmit.value || !couponStatusDialog.coupon) return;
+  couponStatusDialog.loading = true;
+  couponStatusDialog.error = '';
+  const coupon = couponStatusDialog.coupon;
+  try {
+    await api.setAdminCouponStatus(coupon.code, {
+      is_active: couponStatusDialog.nextActive,
+      reason: couponStatusDialog.reason.trim(),
+      password: couponStatusDialog.password,
+    });
+    toast.success(
+      couponStatusDialog.nextActive
+        ? `Kupon ${coupon.code} diaktifkan kembali.`
+        : `Kupon ${coupon.code} dinonaktifkan.`,
+    );
+    couponStatusDialog.open = false;
+    await loadCoupons();
+  } catch (err) {
+    couponStatusDialog.error = err?.message || 'Status kupon gagal disimpan.';
+  } finally {
+    couponStatusDialog.loading = false;
   }
 }
 
@@ -1774,7 +2908,7 @@ watch(
     if (tab === activeTab.value) return;
     activeTab.value = tab;
     ensureTab(tab);
-  }
+  },
 );
 
 watch(billingQuery, () => {

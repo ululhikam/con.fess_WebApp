@@ -44,7 +44,7 @@
         <ConsoleStatusBadge
           v-if="data.billing.free_forever"
           status="free"
-          label="freeForever"
+          label="Gratis permanen"
           tone="lime"
         />
         <ConsoleStatusBadge
@@ -68,17 +68,23 @@
         </div>
         <div class="pc-stat pc-stat--lime">
           <p class="pc-stat__label">Available</p>
-          <p class="pc-stat__value pc-stat__value--small">{{ formatIdr(data.wallet.available_idr) }}</p>
+          <p class="pc-stat__value pc-stat__value--small">
+            {{ formatIdr(data.wallet.available_idr) }}
+          </p>
           <p class="pc-stat__hint">Lifetime {{ formatIdr(data.wallet.lifetime_idr) }}</p>
         </div>
         <div class="pc-stat">
           <p class="pc-stat__label">Reserved</p>
-          <p class="pc-stat__value pc-stat__value--small">{{ formatIdr(data.wallet.reserved_idr) }}</p>
+          <p class="pc-stat__value pc-stat__value--small">
+            {{ formatIdr(data.wallet.reserved_idr) }}
+          </p>
           <p class="pc-stat__hint">Payout menunggu transfer</p>
         </div>
         <div class="pc-stat">
           <p class="pc-stat__label">Pending</p>
-          <p class="pc-stat__value pc-stat__value--small">{{ formatIdr(data.wallet.pending_idr) }}</p>
+          <p class="pc-stat__value pc-stat__value--small">
+            {{ formatIdr(data.wallet.pending_idr) }}
+          </p>
           <p class="pc-stat__hint">Belum lewat masa tahan</p>
         </div>
       </div>
@@ -89,11 +95,7 @@
             <h3 class="pc-card__title">Profil &amp; kepemilikan</h3>
             <p class="pc-card__desc">Informasi dasar yang dipakai untuk verifikasi support.</p>
           </div>
-          <button
-            type="button"
-            class="pc-btn pc-btn--ghost pc-btn--sm"
-            @click="copyHandle"
-          >
+          <button type="button" class="pc-btn pc-btn--ghost pc-btn--sm" @click="copyHandle">
             <Copy :size="12" />
             Salin handle
           </button>
@@ -120,8 +122,10 @@
       <section class="pc-card">
         <div class="pc-card__head">
           <div>
-            <h3 class="pc-card__title">Billing &amp; KYC</h3>
-            <p class="pc-card__desc">Status langganan base dan verifikasi pembayaran.</p>
+            <h3 class="pc-card__title">Harga fess, billing &amp; KYC</h3>
+            <p class="pc-card__desc">
+              Harga fess per base, status trial, dan verifikasi pembayaran.
+            </p>
           </div>
         </div>
         <div class="pc-card__body">
@@ -130,9 +134,13 @@
             <dd>{{ formatDateTime(data.billing.trial_ends_at) }}</dd>
             <dt>Sumber trial</dt>
             <dd>{{ data.billing.trial_source || '—' }}</dd>
-            <dt>freeForever</dt>
+            <dt>Harga fess</dt>
             <dd>
-              {{ data.billing.free_forever ? 'Aktif' : 'Tidak aktif' }}
+              {{
+                data.billing.fess_price_ctf === 0
+                  ? 'Gratis permanen (base mitra)'
+                  : `${data.billing.fess_price_ctf} CTF per fess`
+              }}
               <span v-if="data.billing.free_forever_reason" class="pc-muted">
                 · {{ data.billing.free_forever_reason }}
               </span>
@@ -149,7 +157,9 @@
         <div class="pc-card__head">
           <div>
             <h3 class="pc-card__title">Rekening payout</h3>
-            <p class="pc-card__desc">Hanya ditampilkan untuk dukungan finansial. Tidak ada aksi ubah.</p>
+            <p class="pc-card__desc">
+              Hanya ditampilkan untuk dukungan finansial. Tidak ada aksi ubah.
+            </p>
           </div>
           <Landmark :size="16" class="pc-muted" />
         </div>
@@ -160,7 +170,9 @@
             <dt>Nama rekening</dt>
             <dd>{{ data.bank.account_name || '—' }}</dd>
             <dt>Nomor rekening</dt>
-            <dd class="pc-mono">{{ data.bank.account_number || data.bank.account_number_masked || '—' }}</dd>
+            <dd class="pc-mono">
+              {{ data.bank.account_number || data.bank.account_number_masked || '—' }}
+            </dd>
             <dt>Status</dt>
             <dd>
               {{ data.bank.complete ? 'Lengkap' : 'Belum lengkap' }}
@@ -270,8 +282,8 @@
       <div class="pc-callout pc-callout--lime">
         <Info :size="16" />
         <div>
-          Panel ini hanya untuk membaca konteks. Perubahan profil, rekening, moderasi,
-          dan pengajuan payout tetap menjadi tugas Base Admin.
+          Panel ini hanya untuk membaca konteks. Perubahan profil, rekening, moderasi, dan pengajuan
+          payout tetap menjadi tugas Base Admin.
         </div>
       </div>
     </div>
@@ -284,17 +296,16 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
-import {
-  AlertTriangle,
-  Copy,
-  Info,
-  Landmark,
-  RefreshCw,
-  ShieldCheck,
-} from 'lucide-vue-next';
+import { AlertTriangle, Copy, Info, Landmark, RefreshCw, ShieldCheck } from 'lucide-vue-next';
 import { api } from '../../api';
 import { toast } from '../../composables/useToast';
-import { formatDate, formatDateTime, formatIdr, formatNumber, statusLabel } from '../../utils/console';
+import {
+  formatDate,
+  formatDateTime,
+  formatIdr,
+  formatNumber,
+  statusLabel,
+} from '../../utils/console';
 import ConsoleDrawer from './ConsoleDrawer.vue';
 import ConsoleStatusBadge from './ConsoleStatusBadge.vue';
 
@@ -343,6 +354,6 @@ watch(
     if (data.value?.base?.handle !== handle) data.value = null;
     load();
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>

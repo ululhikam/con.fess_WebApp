@@ -107,6 +107,11 @@
             <div class="payment-summary-value">
               <span class="payment-label">Total pembayaran</span>
               <p class="payment-total">Rp{{ formatNumber(activeOrder.amount_idr) }}</p>
+              <span v-if="activeOrder.coupon_code" class="payment-coupon">
+                Kupon {{ activeOrder.coupon_code }} · hemat Rp{{
+                  formatNumber(activeOrder.discount_idr)
+                }}
+              </span>
               <span class="payment-ctf-box">+{{ formatNumber(activeOrder.ctf_amount) }} CTF</span>
             </div>
           </div>
@@ -486,10 +491,58 @@
                   </span>
                 </div>
 
+                <div class="coupon-box">
+                  <label class="coupon-label" for="topup-coupon">Kode kupon (opsional)</label>
+                  <div class="coupon-row">
+                    <input
+                      id="topup-coupon"
+                      v-model="couponInput"
+                      class="coupon-input"
+                      type="text"
+                      maxlength="32"
+                      placeholder="Mis. HEMAT2026"
+                      autocomplete="off"
+                      :disabled="creating || couponChecking || Boolean(coupon)"
+                      @keyup.enter.prevent="applyCoupon"
+                    />
+                    <button
+                      v-if="!coupon"
+                      type="button"
+                      class="coupon-btn"
+                      :disabled="couponChecking || !couponInput.trim() || !selectedPackage"
+                      @click="applyCoupon"
+                    >
+                      <Loader2 v-if="couponChecking" :size="14" class="spin" />
+                      <span v-else>Pakai</span>
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      class="coupon-btn coupon-btn--ghost"
+                      @click="clearCoupon()"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                  <p v-if="couponError" class="coupon-hint coupon-hint--error" role="alert">
+                    {{ couponError }}
+                  </p>
+                  <p v-else-if="coupon" class="coupon-hint coupon-hint--ok">
+                    Kupon {{ coupon.code }} aktif · potongan Rp{{
+                      formatNumber(coupon.discount_idr)
+                    }}.
+                  </p>
+                  <p v-else class="coupon-hint">Punya kode promo? Masukkan di sini.</p>
+                </div>
+
                 <div class="checkout-list">
                   <div v-if="selectedBonus > 0" class="checkout-row">
                     <span>Bonus</span>
                     <strong class="is-positive">+{{ selectedBonus }} CTF</strong>
+                  </div>
+                  <div v-if="coupon" class="checkout-row">
+                    <span>Kupon {{ coupon.code }}</span>
+                    <strong class="is-positive">-Rp{{ formatNumber(coupon.discount_idr) }}</strong>
                   </div>
                   <div class="checkout-row">
                     <span>Metode</span>
@@ -504,7 +557,7 @@
                 <div class="checkout-divider" />
                 <div class="checkout-total">
                   <span>Total bayar</span>
-                  <strong>Rp{{ formatNumber(selectedPackage?.amountIdr || 0) }}</strong>
+                  <strong>Rp{{ formatNumber(payableAmount) }}</strong>
                 </div>
                 <p class="checkout-hint">
                   Saldo CTF ditambahkan otomatis setelah pembayaran terverifikasi.
@@ -521,9 +574,7 @@
                   <Loader2 v-if="creating" :size="16" class="spin" />
                   <Lock v-else :size="15" />
                   {{
-                    creating
-                      ? 'Membuat pembayaran...'
-                      : `Bayar Rp${formatNumber(selectedPackage?.amountIdr || 0)}`
+                    creating ? 'Membuat pembayaran...' : `Bayar Rp${formatNumber(payableAmount)}`
                   }}
                 </button>
                 <p class="secure-note">
@@ -555,7 +606,7 @@
           <div class="mobile-checkout-bar">
             <div class="mobile-checkout-info">
               <span>{{ selectedPackage?.name || 'Pilih paket' }}</span>
-              <strong>Rp{{ formatNumber(selectedPackage?.amountIdr || 0) }}</strong>
+              <strong>Rp{{ formatNumber(payableAmount) }}</strong>
             </div>
             <button
               type="button"
@@ -712,6 +763,10 @@ const historyError = ref('');
 const historyEl = ref(null);
 const now = ref(Date.now());
 const requestKey = ref('');
+const couponInput = ref('');
+const coupon = ref(null);
+const couponChecking = ref(false);
+const couponError = ref('');
 
 let pollTimer = null;
 let clockTimer = null;
@@ -728,6 +783,14 @@ const selectedMethodData = computed(
 );
 const selectedMethodLabel = computed(() => selectedMethodData.value?.label || 'Pilih metode');
 const selectedBonus = computed(() => (selectedPackage.value ? bonusFor(selectedPackage.value) : 0));
+/**
+ * Total yang benar-benar ditagih. Kupon hanya mengubah harga bayar, bukan
+ * jumlah CTF yang diterima.
+ */
+const payableAmount = computed(() => {
+  if (coupon.value) return Number(coupon.value.final_amount_idr || 0);
+  return Number(selectedPackage.value?.amountIdr || 0);
+});
 const showMobileCheckout = computed(
   () =>
     canTopUp.value &&
@@ -1101,6 +1164,37 @@ async function loadHistory() {
   }
 }
 
+/**
+ * Cek kupon ke server sebelum order dibuat. Server tetap memvalidasi ulang
+ * saat order dibuat; ini hanya pratinjau supaya harga terlihat jelas.
+ */
+async function applyCoupon() {
+  const code = couponInput.value.trim();
+  if (!code || !selectedPackage.value || couponChecking.value) return;
+  couponChecking.value = true;
+  couponError.value = '';
+  try {
+    const quote = await api.previewPaymentCoupon({
+      code,
+      package_code: selectedPackage.value.code,
+    });
+    coupon.value = quote;
+    couponInput.value = quote.code || code.toUpperCase();
+  } catch (error) {
+    coupon.value = null;
+    couponError.value = errorMessage(error);
+  } finally {
+    couponChecking.value = false;
+  }
+}
+
+/** Lepas kupon dari ringkasan (tidak mengubah apa pun di server). */
+function clearCoupon(resetInput = true) {
+  coupon.value = null;
+  couponError.value = '';
+  if (resetInput) couponInput.value = '';
+}
+
 async function createOrder() {
   if (!canTopUp.value || !selectedPackage.value || !selectedMethod.value || creating.value) return;
   creating.value = true;
@@ -1112,10 +1206,12 @@ async function createOrder() {
       {
         package_code: selectedPackage.value.code,
         payment_method: selectedMethod.value,
+        ...(coupon.value?.code ? { coupon_code: coupon.value.code } : {}),
       },
       requestKey.value,
     );
     requestKey.value = '';
+    clearCoupon();
     setActiveOrder(response.order);
     nextTick(scrollToPaymentPanel);
     loadHistory();
@@ -1126,6 +1222,12 @@ async function createOrder() {
     // A 4xx/503 means the request was rejected before a usable order existed.
     // Keep the key for network/5xx ambiguity so a retry cannot double-create.
     if (error?.status && error.status < 500) requestKey.value = '';
+    // Kupon yang ditolak server (kuota habis, sudah dipakai, dsb.) dilepas
+    // supaya pengguna bisa mencoba kode lain tanpa mengubah harga diam-diam.
+    if (String(error?.data?.code || '').startsWith('COUPON_')) {
+      clearCoupon(false);
+      couponError.value = message;
+    }
   } finally {
     creating.value = false;
   }
@@ -1183,6 +1285,7 @@ function resetOrder() {
 
 function topUpAgain() {
   resetOrder();
+  clearCoupon();
   loadHistory();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1204,6 +1307,11 @@ function onVisibilityChange() {
 watch([selectedPackageCode, selectedMethod], () => {
   requestKey.value = '';
   createError.value = '';
+});
+
+// Potongan kupon bergantung pada harga paket, jadi ganti paket = lepas kupon.
+watch(selectedPackageCode, () => {
+  if (coupon.value) clearCoupon(false);
 });
 
 onMounted(() => {
@@ -1989,6 +2097,102 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+.coupon-box {
+  margin-top: 12px;
+  border: 1px dashed var(--shell-border);
+  border-radius: 14px;
+  padding: 11px 12px;
+}
+
+.coupon-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--shell-text-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.coupon-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.coupon-input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--shell-border);
+  border-radius: 10px;
+  background: var(--wallet-inset);
+  color: var(--shell-text);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.coupon-input::placeholder {
+  color: var(--shell-text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 600;
+}
+
+.coupon-input:disabled {
+  opacity: 0.7;
+}
+
+.coupon-btn {
+  flex-shrink: 0;
+  border: 1px solid var(--shell-accent);
+  border-radius: 10px;
+  background: var(--shell-accent);
+  color: var(--shell-accent-ink);
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.coupon-btn--ghost {
+  border-color: var(--shell-border);
+  background: var(--shell-chip);
+  color: var(--shell-text);
+}
+
+.coupon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.coupon-input:focus-visible,
+.coupon-btn:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+.coupon-hint {
+  margin: 7px 0 0;
+  color: var(--shell-text-muted);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.coupon-hint--ok {
+  color: var(--lime-text);
+  font-weight: 700;
+}
+
+.coupon-hint--error {
+  color: var(--danger-text);
+  font-weight: 700;
+}
+
 .checkout-list {
   margin-top: 12px;
 }
@@ -2354,6 +2558,14 @@ onBeforeUnmount(() => {
   font-size: 10.5px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.payment-coupon {
+  display: block;
+  margin-top: 5px;
+  color: var(--lime-text);
+  font-size: 10.5px;
+  font-weight: 700;
 }
 
 .payment-expiry {

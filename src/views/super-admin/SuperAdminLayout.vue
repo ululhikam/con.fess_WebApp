@@ -44,6 +44,7 @@
 import { useRoute } from 'vue-router';
 import {
   LayoutDashboard,
+  LayoutTemplate,
   Settings2,
   ShieldCheck,
   UsersRound,
@@ -60,6 +61,12 @@ const navigation = [
     label: 'Ringkasan',
     to: '/super-admin',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'SuperAdminTemplates',
+    label: 'Template Kartu',
+    to: '/super-admin/templates',
+    icon: LayoutTemplate,
   },
   {
     name: 'SuperAdminFinance',
