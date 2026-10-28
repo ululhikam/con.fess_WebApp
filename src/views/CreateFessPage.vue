@@ -179,6 +179,7 @@
     <TemplateModal
       v-model:show="showTemplateModal"
       :template="form.template"
+      :base-handle="form.baseHandle"
       @update:template="onTemplatePick"
     />
     <QuoteModal
@@ -338,6 +339,7 @@ function applyQuotedFess(quote) {
   if (handle) {
     form.value.baseHandle = handle;
     ensureQuotedBaseInList(handle);
+    syncTemplatesForBase({ resetUnavailable: true }).catch(() => {});
   }
 }
 
@@ -479,8 +481,25 @@ const formatScheduleDate = (dateStr) => {
 };
 
 // Actions
+/**
+ * Muat template sesuai base tujuan. Template milik base lain tidak akan
+ * dikirim backend, jadi pilihan lama yang tidak tersedia di-reset ke acak.
+ */
+async function syncTemplatesForBase({ resetUnavailable = false } = {}) {
+  await templateStore.loadForBase(form.value.baseHandle).catch(() => {});
+
+  if (resetUnavailable && form.value.template && !templateStore.has(form.value.template)) {
+    form.value.template = templateStore.randomKey() || 'default';
+    isRandomTemplate.value = true;
+  }
+  if (isRandomTemplate.value) {
+    form.value.template = templateStore.randomKey() || form.value.template;
+  }
+}
+
 function onBaseChange(handle) {
   form.value.baseHandle = handle;
+  syncTemplatesForBase({ resetUnavailable: true }).catch(() => {});
 }
 
 function onMediaChange(media) {
@@ -752,13 +771,6 @@ onMounted(async () => {
   ensureTopicsLoaded().catch(() => {});
   await loadAvailableBases();
 
-  // Katalog template dari database. Composer memilih satu secara acak bila
-  // user belum pernah memilih template sendiri.
-  await templateStore.load().catch(() => {});
-  if (isRandomTemplate.value) {
-    form.value.template = templateStore.randomKey() || form.value.template;
-  }
-
   // Pre-fill base handle: query param > admin's managed base > first available.
   // Saat ada kutipan, base sudah terkunci ke base asal kutipan — jangan ditimpa.
   if (route.query.base && !baseLocked.value) {
@@ -773,6 +785,10 @@ onMounted(async () => {
       form.value.baseHandle = availableBases.value[0].handle;
     }
   }
+
+  // Katalog template mengikuti base tujuan; pilihan yang tidak tersedia untuk
+  // base tersebut otomatis diganti template acak yang valid.
+  await syncTemplatesForBase({ resetUnavailable: true }).catch(() => {});
 });
 
 watch(

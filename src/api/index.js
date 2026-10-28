@@ -128,8 +128,25 @@ export const api = {
   getTopics: () => client.get('/topics'),
 
   /* TEMPLATES — katalog kartu dari tabel Template (satu sumber kebenaran) */
-  getTemplates: () => client.get('/templates'),
-  getTemplate: (key) => client.get(`/templates/${encodeURIComponent(key)}`),
+  getTemplates: (baseHandle) =>
+    client.get('/templates', baseHandle ? { params: { base_handle: baseHandle } } : undefined),
+  getTemplate: (key, baseHandle) =>
+    client.get(
+      `/templates/${encodeURIComponent(key)}`,
+      baseHandle ? { params: { base_handle: baseHandle } } : undefined,
+    ),
+
+  /* ADMIN — template kartu (Super Admin) */
+  getAdminTemplates: () => client.get('/admin/templates'),
+  createAdminTemplate: (payload) => client.post('/admin/templates', payload),
+  updateAdminTemplate: (key, payload) =>
+    client.patch(`/admin/templates/${encodeURIComponent(key)}`, payload),
+  replaceAdminTemplateSvg: (key, payload) =>
+    client.put(`/admin/templates/${encodeURIComponent(key)}/svg`, payload),
+  regenerateAdminTemplateThumbnail: (key) =>
+    client.post(`/admin/templates/${encodeURIComponent(key)}/thumbnail`),
+  archiveAdminTemplate: (key) =>
+    client.delete(`/admin/templates/${encodeURIComponent(key)}`),
 
   /* ADMIN — base dashboard */
   getStats: () => client.get('/admin/stats'),
