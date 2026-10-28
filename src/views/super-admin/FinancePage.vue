@@ -3,7 +3,7 @@
     <ConsolePageHeader
       eyebrow="Finance & billing"
       title="Keuangan Platform"
-      subtitle="Review payout manual, verifikasi KYC, kelola freeForever, dan pantau pendapatan serta pembayaran base. Semua aksi berisiko meminta kata sandi ulang."
+      subtitle="Review payout manual, verifikasi KYC, atur harga fess per base (termasuk gratis untuk mitra), dan pantau pendapatan serta pembayaran base. Semua aksi berisiko meminta kata sandi ulang."
       :health="payoutHealthLabel"
       :health-tone="workspace ? (workspace.enabled ? 'success' : 'danger') : 'neutral'"
     >
@@ -63,9 +63,7 @@
           <p>{{ workspaceError }}</p>
         </div>
       </div>
-      <button type="button" class="pc-btn pc-btn--ghost" @click="loadWorkspace">
-        Coba lagi
-      </button>
+      <button type="button" class="pc-btn pc-btn--ghost" @click="loadWorkspace">Coba lagi</button>
     </div>
 
     <template v-else-if="workspace">
@@ -77,9 +75,9 @@
         <LockKeyhole :size="16" />
         <div>
           <strong>BASE_PAYOUTS_ENABLED=false.</strong>
-          Antrean payout tetap bisa dibaca, tetapi approve, reject, dan transfer tidak
-          dapat diproses sampai flag diaktifkan lewat deploy. KYC dan freeForever tetap
-          tersedia sebagai kontrol platform.
+          Antrean payout tetap bisa dibaca, tetapi approve, reject, dan transfer tidak dapat
+          diproses sampai flag diaktifkan lewat deploy. KYC dan pengaturan harga fess tetap tersedia
+          sebagai kontrol platform.
         </div>
       </div>
 
@@ -112,8 +110,8 @@
           <div>
             <h2 class="pc-card__title">Review payout manual</h2>
             <p class="pc-card__desc">
-              Setujui, tolak, atau tandai transfer. Setiap aksi membutuhkan kata sandi
-              ulang dan tercatat di audit.
+              Setujui, tolak, atau tandai transfer. Setiap aksi membutuhkan kata sandi ulang dan
+              tercatat di audit.
             </p>
           </div>
           <ConsoleStatusBadge
@@ -308,8 +306,8 @@
           <ShieldCheck :size="16" />
           <div>
             <strong>Kontrol KYC platform.</strong>
-            Verifikasi hanya untuk base dengan rekening lengkap dan saldo memenuhi minimum.
-            Alasan perubahan harus jelas karena masuk ke audit permanen.
+            Verifikasi hanya untuk base dengan rekening lengkap dan saldo memenuhi minimum. Alasan
+            perubahan harus jelas karena masuk ke audit permanen.
           </div>
         </div>
 
@@ -318,8 +316,7 @@
             <div>
               <h2 class="pc-card__title">Antrean KYC</h2>
               <p class="pc-card__desc">
-                {{ kycQueue.length }} base memiliki rekening lengkap tetapi belum
-                terverifikasi.
+                {{ kycQueue.length }} base memiliki rekening lengkap tetapi belum terverifikasi.
               </p>
             </div>
             <ConsoleStatusBadge
@@ -397,10 +394,10 @@
         <section class="pc-card">
           <div class="pc-card__head">
             <div>
-              <h2 class="pc-card__title">Billing base</h2>
+              <h2 class="pc-card__title">Harga fess & billing base</h2>
               <p class="pc-card__desc">
-                Status trial, freeForever, KYC, dan saldo seluruh base. Klik base untuk
-                membuka panel dukungan read-only.
+                Harga fess yang berlaku, status trial, KYC, dan saldo seluruh base. Base mitra FnC
+                bisa digratiskan tanpa memotong CTF pengirim.
               </p>
             </div>
             <div class="pc-field" style="width: 220px; max-width: 100%">
@@ -426,7 +423,7 @@
                 <tr>
                   <th>Base</th>
                   <th>KYC</th>
-                  <th>Plan</th>
+                  <th>Harga fess</th>
                   <th>Trial berakhir</th>
                   <th>Available</th>
                   <th class="pc-right">Aksi</th>
@@ -448,13 +445,13 @@
                   </td>
                   <td>
                     <ConsoleStatusBadge
-                      v-if="base.free_forever"
+                      v-if="base.fess_price_ctf === 0"
                       status="free"
-                      label="freeForever"
+                      label="Gratis"
                       tone="lime"
                     />
-                    <span v-else class="pc-small pc-muted">
-                      {{ base.trial_source === 'grace' ? 'Grace' : 'Trial' }}
+                    <span v-else class="pc-table__primary">
+                      {{ base.fess_price_ctf }} CTF / fess
                     </span>
                     <span v-if="base.free_forever_reason" class="pc-table__sub">
                       {{ base.free_forever_reason }}
@@ -480,10 +477,10 @@
                       <button
                         type="button"
                         class="pc-btn pc-btn--ghost pc-btn--sm"
-                        @click="openFreeForever(base)"
+                        @click="openFessPrice(base)"
                       >
                         <Sparkles :size="12" />
-                        freeForever
+                        Harga fess
                       </button>
                     </div>
                   </td>
@@ -554,7 +551,11 @@
                 <tbody>
                   <tr v-for="base in visibleBillingBases" :key="base.id">
                     <td>
-                      <button type="button" class="pc-entity-link" @click="openSupport(base.handle)">
+                      <button
+                        type="button"
+                        class="pc-entity-link"
+                        @click="openSupport(base.handle)"
+                      >
                         {{ base.handle }}
                       </button>
                       <span class="pc-table__sub">{{ base.name }}</span>
@@ -606,8 +607,8 @@
             <div class="pc-callout pc-callout--lime">
               <CircleDollarSign :size="16" />
               <div>
-                1 CTF = 1 fess menghasilkan pendapatan IDR untuk base. Saldo base tidak
-                dapat diubah langsung dari konsol ini.
+                1 CTF = 1 fess menghasilkan pendapatan IDR untuk base. Saldo base tidak dapat diubah
+                langsung dari konsol ini.
               </div>
             </div>
           </aside>
@@ -619,11 +620,13 @@
         <div class="pc-callout" style="margin-bottom: 16px">
           <ReceiptText :size="16" />
           <div>
-            Monitoring pembayaran bersifat read-only. Refund dan chargeback belum tersedia
-            di v1. Reconcile manual tetap memakai runbook terpisah.
+            Monitoring pembayaran bersifat read-only. Refund dan chargeback belum tersedia di v1.
+            Reconcile manual tetap memakai runbook terpisah.
             <template v-if="systemSettings">
               <strong>
-                PAYMENTS_ENABLED={{ systemSettings.environment.payments_enabled ? 'true' : 'false' }}
+                PAYMENTS_ENABLED={{
+                  systemSettings.environment.payments_enabled ? 'true' : 'false'
+                }}
               </strong>
               · Midtrans
               {{ systemSettings.integrations.midtrans.mode }}.
@@ -636,8 +639,7 @@
             <div>
               <h2 class="pc-card__title">Order pembayaran</h2>
               <p class="pc-card__desc">
-                {{ paymentOrders.total }} order tercatat. Klik order untuk melihat event
-                webhook.
+                {{ paymentOrders.total }} order tercatat. Klik order untuk melihat event webhook.
               </p>
             </div>
             <button
@@ -690,7 +692,10 @@
             </div>
           </div>
 
-          <div v-else-if="paymentsLoading && !paymentOrders.data.length" class="pc-card__body pc-stack">
+          <div
+            v-else-if="paymentsLoading && !paymentOrders.data.length"
+            class="pc-card__body pc-stack"
+          >
             <div v-for="index in 4" :key="index" class="pc-skeleton pc-skeleton--line" />
           </div>
 
@@ -715,7 +720,11 @@
               <tbody>
                 <tr v-for="order in paymentOrders.data" :key="order.id">
                   <td>
-                    <button type="button" class="pc-entity-link pc-mono" @click="openPayment(order)">
+                    <button
+                      type="button"
+                      class="pc-entity-link pc-mono"
+                      @click="openPayment(order)"
+                    >
                       {{ order.order_id }}
                     </button>
                     <span class="pc-table__sub">
@@ -819,7 +828,10 @@
             </div>
           </div>
 
-          <div v-else-if="eventsLoading && !paymentEvents.data.length" class="pc-card__body pc-stack">
+          <div
+            v-else-if="eventsLoading && !paymentEvents.data.length"
+            class="pc-card__body pc-stack"
+          >
             <div v-for="index in 3" :key="index" class="pc-skeleton pc-skeleton--line" />
           </div>
 
@@ -915,7 +927,8 @@
         <div class="pc-summary__row">
           <span class="pc-summary__label">Rekening</span>
           <span class="pc-summary__value">
-            {{ payoutDialog.payout.bank_name }} · {{ payoutDialog.payout.bank_account_number_masked }}
+            {{ payoutDialog.payout.bank_name }} ·
+            {{ payoutDialog.payout.bank_account_number_masked }}
           </span>
         </div>
         <div class="pc-summary__row">
@@ -992,7 +1005,11 @@
     <ConsoleDialog
       v-model="kycDialog.open"
       title="Kelola KYC base"
-      :subtitle="kycDialog.base ? `${kycDialog.base.handle} · ${formatIdr(kycDialog.base.available_idr)} available` : ''"
+      :subtitle="
+        kycDialog.base
+          ? `${kycDialog.base.handle} · ${formatIdr(kycDialog.base.available_idr)} available`
+          : ''
+      "
       eyebrow="KYC payout · re-auth"
       confirm-label="Simpan status KYC"
       tone="primary"
@@ -1036,56 +1053,65 @@
       <div class="pc-callout" style="margin-top: 12px">
         <ShieldCheck :size="15" />
         <div>
-          Verifikasi KYC membuka kemampuan payout base. Pastikan nama rekening dan
-          kepemilikan base sudah sesuai.
+          Verifikasi KYC membuka kemampuan payout base. Pastikan nama rekening dan kepemilikan base
+          sudah sesuai.
         </div>
       </div>
     </ConsoleDialog>
 
     <ConsoleDialog
-      v-model="freeDialog.open"
-      :title="freeDialog.value ? 'Aktifkan freeForever' : 'Cabut freeForever'"
-      :subtitle="freeDialog.base ? `${freeDialog.base.handle} · ${freeDialog.base.name}` : ''"
-      eyebrow="Billing platform · re-auth"
-      :confirm-label="freeDialog.value ? 'Aktifkan freeForever' : 'Cabut freeForever'"
-      :tone="freeDialog.value ? 'primary' : 'danger'"
-      :loading="freeDialog.loading"
-      :confirm-disabled="!freeCanSubmit"
-      :error="freeDialog.error"
-      @confirm="submitFreeForever"
+      v-model="priceDialog.open"
+      title="Atur harga fess"
+      :subtitle="priceDialog.base ? `${priceDialog.base.handle} · ${priceDialog.base.name}` : ''"
+      eyebrow="Harga fess · re-auth"
+      confirm-label="Simpan harga fess"
+      tone="primary"
+      :loading="priceDialog.loading"
+      :confirm-disabled="!priceCanSubmit"
+      :error="priceDialog.error"
+      @confirm="submitFessPrice"
     >
       <div class="pc-summary">
         <div class="pc-summary__row">
-          <span class="pc-summary__label">Status saat ini</span>
-          <span class="pc-summary__value">
-            {{ freeDialog.base?.free_forever ? 'freeForever aktif' : 'Tidak aktif' }}
-          </span>
+          <span class="pc-summary__label">Harga saat ini</span>
+          <span class="pc-summary__value">{{ fessPriceLabel(priceDialog.base) }}</span>
         </div>
         <div class="pc-summary__row">
           <span class="pc-summary__label">Trial berakhir</span>
           <span class="pc-summary__value">
-            {{ formatDateTime(freeDialog.base?.trial_ends_at) }}
+            {{ formatDateTime(priceDialog.base?.trial_ends_at) }}
           </span>
         </div>
       </div>
 
       <div class="pc-dialog-grid">
         <div class="pc-field pc-field--full">
-          <label class="pc-label" for="free-reason">Alasan perubahan</label>
+          <label class="pc-label" for="fess-price">Harga fess</label>
+          <select id="fess-price" v-model="priceDialog.freeForever" class="pc-select">
+            <option :value="false">Normal — {{ platformFessPrice }} CTF per fess</option>
+            <option :value="true">Gratis permanen — 0 CTF (base mitra)</option>
+          </select>
+          <p class="pc-help">
+            Harga normal mengikuti konstanta platform CTF_PER_PAID_FESS ({{ platformFessPrice }}
+            CTF). Hanya status gratis yang bisa diubah per base.
+          </p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="price-reason">Alasan perubahan</label>
           <textarea
-            id="free-reason"
-            v-model="freeDialog.reason"
+            id="price-reason"
+            v-model="priceDialog.reason"
             class="pc-textarea"
             maxlength="500"
-            placeholder="Contoh: kompensasi migrasi, partner konten, atau koreksi billing."
+            placeholder="Contoh: base mitra FnC, kompensasi migrasi, atau koreksi billing."
           />
           <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
         </div>
         <div class="pc-field pc-field--full">
-          <label class="pc-label" for="free-password">Kata sandi Super Admin</label>
+          <label class="pc-label" for="price-password">Kata sandi Super Admin</label>
           <input
-            id="free-password"
-            v-model="freeDialog.password"
+            id="price-password"
+            v-model="priceDialog.password"
             class="pc-input"
             type="password"
             autocomplete="current-password"
@@ -1094,12 +1120,17 @@
         </div>
       </div>
 
-      <div class="pc-callout" :class="freeDialog.value ? 'pc-callout--lime' : 'pc-callout--warning'">
+      <div
+        class="pc-callout"
+        :class="priceDialog.freeForever ? 'pc-callout--lime' : 'pc-callout--warning'"
+      >
         <Sparkles :size="15" />
         <div>
-          {{ freeDialog.value
-            ? 'freeForever membebaskan base dari billing langganan. Pendapatan fess tetap mengikuti aturan platform.'
-            : 'Mencabut freeForever akan mengembalikan base ke siklus billing normal.' }}
+          {{
+            priceDialog.freeForever
+              ? 'Base mitra: pengirim tidak dipotong CTF. Base ini juga tidak menerima pendapatan fess dari platform.'
+              : `Base kembali berbayar: setiap fess memotong ${platformFessPrice} CTF dari saldo pengirim dan base menerima pendapatan platform.`
+          }}
         </div>
       </div>
     </ConsoleDialog>
@@ -1108,7 +1139,11 @@
       v-model="paymentDetailOpen"
       eyebrow="Payment monitoring · read-only"
       :title="paymentDetail?.order_id || 'Detail pembayaran'"
-      :subtitle="paymentDetail ? `${paymentDetail.package_name} · ${paymentDetail.user?.handle || 'Pengguna'}` : 'Memuat detail order…'"
+      :subtitle="
+        paymentDetail
+          ? `${paymentDetail.package_name} · ${paymentDetail.user?.handle || 'Pengguna'}`
+          : 'Memuat detail order…'
+      "
     >
       <div v-if="paymentDetailLoading" class="pc-stack">
         <div class="pc-skeleton pc-skeleton--stat" />
@@ -1231,8 +1266,8 @@
         <div class="pc-callout">
           <Info :size="15" />
           <div>
-            Monitoring ini tidak mengubah status pembayaran. Refund/chargeback belum
-            termasuk dalam v1.
+            Monitoring ini tidak mengubah status pembayaran. Refund/chargeback belum termasuk dalam
+            v1.
           </div>
         </div>
       </div>
@@ -1363,15 +1398,28 @@ const kycDialog = reactive({
   error: '',
 });
 
-const freeDialog = reactive({
+const priceDialog = reactive({
   open: false,
   base: null,
-  value: false,
+  freeForever: false,
   reason: '',
   password: '',
   loading: false,
   error: '',
 });
+
+/** Harga fess normal dari backend (CTF_PER_PAID_FESS), bukan hardcode di UI. */
+const platformFessPrice = computed(() => {
+  const price = Number(workspace.value?.fess_price_ctf ?? 1);
+  return Number.isFinite(price) && price > 0 ? price : 1;
+});
+
+function fessPriceLabel(base) {
+  if (!base) return '-';
+  return Number(base.fess_price_ctf) === 0
+    ? 'Gratis permanen (0 CTF)'
+    : `${base.fess_price_ctf} CTF per fess`;
+}
 
 const totals = computed(
   () =>
@@ -1380,7 +1428,7 @@ const totals = computed(
       available_idr: 0,
       reserved_idr: 0,
       lifetime_idr: 0,
-    }
+    },
 );
 
 const payoutHealthLabel = computed(() => {
@@ -1397,9 +1445,9 @@ const kycQueue = computed(() =>
         base.bank_name &&
         base.bank_account_name &&
         base.bank_account_number_masked &&
-        base.payout_kyc_status !== 'verified'
+        base.payout_kyc_status !== 'verified',
     )
-    .sort((a, b) => (b.available_idr || 0) - (a.available_idr || 0))
+    .sort((a, b) => (b.available_idr || 0) - (a.available_idr || 0)),
 );
 
 const filteredBillingBases = computed(() => {
@@ -1407,27 +1455,26 @@ const filteredBillingBases = computed(() => {
   if (!query) return bases.value;
   return bases.value.filter(
     (base) =>
-      String(base.handle || '').toLowerCase().includes(query) ||
-      String(base.name || '').toLowerCase().includes(query)
+      String(base.handle || '')
+        .toLowerCase()
+        .includes(query) ||
+      String(base.name || '')
+        .toLowerCase()
+        .includes(query),
   );
 });
 
-const visibleBillingBases = computed(() =>
-  filteredBillingBases.value.slice(0, billingLimit.value)
-);
+const visibleBillingBases = computed(() => filteredBillingBases.value.slice(0, billingLimit.value));
 
 const refreshing = computed(
   () =>
-    workspaceLoading.value ||
-    payoutsLoading.value ||
-    paymentsLoading.value ||
-    eventsLoading.value
+    workspaceLoading.value || payoutsLoading.value || paymentsLoading.value || eventsLoading.value,
 );
 
 const payoutDialogNeedsFee = computed(() => payoutDialog.action === 'approve');
 const payoutDialogNeedsReference = computed(() => payoutDialog.action === 'mark_paid');
 const payoutDialogNeedsReason = computed(() =>
-  ['reject', 'mark_failed'].includes(payoutDialog.action)
+  ['reject', 'mark_failed'].includes(payoutDialog.action),
 );
 
 const payoutDialogTitle = computed(() => payoutActionLabel(payoutDialog.action));
@@ -1482,11 +1529,11 @@ const payoutImpactNote = computed(() => {
 });
 
 const kycCanSubmit = computed(() => Boolean(kycDialog.base && kycDialog.password.trim()));
-const freeCanSubmit = computed(
+const priceCanSubmit = computed(
   () =>
-    Boolean(freeDialog.base) &&
-    Boolean(freeDialog.password.trim()) &&
-    freeDialog.reason.trim().length >= 5
+    Boolean(priceDialog.base) &&
+    Boolean(priceDialog.password.trim()) &&
+    priceDialog.reason.trim().length >= 5,
 );
 
 let payoutSearchTimer = null;
@@ -1643,9 +1690,7 @@ async function submitPayoutReview() {
 
 function openKycDialog(base, status = 'verified') {
   kycDialog.base = base;
-  kycDialog.status = ['verified', 'rejected', 'unverified'].includes(status)
-    ? status
-    : 'verified';
+  kycDialog.status = ['verified', 'rejected', 'unverified'].includes(status) ? status : 'verified';
   kycDialog.note = base.payout_kyc_note || '';
   kycDialog.password = '';
   kycDialog.error = '';
@@ -1674,36 +1719,38 @@ async function submitKyc() {
   }
 }
 
-function openFreeForever(base) {
-  freeDialog.base = base;
-  freeDialog.value = !base.free_forever;
-  freeDialog.reason = '';
-  freeDialog.password = '';
-  freeDialog.error = '';
-  freeDialog.loading = false;
-  freeDialog.open = true;
+function openFessPrice(base) {
+  priceDialog.base = base;
+  priceDialog.freeForever = Number(base.fess_price_ctf) === 0;
+  priceDialog.reason = '';
+  priceDialog.password = '';
+  priceDialog.error = '';
+  priceDialog.loading = false;
+  priceDialog.open = true;
 }
 
-async function submitFreeForever() {
-  if (!freeCanSubmit.value || !freeDialog.base) return;
-  freeDialog.loading = true;
-  freeDialog.error = '';
+async function submitFessPrice() {
+  if (!priceCanSubmit.value || !priceDialog.base) return;
+  priceDialog.loading = true;
+  priceDialog.error = '';
   try {
     await api.setBaseFreeForever({
-      base_handle: freeDialog.base.handle,
-      free_forever: freeDialog.value,
-      reason: freeDialog.reason.trim(),
-      password: freeDialog.password,
+      base_handle: priceDialog.base.handle,
+      free_forever: priceDialog.freeForever,
+      reason: priceDialog.reason.trim(),
+      password: priceDialog.password,
     });
     toast.success(
-      `freeForever ${freeDialog.base.handle} ${freeDialog.value ? 'diaktifkan' : 'dicabut'}.`
+      `Harga fess ${priceDialog.base.handle} disimpan: ${
+        priceDialog.freeForever ? 'gratis permanen' : `${platformFessPrice.value} CTF per fess`
+      }.`,
     );
-    freeDialog.open = false;
+    priceDialog.open = false;
     await loadWorkspace();
   } catch (err) {
-    freeDialog.error = err?.message || 'Perubahan freeForever gagal disimpan.';
+    priceDialog.error = err?.message || 'Perubahan harga fess gagal disimpan.';
   } finally {
-    freeDialog.loading = false;
+    priceDialog.loading = false;
   }
 }
 
@@ -1774,7 +1821,7 @@ watch(
     if (tab === activeTab.value) return;
     activeTab.value = tab;
     ensureTab(tab);
-  }
+  },
 );
 
 watch(billingQuery, () => {
