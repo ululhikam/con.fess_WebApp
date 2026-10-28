@@ -757,6 +757,126 @@
         <section class="pc-card">
           <div class="pc-card__head">
             <div>
+              <h2 class="pc-card__title">Kupon promo</h2>
+              <p class="pc-card__desc">
+                Diskon mengurangi harga bayar, bukan jumlah CTF. Setiap kupon dibatasi satu kali per
+                akun dan kuota totalnya bisa diatur. Order yang sudah dibuat tidak terpengaruh.
+              </p>
+            </div>
+            <div class="pc-card__actions">
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="couponsLoading"
+                @click="loadCoupons"
+              >
+                <RefreshCw :size="12" :class="{ 'pc-spin': couponsLoading }" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                class="pc-btn pc-btn--primary pc-btn--sm"
+                :disabled="couponSource === 'fallback'"
+                @click="openCouponDialog()"
+              >
+                <Plus :size="12" />
+                Tambah kupon
+              </button>
+            </div>
+          </div>
+
+          <div v-if="couponSource === 'fallback'" class="pc-card__body">
+            <div class="pc-callout pc-callout--warning">
+              <AlertTriangle :size="16" />
+              <div>
+                Tabel <code>Coupon</code> belum ada di database, jadi kupon belum bisa dibuat.
+                Jalankan <code>prisma migrate deploy</code> lebih dulu.
+              </div>
+            </div>
+          </div>
+
+          <div v-if="couponsError" class="pc-card__body">
+            <div class="pc-error">
+              <AlertTriangle :size="16" />
+              <div>
+                <strong>Kupon gagal dimuat.</strong>
+                <p>{{ couponsError }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="couponsLoading && !coupons.length" class="pc-card__body pc-stack">
+            <div v-for="index in 2" :key="index" class="pc-skeleton pc-skeleton--line" />
+          </div>
+
+          <div v-else-if="!coupons.length" class="pc-empty">
+            <span class="pc-empty__icon"><Ticket :size="18" /></span>
+            Belum ada kupon. Tambahkan kode promo untuk memberi potongan harga top-up.
+          </div>
+
+          <div v-else class="pc-table-wrap">
+            <table class="pc-table">
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th>Diskon</th>
+                  <th>Terpakai</th>
+                  <th>Masa berlaku</th>
+                  <th>Status</th>
+                  <th class="pc-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="coupon in coupons" :key="coupon.code">
+                  <td>
+                    <span class="pc-table__primary pc-mono">{{ coupon.code }}</span>
+                    <span v-if="coupon.label" class="pc-table__sub">{{ coupon.label }}</span>
+                  </td>
+                  <td>{{ couponDiscountLabel(coupon) }}</td>
+                  <td class="pc-table__number">
+                    {{ coupon.redemption_count }}
+                    <span class="pc-table__sub">
+                      / {{ coupon.max_redemptions === null ? '∞' : coupon.max_redemptions }}
+                    </span>
+                  </td>
+                  <td>{{ couponValidityLabel(coupon) }}</td>
+                  <td>
+                    <ConsoleStatusBadge
+                      :status="coupon.is_active ? 'active' : 'inactive'"
+                      :label="coupon.is_active ? 'Aktif' : 'Nonaktif'"
+                      :tone="coupon.is_active ? 'lime' : 'neutral'"
+                    />
+                  </td>
+                  <td>
+                    <div class="pc-table__actions">
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="couponSource === 'fallback'"
+                        @click="openCouponDialog(coupon)"
+                      >
+                        <Pencil :size="12" />
+                        Ubah
+                      </button>
+                      <button
+                        type="button"
+                        class="pc-btn pc-btn--ghost pc-btn--sm"
+                        :disabled="couponSource === 'fallback'"
+                        @click="openCouponStatus(coupon)"
+                      >
+                        {{ coupon.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="pc-card">
+          <div class="pc-card__head">
+            <div>
               <h2 class="pc-card__title">Order pembayaran</h2>
               <p class="pc-card__desc">
                 {{ paymentOrders.total }} order tercatat. Klik order untuk melihat event webhook.
@@ -1432,6 +1552,205 @@
       </div>
     </ConsoleDialog>
 
+    <ConsoleDialog
+      v-model="couponDialog.open"
+      :title="couponDialog.mode === 'create' ? 'Tambah kupon promo' : 'Ubah kupon promo'"
+      :subtitle="
+        couponDialog.mode === 'create'
+          ? 'Kupon langsung bisa dipakai setelah disimpan'
+          : `${couponDialog.code} · hanya berlaku untuk pembelian berikutnya`
+      "
+      eyebrow="Kupon promo · re-auth"
+      :confirm-label="couponDialog.mode === 'create' ? 'Simpan kupon' : 'Simpan perubahan'"
+      tone="primary"
+      :loading="couponDialog.loading"
+      :confirm-disabled="!couponCanSubmit"
+      :error="couponDialog.error"
+      @confirm="submitCoupon"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-code">Kode kupon</label>
+          <input
+            id="coupon-code"
+            v-model="couponDialog.code"
+            class="pc-input pc-mono"
+            maxlength="32"
+            placeholder="mis. HEMAT2026"
+            :disabled="couponDialog.mode === 'edit'"
+          />
+          <p class="pc-help">
+            Huruf, angka, garis bawah, atau strip. Kode tidak bisa diubah setelah dibuat.
+          </p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-label">Label</label>
+          <input
+            id="coupon-label"
+            v-model="couponDialog.label"
+            class="pc-input"
+            maxlength="60"
+            placeholder="mis. Promo akhir tahun"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-type">Tipe diskon</label>
+          <select id="coupon-type" v-model="couponDialog.discountType" class="pc-select">
+            <option value="FIXED">Nominal rupiah</option>
+            <option value="PERCENT">Persen</option>
+          </select>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-value">
+            {{ couponDialog.discountType === 'PERCENT' ? 'Diskon (%)' : 'Diskon (Rp)' }}
+          </label>
+          <input
+            id="coupon-value"
+            v-model="couponDialog.discountValue"
+            class="pc-input"
+            inputmode="numeric"
+            :placeholder="couponDialog.discountType === 'PERCENT' ? '20' : '2000'"
+          />
+        </div>
+        <div v-if="couponDialog.discountType === 'PERCENT'" class="pc-field">
+          <label class="pc-label" for="coupon-max">Maks potongan (Rp)</label>
+          <input
+            id="coupon-max"
+            v-model="couponDialog.maxDiscount"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="Kosongkan bila tanpa batas"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-min">Minimum pembelian (Rp)</label>
+          <input
+            id="coupon-min"
+            v-model="couponDialog.minAmount"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="0"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-quota">Kuota total</label>
+          <input
+            id="coupon-quota"
+            v-model="couponDialog.maxRedemptions"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="Kosongkan bila tanpa batas"
+          />
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-active">Status</label>
+          <select id="coupon-active" v-model="couponDialog.isActive" class="pc-select">
+            <option :value="true">Aktif</option>
+            <option :value="false">Nonaktif</option>
+          </select>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-start">Mulai berlaku</label>
+          <input
+            id="coupon-start"
+            v-model="couponDialog.startsAt"
+            class="pc-input"
+            type="datetime-local"
+          />
+          <p class="pc-help">Kosongkan agar langsung berlaku.</p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="coupon-end">Berakhir</label>
+          <input
+            id="coupon-end"
+            v-model="couponDialog.endsAt"
+            class="pc-input"
+            type="datetime-local"
+          />
+          <p class="pc-help">Kosongkan agar tanpa batas waktu.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-reason">Alasan perubahan</label>
+          <textarea
+            id="coupon-reason"
+            v-model="couponDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: promo akhir tahun untuk pengguna baru."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-password">Kata sandi Super Admin</label>
+          <input
+            id="coupon-password"
+            v-model="couponDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div class="pc-callout" :class="couponPreviewTone">
+        <Sparkles :size="15" />
+        <div>{{ couponPreview }}</div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
+      v-model="couponStatusDialog.open"
+      :title="couponStatusDialog.nextActive ? 'Aktifkan kupon' : 'Nonaktifkan kupon'"
+      :subtitle="couponStatusDialog.coupon ? couponStatusDialog.coupon.code : ''"
+      eyebrow="Status kupon · re-auth"
+      :confirm-label="couponStatusDialog.nextActive ? 'Aktifkan kupon' : 'Nonaktifkan kupon'"
+      :tone="couponStatusDialog.nextActive ? 'primary' : 'danger'"
+      :loading="couponStatusDialog.loading"
+      :confirm-disabled="!couponStatusCanSubmit"
+      :error="couponStatusDialog.error"
+      @confirm="submitCouponStatus"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-status-reason">Alasan perubahan</label>
+          <textarea
+            id="coupon-status-reason"
+            v-model="couponStatusDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: promo sudah berakhir."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="coupon-status-password">Kata sandi Super Admin</label>
+          <input
+            id="coupon-status-password"
+            v-model="couponStatusDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="couponStatusDialog.nextActive ? 'pc-callout--lime' : 'pc-callout--warning'"
+      >
+        <Info :size="15" />
+        <div>
+          {{
+            couponStatusDialog.nextActive
+              ? 'Kupon bisa dipakai lagi oleh pengguna selama kuota dan masa berlakunya masih ada.'
+              : 'Kupon tidak bisa dipakai lagi. Order yang sudah memakai kupon ini tetap berlaku.'
+          }}
+        </div>
+      </div>
+    </ConsoleDialog>
+
     <ConsoleDrawer
       v-model="paymentDetailOpen"
       eyebrow="Payment monitoring · read-only"
@@ -1601,6 +1920,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Ticket,
   Wallet,
   XCircle,
 } from 'lucide-vue-next';
@@ -1722,6 +2042,40 @@ const packageDialog = reactive({
 const packageStatusDialog = reactive({
   open: false,
   pkg: null,
+  nextActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+const coupons = ref([]);
+const couponSource = ref('database');
+const couponsLoading = ref(false);
+const couponsError = ref('');
+
+const couponDialog = reactive({
+  open: false,
+  mode: 'create',
+  code: '',
+  label: '',
+  discountType: 'FIXED',
+  discountValue: '',
+  maxDiscount: '',
+  minAmount: '',
+  maxRedemptions: '',
+  startsAt: '',
+  endsAt: '',
+  isActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+const couponStatusDialog = reactive({
+  open: false,
+  coupon: null,
   nextActive: true,
   reason: '',
   password: '',
@@ -1916,6 +2270,94 @@ const packageStatusCanSubmit = computed(
     packageStatusDialog.reason.trim().length >= 5,
 );
 
+/* -------------------------------------------------------------------------
+ * Kupon promo (diskon mengurangi harga bayar, bukan jumlah CTF)
+ * ---------------------------------------------------------------------- */
+/** Ambil digit saja: field rupiah boleh diketik "2.000" atau "Rp2.000". */
+function digits(value) {
+  const clean = String(value ?? '').replace(/[^\d]/g, '');
+  return clean ? Number(clean) : 0;
+}
+
+const cheapestPackage = computed(() => {
+  const active = packages.value.filter((pkg) => pkg.is_active !== false);
+  return active.reduce(
+    (best, pkg) => (!best || pkg.amount_idr < best.amount_idr ? pkg : best),
+    null,
+  );
+});
+
+const couponPreviewState = computed(() => {
+  const pkg = cheapestPackage.value;
+  const value = digits(couponDialog.discountValue);
+  if (!pkg) {
+    return {
+      tone: '',
+      message: 'Belum ada paket top-up aktif, contoh potongan belum bisa dihitung.',
+    };
+  }
+  if (!value) {
+    return {
+      tone: '',
+      message: 'Isi nilai diskon untuk melihat contoh potongan pada paket termurah.',
+    };
+  }
+
+  let discount =
+    couponDialog.discountType === 'PERCENT'
+      ? Math.floor((pkg.amount_idr * Math.min(value, 100)) / 100)
+      : value;
+  const cap = digits(couponDialog.maxDiscount);
+  if (couponDialog.discountType === 'PERCENT' && cap > 0) discount = Math.min(discount, cap);
+  discount = Math.min(discount, pkg.amount_idr);
+  const final = pkg.amount_idr - discount;
+
+  if (discount <= 0) {
+    return { tone: 'pc-callout--warning', message: 'Nilai diskon belum menghasilkan potongan.' };
+  }
+  if (final < 1000) {
+    return {
+      tone: 'pc-callout--warning',
+      message: `Pada ${pkg.name} (${formatIdr(pkg.amount_idr)}), potongan ${formatIdr(
+        discount,
+      )} menyisakan ${formatIdr(final)} — di bawah batas tagih Rp1.000.`,
+    };
+  }
+  return {
+    tone: 'pc-callout--lime',
+    message: `Pada ${pkg.name} (${formatIdr(pkg.amount_idr)}): potongan ${formatIdr(
+      discount,
+    )}, pengguna membayar ${formatIdr(final)} dan tetap menerima ${formatNumber(
+      pkg.ctf_amount,
+    )} CTF.`,
+  };
+});
+
+const couponPreview = computed(() => couponPreviewState.value.message);
+const couponPreviewTone = computed(() => couponPreviewState.value.tone);
+
+const couponCanSubmit = computed(() => {
+  if (couponDialog.mode === 'create') {
+    const code = String(couponDialog.code).trim().toUpperCase();
+    if (!/^[A-Z0-9_-]{3,32}$/.test(code)) return false;
+  }
+  const value = digits(couponDialog.discountValue);
+  if (value < 1) return false;
+  if (couponDialog.discountType === 'PERCENT' && value > 100) return false;
+  const start = couponDialog.startsAt ? new Date(couponDialog.startsAt).getTime() : null;
+  const end = couponDialog.endsAt ? new Date(couponDialog.endsAt).getTime() : null;
+  if (start && end && end <= start) return false;
+  if (couponDialog.reason.trim().length < 5) return false;
+  return Boolean(couponDialog.password.trim());
+});
+
+const couponStatusCanSubmit = computed(
+  () =>
+    Boolean(couponStatusDialog.coupon) &&
+    Boolean(couponStatusDialog.password.trim()) &&
+    couponStatusDialog.reason.trim().length >= 5,
+);
+
 let payoutSearchTimer = null;
 let paymentSearchTimer = null;
 
@@ -1931,6 +2373,7 @@ function ensureTab(tab) {
   tabLoaded.payments = true;
   loadSystemSettings();
   loadPackages();
+  loadCoupons();
   loadPaymentOrders();
   loadPaymentEvents();
 }
@@ -2001,7 +2444,13 @@ async function loadSystemSettings() {
 
 async function refreshPage() {
   if (activeTab.value === 'payments') {
-    await Promise.all([loadWorkspace(), loadPackages(), loadPaymentOrders(), loadPaymentEvents()]);
+    await Promise.all([
+      loadWorkspace(),
+      loadPackages(),
+      loadCoupons(),
+      loadPaymentOrders(),
+      loadPaymentEvents(),
+    ]);
     return;
   }
   if (activeTab.value === 'payouts') {
@@ -2242,6 +2691,153 @@ async function submitPackageStatus() {
     packageStatusDialog.error = err?.message || 'Status paket gagal disimpan.';
   } finally {
     packageStatusDialog.loading = false;
+  }
+}
+
+async function loadCoupons() {
+  couponsLoading.value = true;
+  couponsError.value = '';
+  try {
+    const result = await api.getAdminCoupons();
+    coupons.value = Array.isArray(result?.coupons) ? result.coupons : [];
+    couponSource.value = result?.source === 'fallback' ? 'fallback' : 'database';
+  } catch (err) {
+    couponsError.value = err?.message || 'Gagal memuat kupon promo.';
+  } finally {
+    couponsLoading.value = false;
+  }
+}
+
+/** ISO dari server → nilai input `datetime-local` (waktu lokal browser). */
+function isoToLocalInput(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (value) => String(value).padStart(2, '0');
+  return [
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  ].join('T');
+}
+
+/** Nilai `datetime-local` → ISO UTC; kosong berarti tanpa batas. */
+function localToIso(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function couponDiscountLabel(coupon) {
+  if (!coupon) return '—';
+  if (coupon.discount_type === 'PERCENT') {
+    const base = `${formatNumber(coupon.discount_value)}%`;
+    return coupon.max_discount_idr ? `${base} · maks ${formatIdr(coupon.max_discount_idr)}` : base;
+  }
+  return formatIdr(coupon.discount_value);
+}
+
+function couponValidityLabel(coupon) {
+  const start = coupon?.starts_at;
+  const end = coupon?.ends_at;
+  if (!start && !end) return 'Selalu berlaku';
+  if (start && !end) return `Mulai ${formatDateTime(start)}`;
+  if (!start && end) return `Sampai ${formatDateTime(end)}`;
+  return `${formatDateTime(start)} – ${formatDateTime(end)}`;
+}
+
+function openCouponDialog(coupon = null) {
+  couponDialog.mode = coupon ? 'edit' : 'create';
+  couponDialog.code = coupon?.code || '';
+  couponDialog.label = coupon?.label || '';
+  couponDialog.discountType = coupon?.discount_type === 'PERCENT' ? 'PERCENT' : 'FIXED';
+  couponDialog.discountValue = coupon ? String(coupon.discount_value) : '';
+  couponDialog.maxDiscount = coupon?.max_discount_idr ? String(coupon.max_discount_idr) : '';
+  couponDialog.minAmount = coupon?.min_amount_idr ? String(coupon.min_amount_idr) : '';
+  couponDialog.maxRedemptions =
+    coupon?.max_redemptions === null || coupon?.max_redemptions === undefined
+      ? ''
+      : String(coupon.max_redemptions);
+  couponDialog.startsAt = isoToLocalInput(coupon?.starts_at);
+  couponDialog.endsAt = isoToLocalInput(coupon?.ends_at);
+  couponDialog.isActive = coupon ? Boolean(coupon.is_active) : true;
+  couponDialog.reason = '';
+  couponDialog.password = '';
+  couponDialog.error = '';
+  couponDialog.loading = false;
+  couponDialog.open = true;
+}
+
+async function submitCoupon() {
+  if (!couponCanSubmit.value) return;
+  couponDialog.loading = true;
+  couponDialog.error = '';
+  const maxDiscount = digits(couponDialog.maxDiscount);
+  const maxRedemptions = digits(couponDialog.maxRedemptions);
+  const payload = {
+    label: couponDialog.label.trim(),
+    discount_type: couponDialog.discountType,
+    discount_value: digits(couponDialog.discountValue),
+    max_discount_idr:
+      couponDialog.discountType === 'PERCENT' && maxDiscount > 0 ? maxDiscount : null,
+    min_amount_idr: digits(couponDialog.minAmount),
+    starts_at: localToIso(couponDialog.startsAt),
+    ends_at: localToIso(couponDialog.endsAt),
+    max_redemptions: maxRedemptions > 0 ? maxRedemptions : null,
+    is_active: couponDialog.isActive,
+    reason: couponDialog.reason.trim(),
+    password: couponDialog.password,
+  };
+
+  try {
+    if (couponDialog.mode === 'create') {
+      const code = couponDialog.code.trim().toUpperCase();
+      await api.createAdminCoupon({ code, ...payload });
+      toast.success(`Kupon ${code} dibuat dan langsung bisa dipakai.`);
+    } else {
+      await api.updateAdminCoupon(couponDialog.code, payload);
+      toast.success(`Kupon ${couponDialog.code} diperbarui.`);
+    }
+    couponDialog.open = false;
+    await loadCoupons();
+  } catch (err) {
+    couponDialog.error = err?.message || 'Perubahan kupon gagal disimpan.';
+  } finally {
+    couponDialog.loading = false;
+  }
+}
+
+function openCouponStatus(coupon) {
+  couponStatusDialog.coupon = coupon;
+  couponStatusDialog.nextActive = !coupon?.is_active;
+  couponStatusDialog.reason = '';
+  couponStatusDialog.password = '';
+  couponStatusDialog.error = '';
+  couponStatusDialog.loading = false;
+  couponStatusDialog.open = true;
+}
+
+async function submitCouponStatus() {
+  if (!couponStatusCanSubmit.value || !couponStatusDialog.coupon) return;
+  couponStatusDialog.loading = true;
+  couponStatusDialog.error = '';
+  const coupon = couponStatusDialog.coupon;
+  try {
+    await api.setAdminCouponStatus(coupon.code, {
+      is_active: couponStatusDialog.nextActive,
+      reason: couponStatusDialog.reason.trim(),
+      password: couponStatusDialog.password,
+    });
+    toast.success(
+      couponStatusDialog.nextActive
+        ? `Kupon ${coupon.code} diaktifkan kembali.`
+        : `Kupon ${coupon.code} dinonaktifkan.`,
+    );
+    couponStatusDialog.open = false;
+    await loadCoupons();
+  } catch (err) {
+    couponStatusDialog.error = err?.message || 'Status kupon gagal disimpan.';
+  } finally {
+    couponStatusDialog.loading = false;
   }
 }
 

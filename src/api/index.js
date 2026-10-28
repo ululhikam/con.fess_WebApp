@@ -120,6 +120,7 @@ export const api = {
     client.post('/payments/orders', payload, {
       headers: { 'Idempotency-Key': idempotencyKey },
     }),
+  previewPaymentCoupon: (payload) => client.post('/payments/coupons/preview', payload),
 
   /* SONGS & TOPICS */
   getSongs: (params) => client.get('/songs', { params }),
@@ -193,6 +194,13 @@ export const api = {
     client.patch(`/admin/payments/packages/${encodeURIComponent(code)}`, payload),
   setAdminPaymentPackageStatus: (code, payload) =>
     client.post(`/admin/payments/packages/${encodeURIComponent(code)}/status`, payload),
+  /* ADMIN — kupon promo top-up (Super Admin, re-auth untuk setiap perubahan) */
+  getAdminCoupons: () => client.get('/admin/payments/coupons'),
+  createAdminCoupon: (payload) => client.post('/admin/payments/coupons', payload),
+  updateAdminCoupon: (code, payload) =>
+    client.patch(`/admin/payments/coupons/${encodeURIComponent(code)}`, payload),
+  setAdminCouponStatus: (code, payload) =>
+    client.post(`/admin/payments/coupons/${encodeURIComponent(code)}/status`, payload),
   getAdminSystemSettings: () => client.get('/admin/system/settings'),
 };
 
