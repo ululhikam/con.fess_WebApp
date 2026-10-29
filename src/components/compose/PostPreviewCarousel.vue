@@ -458,7 +458,6 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 8px 0 12px;
@@ -479,7 +478,6 @@ onBeforeUnmount(() => {
 .post-carousel__slide {
   flex: 0 0 calc(100% - 32px);
   min-width: 0;
-  scroll-snap-align: start;
 }
 
 /* ---- slide kartu hasil render ---- */
