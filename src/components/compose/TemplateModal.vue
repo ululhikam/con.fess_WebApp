@@ -11,8 +11,13 @@
           <div>
             <h2 id="template-modal-title" class="modal-title">Pilih Template Card</h2>
             <p class="modal-subtitle">
-              Template dipilih acak otomatis saat kamu menulis. Pilih satu kalau ingin desain
-              tertentu.
+              <template v-if="isExclusive">
+                Base ini memakai template khusus, jadi template umum tidak ditampilkan.
+              </template>
+              <template v-else>
+                Template dipilih acak otomatis saat kamu menulis. Pilih satu kalau ingin desain
+                tertentu.
+              </template>
             </p>
           </div>
           <button type="button" class="modal-close" @click="close" aria-label="Tutup">
@@ -78,6 +83,7 @@
                 <span v-if="t.category" class="template-card__badge">{{
                   categoryLabel(t.category)
                 }}</span>
+                <span v-if="t.base_id" class="template-card__badge is-own">Khusus base</span>
               </div>
 
               <span v-if="template === t.key" class="template-card__check">
@@ -97,7 +103,7 @@
 </template>
 
 <script setup>
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 import { X, Check, Loader2, AlertCircle } from 'lucide-vue-next';
 import { useTemplateStore } from '../../stores/templateStore';
 
@@ -111,6 +117,14 @@ const props = defineProps({
 const emit = defineEmits(['update:show', 'update:template']);
 
 const templateStore = useTemplateStore();
+
+/**
+ * Base yang sudah punya template khusus hanya menerima template miliknya —
+ * backend menyaring katalog umum, jadi semua item di scope ini eksklusif.
+ */
+const isExclusive = computed(
+  () => templateStore.items.length > 0 && templateStore.items.every((t) => Boolean(t.base_id)),
+);
 
 watch(
   [() => props.show, () => props.baseHandle],
@@ -409,6 +423,12 @@ function close() {
   font-weight: 700;
   color: var(--text-secondary, rgba(255, 255, 255, 0.7));
   letter-spacing: 0.2px;
+}
+
+/* Penanda template eksklusif milik base. */
+.template-card__badge.is-own {
+  background: var(--brand-blue, #0038ff);
+  color: var(--brand-blue-ink, #ffffff);
 }
 
 .template-card__check {
