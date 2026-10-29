@@ -175,6 +175,13 @@ const routes = [
       },
     ],
   },
+  // Halaman publik: profil perusahaan/produk, tanpa login.
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('../views/AboutPage.vue'),
+    meta: { title: 'Tentang Kami' },
+  },
   // Halaman legal publik (tanpa login) — dipakai juga sebagai URL kebijakan
   // Meta App Review (Instagram Platform).
   {

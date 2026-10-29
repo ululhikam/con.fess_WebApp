@@ -8,9 +8,14 @@
     </div>
 
     <div class="nav-center">
-      <a v-for="link in landingNavLinks" :key="link.href" :href="link.href" class="nav-pill-link">
-        {{ link.label }}
-      </a>
+      <div class="nav-anchors">
+        <a v-for="link in landingNavLinks" :key="link.href" :href="link.href" class="nav-pill-link">
+          {{ link.label }}
+        </a>
+      </div>
+
+      <!-- Tautan halaman (bukan anchor): tetap tampil di mobile walau anchor disembunyikan. -->
+      <router-link to="/about" class="nav-pill-link nav-pill-link--page">Tentang</router-link>
     </div>
 
     <div class="nav-right">
@@ -71,6 +76,8 @@ defineProps({
   font-weight: 800;
   font-size: 15px;
   letter-spacing: -0.3px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-logo-img {
@@ -93,6 +100,12 @@ defineProps({
   border: 1px solid var(--shell-border-strong);
 }
 
+.nav-anchors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .nav-pill-link {
   color: var(--shell-text);
   text-decoration: none;
@@ -105,6 +118,12 @@ defineProps({
 
 .nav-pill-link:hover {
   background: var(--shell-border-strong);
+}
+
+/* Halaman aktif ditandai supaya pengguna tahu posisinya. */
+.nav-pill-link--page.router-link-active {
+  background: var(--shell-text);
+  color: var(--shell-bg);
 }
 
 .nav-right {
@@ -127,6 +146,8 @@ defineProps({
   align-items: center;
   justify-content: center;
   gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-connect-btn:hover {
@@ -139,14 +160,29 @@ defineProps({
     padding: 16px 20px;
   }
 
-  .nav-center {
+  /* Anchor disembunyikan (pengguna cukup scroll), tapi halaman Tentang
+     tetap harus bisa diakses — jadi chip-nya dilepas, tautannya tetap ada. */
+  .nav-anchors {
     display: none;
+  }
+
+  .nav-center {
+    background: transparent;
+    border-color: transparent;
+    padding: 0;
+    backdrop-filter: none;
+  }
+
+  .nav-pill-link--page {
+    padding: 8px 14px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: 600px) {
   .lp-nav {
     padding: 10px 14px;
+    gap: 8px;
   }
 
   .lp-nav.scrolled {
@@ -159,21 +195,36 @@ defineProps({
     gap: 6px;
   }
 
+  /* Layar sempit: sisakan ikon saja supaya logo + Tentang + Masuk App
+     tetap satu baris tanpa teks terpotong. */
+  .logo-text {
+    display: none;
+  }
+
+  .nav-logo-pill {
+    padding: 6px;
+  }
+
   .nav-logo-img {
-    width: 20px;
-    height: 20px;
-    border-radius: 5px;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
   }
 
   .nav-connect-btn {
-    padding: 5px 14px;
-    font-size: 12px;
+    padding: 6px 12px;
+    font-size: 11.5px;
     font-weight: 800;
     border-width: 1.5px;
   }
 
   .nav-right {
     gap: 8px;
+  }
+
+  .nav-pill-link--page {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }
 </style>

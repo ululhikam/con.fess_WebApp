@@ -12,6 +12,7 @@
     <div class="footer-right">
       <nav class="footer-links" aria-label="Tautan footer">
         <router-link to="/login">Masuk</router-link>
+        <router-link to="/about">Tentang</router-link>
         <a href="#fitur">Fitur</a>
         <a href="#cara-kerja">Cara Kerja</a>
         <a href="#komunitas">Komunitas</a>
