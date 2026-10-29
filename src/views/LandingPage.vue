@@ -10,6 +10,7 @@
         <HowItWorksSection />
         <CommunitySection />
         <StatsSection />
+        <PricingSection />
         <FaqSection :open-faq="openFaq" @toggle="toggleFaq" />
         <CtaSection />
         <SiteFooter />
@@ -33,6 +34,7 @@ import FeaturesSection from '../components/landing/FeaturesSection.vue';
 import HowItWorksSection from '../components/landing/HowItWorksSection.vue';
 import CommunitySection from '../components/landing/CommunitySection.vue';
 import StatsSection from '../components/landing/StatsSection.vue';
+import PricingSection from '../components/landing/PricingSection.vue';
 import FaqSection from '../components/landing/FaqSection.vue';
 import CtaSection from '../components/landing/CtaSection.vue';
 import SiteFooter from '../components/landing/SiteFooter.vue';

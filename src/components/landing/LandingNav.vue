@@ -16,6 +16,7 @@
 
       <!-- Tautan halaman (bukan anchor): tetap tampil di mobile walau anchor disembunyikan. -->
       <router-link to="/about" class="nav-pill-link nav-pill-link--page">Tentang</router-link>
+      <a href="#harga" class="nav-pill-link nav-pill-link--page nav-harga-mobile">Harga</a>
     </div>
 
     <div class="nav-right">
@@ -37,6 +38,7 @@ const landingNavLinks = [
   { href: '#fitur', label: 'Fitur Utama' },
   { href: '#cara-kerja', label: 'Cara Kerja' },
   { href: '#komunitas', label: 'Base Komunitas' },
+  { href: '#harga', label: 'Harga' },
   { href: '#faq', label: 'FAQ' },
 ];
 
@@ -120,6 +122,11 @@ defineProps({
   background: var(--shell-border-strong);
 }
 
+/* Di desktop "Harga" sudah ada di .nav-anchors — hindari duplikat. */
+.nav-harga-mobile {
+  display: none;
+}
+
 /* Halaman aktif ditandai supaya pengguna tahu posisinya. */
 .nav-pill-link--page.router-link-active {
   background: var(--shell-text);
@@ -176,6 +183,11 @@ defineProps({
   .nav-pill-link--page {
     padding: 8px 14px;
     font-size: 13px;
+  }
+
+  /* Anchor disembunyikan, jadi "Harga" perlu versi yang tetap tampil. */
+  .nav-harga-mobile {
+    display: inline-flex;
   }
 }
 
