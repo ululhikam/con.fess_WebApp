@@ -182,6 +182,14 @@ const routes = [
     component: () => import('../views/AboutPage.vue'),
     meta: { title: 'Tentang Kami' },
   },
+  // Kontak publik — dipakai juga sebagai tautan "Contact Us" di footer untuk
+  // syarat verifikasi payment gateway.
+  {
+    path: '/contact',
+    name: 'Contact',
+    component: () => import('../views/ContactPage.vue'),
+    meta: { title: 'Hubungi Kami' },
+  },
   // Halaman legal publik (tanpa login) — dipakai juga sebagai URL kebijakan
   // Meta App Review (Instagram Platform).
   {

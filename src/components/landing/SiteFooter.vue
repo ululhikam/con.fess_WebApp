@@ -16,10 +16,12 @@
         <a href="#fitur">Fitur</a>
         <a href="#cara-kerja">Cara Kerja</a>
         <a href="#komunitas">Komunitas</a>
+        <a href="#harga">Harga</a>
         <a href="#faq">FAQ</a>
       </nav>
 
       <nav class="footer-legal" aria-label="Tautan legal">
+        <router-link to="/contact">Hubungi Kami</router-link>
         <router-link to="/privacy">Kebijakan Privasi</router-link>
         <router-link to="/terms">Ketentuan Layanan</router-link>
         <router-link to="/data-deletion">Penghapusan Data</router-link>
