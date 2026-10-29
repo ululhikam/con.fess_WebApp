@@ -261,9 +261,9 @@
           <div v-else-if="media.length" class="ig-media-list">
             <article v-for="item in media" :key="item.id" class="ig-media-row">
               <a
-                :href="item.permalink || undefined"
-                :target="item.permalink ? '_blank' : undefined"
-                :rel="item.permalink ? 'noopener noreferrer' : undefined"
+                :href="safePermalink(item.permalink) || undefined"
+                :target="safePermalink(item.permalink) ? '_blank' : undefined"
+                :rel="safePermalink(item.permalink) ? 'noopener noreferrer' : undefined"
                 class="ig-media-thumb"
                 :aria-label="`Buka konten Instagram ${shortCaption(item)}`"
               >
@@ -294,8 +294,8 @@
               </div>
 
               <a
-                v-if="item.permalink"
-                :href="item.permalink"
+                v-if="safePermalink(item.permalink)"
+                :href="safePermalink(item.permalink)"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="ig-media-link"
@@ -499,6 +499,7 @@ import {
 } from 'lucide-vue-next';
 
 import { useInstagramAnalytics } from '../../composables/useInstagramAnalytics';
+import { safeExternalUrl } from '../../utils/url';
 
 const props = defineProps({
   /** Bagian analitik yang dirender: summary | content | community. */
@@ -510,6 +511,12 @@ const props = defineProps({
 });
 
 defineEmits(['open-connections']);
+
+/**
+ * Permalink berasal dari respons Graph API. Nilainya disaring sebelum masuk
+ * `href` agar tautan `javascript:`/`data:` tidak bisa dieksekusi.
+ */
+const safePermalink = (url) => safeExternalUrl(url || '');
 
 const {
   account,

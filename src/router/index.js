@@ -229,17 +229,66 @@ const router = createRouter({
   },
 });
 
+/**
+ * Route yang sah menerima `?token=` dari redirect OAuth.
+ * - Login: Google & Instagram login
+ * - BaseOnboarding: registrasi/hubungkan IG saat onboarding base
+ * - BaseAdmin: hubungkan IG dari panel koneksi
+ */
+const TOKEN_INGEST_ROUTES = new Set(['Login', 'BaseOnboarding', 'BaseAdmin']);
+
 /** Global guard: auth -> base-admin onboarding gate -> role separation -> title. */
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  // Ingest token dari OAuth redirect (Google / Instagram) secara instan jika ada di query URL
+  // Token dari redirect OAuth (Google / Instagram) hanya boleh di-ingest pada
+  // route yang memang menerimanya. Sebelumnya guard menerima `?token=` di route
+  // mana pun, sehingga penyerang bisa mengirim tautan `/feed?token=<JWT
+  // penyerang>` dan korban diam-diam menulis konten ke akun penyerang.
   if (to.query.token && typeof to.query.token === 'string') {
-    try {
-      await authStore.loginWithToken(to.query.token);
-    } catch (e) {
-      console.warn('[Router Guard] Gagal autentikasi token dari query URL:', e);
+    const ingestAllowed = TOKEN_INGEST_ROUTES.has(String(to.name || ''));
+    const { token, ...restQuery } = to.query;
+    let ingested = false;
+
+    if (ingestAllowed) {
+      try {
+        await authStore.loginWithToken(token);
+        ingested = true;
+      } catch (e) {
+        console.warn('[Router Guard] Gagal autentikasi token dari query URL:', e);
+      }
+    } else {
+      console.warn('[Router Guard] Token pada query diabaikan untuk route ini.');
     }
+
+    // LoginPage punya logika redirect sendiri berdasarkan `?token=`. Karena token
+    // sudah dibuang dari URL di sini, arahkan dengan aturan yang sama agar
+    // deep-link `?redirect=` tetap dihormati.
+    if (ingested && to.name === 'Login') {
+      const raw = restQuery.redirect;
+      const target =
+        typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : null;
+      const role = authStore.user?.role;
+
+      if (role === 'Base Admin') {
+        return next(target && target.startsWith('/base-admin') ? target : { name: 'BaseAdmin' });
+      }
+      if (role === 'Super Admin') return next({ name: 'SuperAdmin' });
+      return next(
+        target && !target.startsWith('/base-admin') && !target.startsWith('/super-admin')
+          ? target
+          : { name: 'Feed' }
+      );
+    }
+
+    // Jangan biarkan JWT tertinggal di URL/history/referrer.
+    return next({
+      name: to.name,
+      params: to.params,
+      query: restQuery,
+      hash: to.hash,
+      replace: true,
+    });
   }
 
   // JWT kedaluwarsa = sesi berakhir, tanpa menunggu request API berikutnya.

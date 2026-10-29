@@ -527,11 +527,14 @@ function openCompose() {
 }
 
 onMounted(() => {
+  // Token OAuth Instagram sudah di-ingest oleh router guard (route ini termasuk
+  // allowlist). Jangan menulis token mentah ke localStorage di sini: tanpa
+  // validasi `exp` dan tanpa fetch profil, token rusak/kadaluwarsa akan
+  // dianggap sesi sah.
   if (route.query.token) {
-    const token = String(route.query.token);
-    localStorage.setItem('fess_token', token);
-    authStore.token = token;
-    authStore.fetchCurrentUser?.().catch(() => {});
+    const nextQ = { ...route.query };
+    delete nextQ.token;
+    router.replace({ query: nextQ });
   }
 
   if (route.query.ig_connected === 'true') {

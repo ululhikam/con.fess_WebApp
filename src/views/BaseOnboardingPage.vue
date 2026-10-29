@@ -571,11 +571,18 @@ onMounted(async () => {
   const hadDraft = !!draft?.form;
 
   if (query.token && typeof query.token === 'string') {
-    localStorage.setItem('fess_token', query.token);
-    try {
-      await authStore.fetchMe();
-    } catch {
-      // Ignored
+    // Router guard sudah menukar token menjadi sesi (dengan validasi `exp` +
+    // fetchMe). Di sini cukup membersihkannya dari URL agar tidak tersimpan di
+    // history/log/referrer.
+    const nextQ = { ...query };
+    delete nextQ.token;
+    router.replace({ query: nextQ });
+    if (!authStore.isAuthenticated) {
+      try {
+        await authStore.fetchMe();
+      } catch {
+        // Ignored
+      }
     }
   }
 

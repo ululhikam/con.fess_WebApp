@@ -246,6 +246,11 @@ import { useTemplateStore } from '../stores/templateStore';
 import { api } from '../api';
 import { validateFessContent, generateClientId } from '../utils/format';
 import { mapFessToPost, mapQuotedFess } from '../utils/fessMapper';
+import {
+  saveDraft as saveDraftToStorage,
+  readDraft as readStoredDraft,
+  clearDraft as clearStoredDraft,
+} from '../utils/fessDraft';
 
 const router = useRouter();
 const route = useRoute();
@@ -545,15 +550,13 @@ async function handleTopUpFromPublish() {
 async function saveDraft() {
   savingDraft.value = true;
   try {
-    const draft = {
+    // Media tidak ikut disimpan (lihat utils/fessDraft.js): URL/data-URL besar
+    // dan dapat dibuka dari localStorage tanpa login.
+    saveDraftToStorage({
       ...form.value,
       isRandomTemplate: isRandomTemplate.value,
-      id: generateClientId('draft'),
-      savedAt: Date.now(),
-      isDraft: true,
-    };
-    localStorage.setItem('fess_draft', JSON.stringify(draft));
-    toast.success('Draf fess disimpan di perangkat ini.');
+    });
+    toast.success('Draf fess disimpan di perangkat ini (24 jam).');
   } catch {
     toast.error('Gagal menyimpan draf. Coba lagi.');
   } finally {
@@ -645,7 +648,7 @@ async function publishFess() {
     syncFollowing().catch(() => {});
 
     // Clear draft
-    localStorage.removeItem('fess_draft');
+    clearStoredDraft();
 
     const chargedCtf = Number(createdFess?.chargedCtf ?? 0);
     const ctfBalance = createdFess?.ctfBalance;
@@ -720,34 +723,24 @@ async function loadQuoteFess(id) {
 
 // Load draft and initialize on mount
 onMounted(async () => {
-  const savedDraft = localStorage.getItem('fess_draft');
-  if (savedDraft) {
-    try {
-      const draft = JSON.parse(savedDraft);
-      if (draft.isDraft && Date.now() - draft.savedAt < 7 * 24 * 60 * 60 * 1000) {
-        // 7 days
-        // Restore form but don't overwrite if user already typed
-        if (!hasContent.value) {
-          Object.assign(form.value, {
-            baseHandle: draft.baseHandle || '',
-            content: draft.content || '',
-            media: (draft.media || []).filter(
-              (m) => !m.uploading && !!m.url && !String(m.url).startsWith('blob:'),
-            ),
-            carouselOrder: Array.isArray(draft.carouselOrder) ? draft.carouselOrder : [],
-            topic: draft.topic || '',
-            scheduledAt: draft.scheduledAt || null,
-            song: draft.song || null,
-            template: draft.template || 'default',
-            quotedFess: null,
-          });
-          isRandomTemplate.value = draft.isRandomTemplate === true;
-          // Kutipan dipulihkan lewat applier supaya base tujuan ikut terkunci.
-          if (draft.quotedFess) applyQuotedFess(draft.quotedFess);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load draft:', e);
+  const draft = readStoredDraft();
+  if (draft) {
+    // Restore form but don't overwrite if user already typed
+    if (!hasContent.value) {
+      Object.assign(form.value, {
+        baseHandle: draft.baseHandle || '',
+        content: draft.content || '',
+        media: [],
+        carouselOrder: Array.isArray(draft.carouselOrder) ? draft.carouselOrder : [],
+        topic: draft.topic || '',
+        scheduledAt: draft.scheduledAt || null,
+        song: draft.song || null,
+        template: draft.template || 'default',
+        quotedFess: null,
+      });
+      isRandomTemplate.value = draft.isRandomTemplate === true;
+      // Kutipan dipulihkan lewat applier supaya base tujuan ikut terkunci.
+      if (draft.quotedFess) applyQuotedFess(draft.quotedFess);
     }
   }
 
