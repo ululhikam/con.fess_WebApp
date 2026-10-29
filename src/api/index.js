@@ -138,6 +138,8 @@ export const api = {
   /* ADMIN — template kartu (Super Admin) */
   getAdminTemplates: () => client.get('/admin/templates'),
   createAdminTemplate: (payload) => client.post('/admin/templates', payload),
+  suggestAdminTemplateMetadata: (payload) =>
+    client.post('/admin/templates/suggest-metadata', payload),
   updateAdminTemplate: (key, payload) =>
     client.patch(`/admin/templates/${encodeURIComponent(key)}`, payload),
   replaceAdminTemplateSvg: (key, payload) =>

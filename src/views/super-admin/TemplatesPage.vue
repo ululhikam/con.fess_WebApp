@@ -426,6 +426,69 @@
           </p>
         </div>
 
+        <div v-if="formDialog.mode === 'create'" class="pc-field pc-field--full">
+          <div class="template-ai">
+            <div class="template-ai__head">
+              <div>
+                <p class="template-ai__title">
+                  <Sparkles :size="14" />
+                  Isi otomatis dengan AI
+                </p>
+                <p class="pc-help">
+                  Usulan label, deskripsi, dan kategori dari teks di dalam SVG. Hasilnya hanya
+                  usulan — tinjau per field sebelum menyimpan.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost"
+                :disabled="formDialog.aiLoading || !formDialog.svg"
+                @click="suggestMetadataWithAi"
+              >
+                <RefreshCw v-if="formDialog.aiLoading" :size="14" class="pc-spin" />
+                <Sparkles v-else :size="14" />
+                {{ formDialog.aiLoading ? 'Menyusun…' : 'Isi otomatis (AI)' }}
+              </button>
+            </div>
+
+            <p v-if="formDialog.aiError" class="template-ai__error">{{ formDialog.aiError }}</p>
+
+            <div v-if="formDialog.aiSuggestion" class="template-ai__panel">
+              <div class="template-ai__meta">
+                <span class="template-ai__badge">Keyakinan {{ aiConfidence }}%</span>
+                <span v-if="formDialog.aiSuggestion.cached">Dari cache</span>
+                <span v-else>
+                  {{ formDialog.aiSuggestion.provider }} · {{ formDialog.aiSuggestion.model }}
+                </span>
+                <span>{{ formDialog.aiSuggestion.texts_used }} baris teks dianalisis</span>
+              </div>
+
+              <div v-for="field in aiFields" :key="field.key" class="template-ai__row">
+                <div class="template-ai__copy">
+                  <p class="template-ai__label">{{ field.label }}</p>
+                  <p class="template-ai__value">{{ field.value }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="pc-btn pc-btn--ghost pc-btn--sm"
+                  @click="applyAiField(field.key)"
+                >
+                  Terapkan
+                </button>
+              </div>
+
+              <div class="template-ai__foot">
+                <p v-if="formDialog.aiSuggestion.rationale" class="pc-help">
+                  {{ formDialog.aiSuggestion.rationale }}
+                </p>
+                <button type="button" class="pc-btn pc-btn--primary pc-btn--sm" @click="applyAiAll">
+                  Terapkan semua
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="pc-field">
           <label class="pc-label" for="template-key">Key</label>
           <input
@@ -659,6 +722,10 @@ const formDialog = reactive({
   svg: '',
   fileName: '',
   fileSize: 0,
+  // Usulan AI punya state sendiri supaya proses simpan & proses usul tidak saling mengunci.
+  aiLoading: false,
+  aiError: '',
+  aiSuggestion: null,
 });
 
 const replaceDialog = reactive({
@@ -747,6 +814,22 @@ const formCanSubmit = computed(() => {
 });
 
 const replaceSvgReady = computed(() => Boolean(replaceDialog.svg));
+
+/** Persentase keyakinan usulan AI (dibulatkan untuk badge). */
+const aiConfidence = computed(() =>
+  Math.round((Number(formDialog.aiSuggestion?.confidence) || 0) * 100),
+);
+
+/** Field yang bisa diterapkan satu per satu dari panel usulan. */
+const aiFields = computed(() => {
+  const suggestion = formDialog.aiSuggestion;
+  if (!suggestion) return [];
+  return [
+    { key: 'label', label: 'Label', value: suggestion.label },
+    { key: 'description', label: 'Deskripsi', value: suggestion.description },
+    { key: 'category', label: 'Kategori', value: suggestion.category },
+  ];
+});
 
 function apiError(err) {
   const fields = err?.data?.errors;
@@ -856,6 +939,9 @@ function resetFormDialog() {
   formDialog.svg = '';
   formDialog.fileName = '';
   formDialog.fileSize = 0;
+  formDialog.aiLoading = false;
+  formDialog.aiError = '';
+  formDialog.aiSuggestion = null;
   if (svgInput.value) svgInput.value.value = '';
 }
 
@@ -880,6 +966,9 @@ function openEdit(template) {
   formDialog.svg = '';
   formDialog.fileName = '';
   formDialog.fileSize = 0;
+  formDialog.aiLoading = false;
+  formDialog.aiError = '';
+  formDialog.aiSuggestion = null;
   formDialog.error = '';
   formDialog.loading = false;
   previewOpen.value = false;
@@ -903,6 +992,9 @@ async function applySvgFile(file, target) {
   target.fileSize = parsed.size;
 
   if (target === formDialog) {
+    // Usulan lama milik SVG sebelumnya — jangan tampilkan untuk file baru.
+    formDialog.aiSuggestion = null;
+    formDialog.aiError = '';
     if (!formDialog.key.trim()) {
       const key = slugifyKey(parsed.name);
       formDialog.key = key;
@@ -934,6 +1026,44 @@ async function onSvgDrop(event) {
   } catch (err) {
     formDialog.error = err?.message || 'File SVG tidak valid.';
   }
+}
+
+/**
+ * Minta usulan metadata dari backend. Hanya mengirim SVG yang sedang diimpor —
+ * tidak menyimpan apa pun, jadi admin tetap meninjau tiap field.
+ */
+async function suggestMetadataWithAi() {
+  if (formDialog.aiLoading || !formDialog.svg) return;
+  formDialog.aiError = '';
+  formDialog.aiLoading = true;
+  try {
+    const response = await api.suggestAdminTemplateMetadata({
+      svg: formDialog.svg,
+      key: formDialog.key.trim() || undefined,
+      filename: formDialog.fileName || undefined,
+    });
+    const suggestion = response?.data;
+    if (!suggestion) throw new Error('Usulan AI kosong. Coba lagi.');
+    formDialog.aiSuggestion = suggestion;
+  } catch (err) {
+    formDialog.aiSuggestion = null;
+    formDialog.aiError = apiError(err);
+  } finally {
+    formDialog.aiLoading = false;
+  }
+}
+
+/** Salin satu field usulan ke form (tidak menyimpan ke server). */
+function applyAiField(field) {
+  const suggestion = formDialog.aiSuggestion;
+  if (!suggestion) return;
+  if (field === 'label') formDialog.label = suggestion.label || '';
+  else if (field === 'description') formDialog.description = suggestion.description || '';
+  else if (field === 'category') formDialog.category = suggestion.category || 'campus';
+}
+
+function applyAiAll() {
+  aiFields.value.forEach((field) => applyAiField(field.key));
 }
 
 async function submitForm() {
@@ -1267,6 +1397,117 @@ onMounted(() => {
 
 .template-file-input {
   display: none;
+}
+
+.template-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+}
+
+.template-ai__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.template-ai__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 2px;
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.template-ai__title svg {
+  color: var(--lime-primary);
+}
+
+.template-ai__error {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.template-ai__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.template-ai__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.template-ai__badge {
+  padding: 2px 8px;
+  border: 1px solid var(--lime-primary);
+  border-radius: 999px;
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+.template-ai__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-2);
+}
+
+.template-ai__copy {
+  min-width: 0;
+}
+
+.template-ai__label {
+  margin: 0 0 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.template-ai__value {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.template-ai__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.template-ai__foot .pc-help {
+  flex: 1 1 200px;
+  margin: 0;
 }
 
 .template-preview {
