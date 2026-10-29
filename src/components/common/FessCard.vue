@@ -541,10 +541,11 @@
                 <!-- Action Buttons -->
                 <div class="ig-story-actions-row">
                   <a
-                    v-if="igPostData?.imageUrl || igPostData?.image_url"
-                    :href="igPostData.imageUrl || igPostData.image_url"
+                    v-if="igDownloadUrl"
+                    :href="igDownloadUrl"
                     download="fess_feed_card.png"
                     target="_blank"
+                    rel="noopener noreferrer"
                     class="btn-ig-action btn-download"
                   >
                     <Download :size="15" />
@@ -613,6 +614,7 @@ import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 import { copyText } from '../../utils/clipboard';
 import { mapFessComment } from '../../utils/fessMapper';
+import { safeExternalUrl } from '../../utils/url';
 import { useAuthStore } from '../../stores/authStore';
 
 const props = defineProps({
@@ -1314,6 +1316,14 @@ function shareToInstagram() {
 const showInstagramModal = ref(false);
 const igPostLoading = ref(false);
 const igPostData = ref(null);
+
+/**
+ * URL kartu untuk tombol unduh. Nilai berasal dari API, jadi disaring dulu:
+ * hanya http(s) dan path relatif yang boleh masuk `href`.
+ */
+const igDownloadUrl = computed(() =>
+  safeExternalUrl(igPostData.value?.imageUrl || igPostData.value?.image_url || '')
+);
 
 /**
  * Polling ringan status IG selama masih processing/pending. Endpoint khusus
