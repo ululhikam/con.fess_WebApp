@@ -1,10 +1,10 @@
 <template>
   <div class="concern-attr" :class="`concern-attr--${variant}`">
-    <a class="concern-attr__link" :href="CONCERN_URL" target="_blank" rel="noopener noreferrer">
+    <a class="concern-attr__link" :href="ORGANIZER_URL" target="_blank" rel="noopener noreferrer">
       <!-- alt kosong: nama brand sudah dibaca dari teks di sebelahnya. -->
       <img
         class="concern-attr__logo"
-        :src="CONCERN_LOGO"
+        :src="ORGANIZER_LOGO"
         alt=""
         width="20"
         height="20"
@@ -12,7 +12,7 @@
         decoding="async"
       />
       <span class="concern-attr__text">
-        Powered by <strong class="concern-attr__brand">{{ CONCERN_NAME }}</strong>
+        Powered by <strong class="concern-attr__brand">{{ ORGANIZER_NAME }}</strong>
       </span>
     </a>
   </div>
@@ -28,6 +28,8 @@
  * `variant` hanya mengatur palet & perataan — bukan struktur, jadi markup dan
  * aksesibilitasnya identik di semua pemakaian.
  */
+import { ORGANIZER_NAME, ORGANIZER_URL, ORGANIZER_LOGO } from '../../data/organization';
+
 defineProps({
   /**
    * footer  → di bawah copyright landing (muted, kiri di desktop)
@@ -41,10 +43,6 @@ defineProps({
     validator: (v) => ['footer', 'auth', 'legal', 'profile'].includes(v),
   },
 });
-
-const CONCERN_NAME = 'Concern Dev';
-const CONCERN_URL = 'https://concern.web.id';
-const CONCERN_LOGO = '/concern-logo.png';
 </script>
 
 <style scoped>

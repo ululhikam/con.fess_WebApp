@@ -3,13 +3,12 @@
  * (AccountPanels.vue) dan halaman publik Meta App Review
  * (/privacy, /terms, /data-deletion di LegalPage.vue).
  */
+import { ORGANIZER_NAME, ORGANIZER_URL } from './organization';
 
 export const LEGAL_LAST_UPDATED = '29 Oktober 2026';
 export const LEGAL_CONTACT_EMAIL = 'fessncurious@gmail.com';
 
-/** Identitas penyelenggara — dipakai di halaman legal & atribusi UI. */
-export const ORGANIZER_NAME = 'Concern Dev';
-export const ORGANIZER_URL = 'https://concern.web.id';
+export { ORGANIZER_NAME, ORGANIZER_URL };
 
 export const TERMS_SECTIONS = [
   {
@@ -22,8 +21,8 @@ export const TERMS_SECTIONS = [
   {
     title: '2. Penyelenggara Layanan',
     paragraphs: [
-      'Fess n Curious adalah produk dan layanan yang dibangun serta dikelola di bawah naungan Concern Dev. Seluruh operasional Platform — termasuk pengembangan teknis, penyediaan infrastruktur, moderasi tingkat platform, dan pengelolaan data pengguna — berada di bawah tanggung jawab Concern Dev.',
-      `Informasi resmi mengenai Concern Dev dapat dilihat di ${ORGANIZER_URL}. Pertanyaan terkait penyelenggara layanan dapat dikirim ke ${LEGAL_CONTACT_EMAIL}.`,
+      `Fess n Curious adalah produk dan layanan yang dibangun serta dikelola di bawah naungan ${ORGANIZER_NAME}. Seluruh operasional Platform — termasuk pengembangan teknis, penyediaan infrastruktur, moderasi tingkat platform, dan pengelolaan data pengguna — berada di bawah tanggung jawab ${ORGANIZER_NAME}.`,
+      `Informasi resmi mengenai ${ORGANIZER_NAME} dapat dilihat di ${ORGANIZER_URL}. Pertanyaan terkait penyelenggara layanan dapat dikirim ke ${LEGAL_CONTACT_EMAIL}.`,
       'Base atau komunitas tematik di dalam Platform dikelola oleh Base Admin masing-masing. Base Admin bertindak sebagai pengelola komunitas, bukan sebagai penyelenggara Platform.',
     ],
   },
@@ -69,8 +68,8 @@ export const PRIVACY_SECTIONS = [
   {
     title: '1. Penyelenggara & Penanggung Jawab Data',
     paragraphs: [
-      'Fess n Curious dibangun dan dikelola oleh Concern Dev. Dalam konteks pelindungan data pribadi, Concern Dev bertindak sebagai penyelenggara yang menentukan tujuan dan cara pemrosesan data pada Platform.',
-      `Pertanyaan, permintaan akses, atau keluhan terkait data pribadi dapat disampaikan ke ${LEGAL_CONTACT_EMAIL}. Informasi mengenai Concern Dev tersedia di ${ORGANIZER_URL}.`,
+      `Fess n Curious dibangun dan dikelola oleh ${ORGANIZER_NAME}. Dalam konteks pelindungan data pribadi, ${ORGANIZER_NAME} bertindak sebagai penyelenggara yang menentukan tujuan dan cara pemrosesan data pada Platform.`,
+      `Pertanyaan, permintaan akses, atau keluhan terkait data pribadi dapat disampaikan ke ${LEGAL_CONTACT_EMAIL}. Informasi mengenai ${ORGANIZER_NAME} tersedia di ${ORGANIZER_URL}.`,
     ],
   },
   {
