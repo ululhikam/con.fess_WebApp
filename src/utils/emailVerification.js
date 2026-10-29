@@ -46,16 +46,20 @@ export function clearVerification() {
 }
 
 /**
- * Target halaman verifikasi. Ticket ditaruh di fragment (bukan query) agar
- * tidak ikut terkirim ke server; halaman verifikasi membersihkannya setelah
- * dibaca, sementara sessionStorage tetap menjadi sumber utama.
+ * Target halaman verifikasi.
+ *
+ * Ticket **dan** email ditaruh di fragment (bukan query) agar tidak ikut
+ * terkirim ke server, tidak tercatat di access log, dan tidak bocor lewat
+ * header `Referer` saat halaman memuat aset pihak ketiga. Halaman verifikasi
+ * membersihkan fragment setelah dibaca; sessionStorage tetap menjadi sumber
+ * utama.
  */
 export function verificationRoute(result = {}) {
   const query = {};
-  if (result.email) query.email = result.email;
   if (result.email_sent === false) query.sent = '0';
-  const hash = result.verification_ticket
-    ? `#${new URLSearchParams({ ticket: result.verification_ticket }).toString()}`
-    : '';
+  const params = new URLSearchParams();
+  if (result.verification_ticket) params.set('ticket', result.verification_ticket);
+  if (result.email) params.set('email', result.email);
+  const hash = params.toString() ? `#${params.toString()}` : '';
   return { name: 'VerifyEmail', query, hash };
 }
