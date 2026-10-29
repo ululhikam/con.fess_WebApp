@@ -2,16 +2,24 @@
   <div class="auth-shell">
     <div class="auth-grid-overlay" aria-hidden="true" />
 
-    <div class="auth-card-container" :style="{ maxWidth: `${maxWidth}px` }">
-      <AuthLogo :word="logoWord" :subtitle="subtitle" />
+    <div class="auth-stack" :style="{ maxWidth: `${maxWidth}px` }">
+      <div class="auth-card-container">
+        <AuthLogo :word="logoWord" :subtitle="subtitle" />
+
+        <!--
+          The card hosts a <form>. `tabindex="-1"` lets us move focus into the
+          card for screen readers without adding a visible focus ring.
+        -->
+        <section class="auth-card" aria-live="polite">
+          <slot />
+        </section>
+      </div>
 
       <!--
-        The card hosts a <form>. `tabindex="-1"` lets us move focus into the
-        card for screen readers without adding a visible focus ring.
+        Atribusi di LUAR card: membangun trust tepat sebelum pengguna
+        berinteraksi, tanpa mengganggu hierarki brand di dalam form.
       -->
-      <section class="auth-card" aria-live="polite">
-        <slot />
-      </section>
+      <ConcernAttribution v-if="showAttribution" variant="auth" class="auth-attribution" />
     </div>
   </div>
 </template>
@@ -23,11 +31,14 @@
  * treatment and one logo placement instead of duplicating ~80 lines of CSS.
  */
 import AuthLogo from './AuthLogo.vue';
+import ConcernAttribution from '../common/ConcernAttribution.vue';
 
 defineProps({
   logoWord: { type: String, default: 'CONFESS' },
   subtitle: { type: String, default: '' },
   maxWidth: { type: Number, default: 440 },
+  /** Atribusi "Powered by Concern Dev" di bawah card; bisa dimatikan bila perlu. */
+  showAttribution: { type: Boolean, default: true },
 });
 </script>
 
@@ -54,10 +65,17 @@ defineProps({
   pointer-events: none;
 }
 
-.auth-card-container {
+.auth-stack {
   width: 100%;
   position: relative;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-card-container {
+  width: 100%;
 }
 
 .auth-card {
@@ -76,6 +94,9 @@ defineProps({
   .auth-card {
     padding: 22px 18px;
     border-radius: 20px;
+  }
+  .auth-stack {
+    gap: 14px;
   }
 }
 </style>

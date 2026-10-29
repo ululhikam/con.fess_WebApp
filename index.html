@@ -24,7 +24,36 @@
       name="description"
       content="Fess n Curious — platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI."
     />
+    <meta name="author" content="Concern Dev" />
+    <meta name="publisher" content="Concern Dev" />
+    <link rel="me" href="https://concern.web.id" />
     <title>Fess n Curious - Auto-Base Social Platform &amp; Anon Engine</title>
+
+    <!--
+      Structured data: Fess n Curious sebagai produk, Concern Dev sebagai
+      penyelenggara. `publisher` menghubungkan keduanya agar mesin pencari
+      tahu siapa yang membangun platform ini.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://concern.web.id/#organization",
+            "name": "Concern Dev",
+            "url": "https://concern.web.id"
+          },
+          {
+            "@type": "WebSite",
+            "name": "Fess n Curious",
+            "alternateName": "FnC",
+            "url": "/",
+            "publisher": { "@id": "https://concern.web.id/#organization" }
+          }
+        ]
+      }
+    </script>
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />

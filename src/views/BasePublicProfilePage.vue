@@ -451,6 +451,9 @@
       </div>
     </main>
 
+    <!-- Atribusi penyelenggara — halaman publik yang sering dibagikan -->
+    <ConcernAttribution variant="profile" class="public-attribution" />
+
     <!-- Bottom Persistent Nav Bar -->
     <AppBottomNav
       :active="bottomNavActive"
@@ -496,6 +499,7 @@ import {
 
 import FessCard from '../components/common/FessCard.vue';
 import AppBottomNav from '../components/common/AppBottomNav.vue';
+import ConcernAttribution from '../components/common/ConcernAttribution.vue';
 import FollowListModal from '../components/common/FollowListModal.vue';
 import ContentSkeleton from '../components/ui/ContentSkeleton.vue';
 import AppStateView from '../components/ui/AppStateView.vue';
@@ -860,6 +864,12 @@ function handleBottomNavChange(tabKey) {
   display: flex;
   flex-direction: column;
   padding-bottom: 90px;
+}
+
+/* Atribusi penyelenggara di bawah konten, di atas bottom nav yang fixed. */
+.public-attribution {
+  margin-top: auto;
+  padding: 20px 16px 8px;
 }
 
 /* TOP STICKY BAR */

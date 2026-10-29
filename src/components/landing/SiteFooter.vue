@@ -6,6 +6,7 @@
         <span class="logo-text">FESS <strong>N CURIOUS</strong></span>
       </div>
       <p>© 2026 Fess n Curious - Automatic Social Media Confession Platform.</p>
+      <ConcernAttribution variant="footer" class="footer-attribution" />
     </div>
 
     <div class="footer-right">
@@ -27,9 +28,13 @@
 </template>
 
 <script setup>
+import ConcernAttribution from '../common/ConcernAttribution.vue';
+
 /**
  * SiteFooter — page footer: brand, copyright, quick anchor links, dan
  * navigasi halaman legal publik (Kebijakan Privasi / Ketentuan / Penghapusan Data).
+ * Atribusi "Powered by Concern Dev" duduk di bawah copyright sebagai lapisan
+ * paling bawah, bukan di dalam pill logo, agar brand utama tetap dominan.
  */
 </script>
 
@@ -68,6 +73,14 @@
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 8px;
+}
+
+/* Atribusi Concern: dipisah garis tipis supaya tidak menyaingi copyright. */
+.footer-attribution {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  width: fit-content;
 }
 
 .footer-links {
@@ -123,6 +136,11 @@
   .footer-legal {
     justify-content: center;
     gap: 10px 18px;
+  }
+
+  .footer-attribution {
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .footer-legal {

@@ -27,6 +27,8 @@
         Ada pertanyaan? Hubungi
         <a :href="`mailto:${LEGAL_CONTACT_EMAIL}`">{{ LEGAL_CONTACT_EMAIL }}</a>
       </p>
+
+      <ConcernAttribution variant="legal" class="legal-attribution" />
     </div>
   </main>
 </template>
@@ -40,6 +42,7 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ChevronLeft, Shield, ScrollText, Trash2 } from 'lucide-vue-next';
+import ConcernAttribution from '../components/common/ConcernAttribution.vue';
 import {
   TERMS_SECTIONS,
   PRIVACY_SECTIONS,
@@ -178,5 +181,9 @@ const page = computed(() => LEGAL_PAGES[route.meta.legal] || LEGAL_PAGES.privacy
 
 .legal-foot a:hover {
   text-decoration: underline;
+}
+
+.legal-attribution {
+  margin-top: 4px;
 }
 </style>
