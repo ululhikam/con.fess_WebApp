@@ -1028,12 +1028,16 @@ async function onSvgDrop(event) {
   }
 }
 
+/** Penanda permintaan AI terakhir; mencegah usulan lama menimpa SVG baru. */
+let aiRequestId = 0;
+
 /**
  * Minta usulan metadata dari backend. Hanya mengirim SVG yang sedang diimpor —
  * tidak menyimpan apa pun, jadi admin tetap meninjau tiap field.
  */
 async function suggestMetadataWithAi() {
   if (formDialog.aiLoading || !formDialog.svg) return;
+  const requestId = ++aiRequestId;
   formDialog.aiError = '';
   formDialog.aiLoading = true;
   try {
@@ -1042,14 +1046,17 @@ async function suggestMetadataWithAi() {
       key: formDialog.key.trim() || undefined,
       filename: formDialog.fileName || undefined,
     });
+    // SVG bisa berganti saat permintaan berjalan; usulan lama jangan ditampilkan.
+    if (requestId !== aiRequestId) return;
     const suggestion = response?.data;
     if (!suggestion) throw new Error('Usulan AI kosong. Coba lagi.');
     formDialog.aiSuggestion = suggestion;
   } catch (err) {
+    if (requestId !== aiRequestId) return;
     formDialog.aiSuggestion = null;
     formDialog.aiError = apiError(err);
   } finally {
-    formDialog.aiLoading = false;
+    if (requestId === aiRequestId) formDialog.aiLoading = false;
   }
 }
 
