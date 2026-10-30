@@ -452,7 +452,7 @@ async function handleLogout() {
   font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
-  padding-bottom: 84px; /* room for the fixed bottom nav */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); /* ruang nav mengambang */
   position: relative;
   overflow-x: hidden;
 }
@@ -473,7 +473,7 @@ async function handleLogout() {
 
 @media (max-width: 640px) {
   .user-app-layout {
-    padding-bottom: 78px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
   .app-main-centered-stage {
     padding: 16px 12px 32px;

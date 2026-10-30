@@ -577,7 +577,7 @@ useVisibilityRefresh(() => {
   font-family: var(--font-sans);
   display: flex;
   flex-direction: column;
-  padding-bottom: 84px; /* room for the bottom nav */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); /* ruang nav mengambang */
 }
 
 /* Main stage */

@@ -366,13 +366,13 @@
         Komentar gagal dimuat.
         <button type="button" class="btn-reply-link" @click="loadComments">Coba lagi</button>
       </p>
-      <p v-else-if="!commentsList.length" class="comment-state-text">
+      <p v-else-if="!commentsList.length" class="comment-state-text is-empty">
         Belum ada komentar. Jadilah yang pertama!
       </p>
 
-      <!-- Comments List -->
+      <!-- Comments List (thread dua tingkat: induk + balasan) -->
       <div v-else class="comments-list">
-        <div v-for="comment in commentsList" :key="comment.id" class="comment-item">
+        <div v-for="comment in commentThreads" :key="comment.id" class="comment-item">
           <div
             class="comment-avatar"
             :style="{ background: colorForHandle(comment.author) }"
@@ -414,7 +414,7 @@
             <template v-else>
               <p class="comment-text">{{ comment.text }}</p>
 
-              <!-- Reply Button (mention-style, flat thread) -->
+              <!-- Aksi komentar induk -->
               <div class="comment-action-links">
                 <button type="button" class="btn-reply-link" @click="initiateReply(comment)">
                   <CornerDownRight :size="12" />
@@ -456,6 +456,96 @@
                 </template>
               </div>
             </template>
+
+            <!-- Balasan: thread dua tingkat dengan garis koneksi -->
+            <div v-if="comment.replies.length" class="nested-replies-list">
+              <div
+                v-for="reply in comment.replies"
+                :key="reply.id"
+                class="comment-item nested-reply-item"
+              >
+                <div
+                  class="comment-avatar"
+                  :style="{ background: colorForHandle(reply.author) }"
+                  aria-hidden="true"
+                >
+                  <UserRound :size="11" />
+                </div>
+                <div class="comment-content-box">
+                  <div class="comment-meta-row">
+                    <span class="comment-author">{{ reply.author }}</span>
+                    <span class="comment-time">{{ reply.time }}</span>
+                  </div>
+
+                  <form
+                    v-if="editingId === reply.id"
+                    class="comment-edit-form"
+                    @submit.prevent="saveEdit(reply)"
+                  >
+                    <input
+                      v-model="editingText"
+                      type="text"
+                      class="comment-text-field"
+                      maxlength="500"
+                      aria-label="Ubah balasan"
+                    />
+                    <div class="comment-edit-actions">
+                      <button
+                        type="submit"
+                        class="btn-submit-comment"
+                        :disabled="!editingText.trim() || editingSaving"
+                      >
+                        {{ editingSaving ? 'Menyimpan…' : 'Simpan' }}
+                      </button>
+                      <button type="button" class="btn-reply-link" @click="cancelEdit">
+                        Batal
+                      </button>
+                    </div>
+                  </form>
+
+                  <template v-else>
+                    <p class="comment-text">{{ reply.text }}</p>
+
+                    <div class="comment-action-links">
+                      <button
+                        v-if="reply.canEdit"
+                        type="button"
+                        class="btn-reply-link"
+                        @click="startEdit(reply)"
+                      >
+                        <Pencil :size="12" />
+                        <span>Edit</span>
+                      </button>
+                      <template v-if="reply.canDelete">
+                        <template v-if="deletingId === reply.id">
+                          <span class="comment-delete-confirm">Hapus?</span>
+                          <button
+                            type="button"
+                            class="btn-reply-link is-danger"
+                            :disabled="deletingSaving"
+                            @click="deleteComment(reply)"
+                          >
+                            {{ deletingSaving ? 'Menghapus…' : 'Ya' }}
+                          </button>
+                          <button type="button" class="btn-reply-link" @click="deletingId = null">
+                            Batal
+                          </button>
+                        </template>
+                        <button
+                          v-else
+                          type="button"
+                          class="btn-reply-link is-danger"
+                          @click="deletingId = reply.id"
+                        >
+                          <Trash2 :size="12" />
+                          <span>Hapus</span>
+                        </button>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1650,6 +1740,36 @@ const editingSaving = ref(false);
 const deletingId = ref(null);
 const deletingSaving = ref(false);
 
+/**
+ * API mengembalikan komentar sebagai daftar datar dengan `parentId`. Di sini
+ * daftar itu dikelompokkan jadi thread dua tingkat: induk teratas + balasan.
+ * Balasan yatim (induknya sudah dihapus) tetap tampil sebagai komentar biasa,
+ * dan rantai yang lebih dalam tetap diratakan ke induk teratas.
+ */
+const commentThreads = computed(() => {
+  const nodes = new Map();
+  for (const comment of commentsList.value) {
+    nodes.set(comment.id, { ...comment, replies: [] });
+  }
+
+  const roots = [];
+  for (const node of nodes.values()) {
+    let parent = node.parentId ? nodes.get(node.parentId) : null;
+    let guard = 0;
+    while (parent?.parentId && nodes.has(parent.parentId) && guard <= nodes.size) {
+      guard += 1;
+      const next = nodes.get(parent.parentId);
+      if (!next || next.id === parent.id) break;
+      parent = next;
+    }
+
+    if (parent && parent.id !== node.id) parent.replies.push(node);
+    else roots.push(node);
+  }
+
+  return roots;
+});
+
 function startEdit(comment) {
   editingId.value = comment.id;
   editingText.value = comment.text;
@@ -1724,12 +1844,9 @@ function toggleComments() {
 }
 
 function initiateReply(comment) {
+  // Threading sungguhan: induk dikirim lewat parent_id, bukan mention di teks.
   replyTarget.value = comment;
-  // Flat comment thread: reply as a mention-style comment.
-  const mention = `${comment.author} `;
-  if (!newCommentText.value.startsWith(mention)) {
-    newCommentText.value = mention;
-  }
+  cancelEdit();
 }
 
 function cancelReply() {
@@ -1740,15 +1857,16 @@ async function submitComment() {
   const text = newCommentText.value.trim();
   if (!text || commentsSending.value) return;
 
+  const parentId = replyTarget.value?.id || null;
   commentsSending.value = true;
   try {
-    await api.addComment(props.post.id, text);
+    await api.addComment(props.post.id, text, parentId);
     emit('comment', { postId: props.post.id, text });
     newCommentText.value = '';
     replyTarget.value = null;
     await loadComments();
     commentsCount.value = Math.max(commentsCount.value, commentsList.value.length);
-    triggerToast('Komentar berhasil dikirim');
+    triggerToast(parentId ? 'Balasan berhasil dikirim' : 'Komentar berhasil dikirim');
   } catch (e) {
     triggerToast('Gagal mengirim komentar. Coba lagi.', 'error');
   } finally {
@@ -2665,6 +2783,24 @@ function formatCount(num) {
   color: var(--shell-text-muted);
 }
 
+/* State memuat / gagal / kosong — dibuat chip kecil agar tidak mengambil
+   perhatian lebih besar dari daftar komentar itu sendiri. */
+.comment-state-text {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--shell-chip);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--shell-text-muted);
+}
+
+.comment-state-text.is-empty {
+  text-align: center;
+  padding: 12px 14px;
+  font-weight: 600;
+}
+
 .comments-list {
   display: flex;
   flex-direction: column;
@@ -2692,7 +2828,10 @@ function formatCount(num) {
 }
 
 .comment-content-box {
-  flex: 1;
+  flex: 1 1 0;
+  /* Penting: tanpa min-width: 0 flex item menolak menyusut di bawah lebar
+     intrinsik input sehingga form edit menembus tepi kanan kartu di mobile. */
+  min-width: 0;
 }
 
 .comment-meta-row {
@@ -2766,6 +2905,18 @@ function formatCount(num) {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.comment-edit-form .comment-text-field {
+  /* Input di dalam form kolom tidak boleh memakai lebar intrinsik default
+     maupun flex-basis 0% (itu untuk baris input komentar). */
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .comment-edit-actions {
@@ -2774,24 +2925,38 @@ function formatCount(num) {
   gap: 8px;
 }
 
-/* Nested Replies List */
+/* Nested Replies List — garis koneksi ke komentar induk */
 .nested-replies-list {
+  position: relative;
   margin-top: 8px;
   padding-left: 12px;
   border-left: 2px solid var(--shell-border);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .nested-reply-item {
-  font-size: 12px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.nested-reply-text {
+.nested-replies-list .comment-avatar {
+  width: 22px;
+  height: 22px;
+}
+
+.nested-replies-list .comment-author {
+  font-size: 11.5px;
+}
+
+.nested-replies-list .comment-time {
+  font-size: 10.5px;
+}
+
+.nested-replies-list .comment-text {
   font-size: 12.5px;
-  margin: 0;
-  color: var(--shell-text);
   line-height: 1.4;
 }
 

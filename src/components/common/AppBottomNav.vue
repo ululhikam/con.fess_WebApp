@@ -66,7 +66,7 @@
         @click="selectTab('akun')"
       >
         <span class="nav-tab-icon">
-          <User :size="20" />
+          <UserRound :size="20" />
         </span>
         <span class="nav-tab-label">Akun</span>
       </button>
@@ -86,12 +86,12 @@
  *   5. Akun (Instagram-style Profile)
  * 
  * Aesthetic:
- *   - Glassmorphic backdrop blur
- *   - Single design tokens (--shell-header-bg, --shell-border, --shell-active, --shell-sub-accent)
- *   - Micro-interaction translateY hover and active states
+ *   - Floating rounded pill detached from the viewport edge
+ *   - Single design tokens (--shell-card, --shell-border-strong, --shell-active, --shell-sub-accent)
+ *   - Active tab gets a soft chip behind the icon; micro-interaction on hover
  */
 import { computed } from 'vue';
-import { Home, Search, Plus, Bell, User } from 'lucide-vue-next';
+import { Home, Search, Plus, Bell, UserRound } from 'lucide-vue-next';
 import { useNotifications } from '../../composables/useNotifications';
 
 const props = defineProps({
@@ -141,90 +141,124 @@ function selectTab(key) {
 <style scoped>
 .app-bottom-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 100;
-  background: var(--shell-header-bg, rgba(11, 13, 20, 0.9));
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
-  padding: 6px 16px 8px;
+  width: min(520px, calc(100% - 24px));
+  padding: 7px 8px;
+  background: var(--shell-card, rgba(11, 13, 20, 0.9));
+  border: 1px solid var(--shell-border-strong, rgba(255, 255, 255, 0.15));
+  border-radius: 24px;
+  box-shadow: 0 14px 34px var(--shadow-color, rgba(0, 0, 0, 0.45));
   font-family: var(--font-sans);
 }
 
 .bottom-nav-inner {
-  max-width: 540px;
-  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr)) auto repeat(2, minmax(0, 1fr));
   align-items: center;
+  gap: 2px;
 }
 
 .bottom-nav-tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  width: 100%;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 2px;
   background: transparent;
   border: none;
+  border-radius: 14px;
   color: var(--shell-text-muted, rgba(255, 255, 255, 0.5));
   font-family: inherit;
   cursor: pointer;
-  padding: 4px 12px;
-  border-radius: 12px;
-  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.18s ease;
 }
 
 .bottom-nav-tab:hover {
   color: var(--shell-text, #ffffff);
 }
 
+.bottom-nav-tab:focus-visible {
+  outline: 2px solid var(--shell-active, #ffffff);
+  outline-offset: 2px;
+}
+
 .bottom-nav-tab.active {
   color: var(--shell-active, #ffffff);
 }
 
-.bottom-nav-tab.active .nav-tab-icon {
-  transform: translateY(-2px);
-}
-
 .nav-tab-icon {
-  display: flex;
-  transition: transform 0.2s ease;
   position: relative;
-}
-
-.nav-tab-label {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.2px;
-}
-
-.bottom-center-fab {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--shell-sub-accent, #7000ff) 0%, var(--brand-blue, #0038ff) 100%);
-  color: #ffffff;
-  border: 3px solid var(--shell-stage, #08080c);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: -18px 8px 0;
-  box-shadow: 0 8px 20px var(--shadow-color, rgba(0, 0, 0, 0.45));
+  width: 44px;
+  height: 26px;
+  border-radius: var(--radius-pill, 999px);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.bottom-nav-tab.active .nav-tab-icon {
+  background: var(--shell-chip, rgba(255, 255, 255, 0.08));
+  transform: translateY(-1px);
+}
+
+.nav-tab-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  line-height: 1;
+}
+
+.bottom-center-fab {
+  width: 48px;
+  height: 48px;
+  margin: 0 6px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(
+    135deg,
+    var(--shell-sub-accent, #7000ff) 0%,
+    var(--brand-blue, #0038ff) 100%
+  );
+  color: var(--brand-blue-ink, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow:
+    0 8px 18px var(--shadow-color, rgba(0, 0, 0, 0.45)),
+    0 0 0 4px var(--shell-chip, rgba(255, 255, 255, 0.08));
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .bottom-center-fab:hover {
-  transform: scale(1.08);
+  transform: translateY(-1px) scale(1.05);
+}
+
+.bottom-center-fab:active {
+  transform: scale(0.96);
+}
+
+.bottom-center-fab:focus-visible {
+  outline: 2px solid var(--shell-active, #ffffff);
+  outline-offset: 3px;
 }
 
 .notif-badge-number {
   position: absolute;
-  top: -6px;
-  right: -10px;
+  top: -7px;
+  right: -8px;
   min-width: 18px;
   height: 18px;
   padding: 0 4.5px;
@@ -259,22 +293,37 @@ function selectTab(key) {
 
 @media (max-width: 480px) {
   .app-bottom-nav {
-    padding: 4px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-  }
-  .bottom-nav-inner {
-    max-width: 100%;
+    width: calc(100% - 20px);
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 6px;
+    border-radius: 20px;
   }
   .bottom-nav-tab {
-    padding: 3px 2px;
-    gap: 2px;
+    padding: 3px 1px;
+    gap: 1px;
+  }
+  .nav-tab-icon {
+    width: 40px;
+    height: 24px;
   }
   .nav-tab-label {
-    font-size: 10px;
+    font-size: 9.5px;
+    letter-spacing: 0;
   }
   .bottom-center-fab {
-    width: 46px;
-    height: 46px;
-    margin: -16px 4px 0;
+    width: 44px;
+    height: 44px;
+    margin: 0 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav-tab,
+  .nav-tab-icon,
+  .bottom-center-fab,
+  .notif-badge-number {
+    transition: none;
+    animation: none;
   }
 }
 </style>
