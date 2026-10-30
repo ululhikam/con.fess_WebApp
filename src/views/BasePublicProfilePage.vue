@@ -865,7 +865,7 @@ function handleBottomNavChange(tabKey) {
   font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
   display: flex;
   flex-direction: column;
-  padding-bottom: 90px;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Atribusi penyelenggara di bawah konten, di atas bottom nav yang fixed. */

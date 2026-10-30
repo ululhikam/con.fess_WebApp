@@ -2692,7 +2692,10 @@ function formatCount(num) {
 }
 
 .comment-content-box {
-  flex: 1;
+  flex: 1 1 0;
+  /* Penting: tanpa min-width: 0 flex item menolak menyusut di bawah lebar
+     intrinsik input sehingga form edit menembus tepi kanan kartu di mobile. */
+  min-width: 0;
 }
 
 .comment-meta-row {
@@ -2766,6 +2769,18 @@ function formatCount(num) {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.comment-edit-form .comment-text-field {
+  /* Input di dalam form kolom tidak boleh memakai lebar intrinsik default
+     maupun flex-basis 0% (itu untuk baris input komentar). */
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .comment-edit-actions {

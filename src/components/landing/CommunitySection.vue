@@ -32,7 +32,14 @@
       <article v-for="base in showcaseBases" :key="base.handle" class="base-card-item">
         <div class="bci-top">
           <div class="bci-icon" :style="{ background: base.color }" aria-hidden="true">
-            {{ base.initial }}
+            <img
+              v-if="isAvatarImage(base.avatar) && !failedAvatars[base.handle]"
+              :src="base.avatar"
+              alt=""
+              class="bci-icon-img"
+              @error="failedAvatars[base.handle] = true"
+            />
+            <span v-else class="bci-icon-initial">{{ avatarInitials(base.name, base.initial) }}</span>
           </div>
           <div class="bci-meta">
             <h3>{{ base.name }}</h3>
@@ -58,15 +65,19 @@
  * CommunitySection — `#komunitas` showcase of community bases.
  * Live data from GET /bases via the shared useBases() cache.
  */
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { ArrowRight } from 'lucide-vue-next';
 import LandingSectionHead from './LandingSectionHead.vue';
 import { useBases } from '../../composables/useBases';
+import { avatarInitials, isAvatarImage } from '../../utils/avatar';
 
 const { bases, loading, ensureLoaded } = useBases();
 
 /** The landing page teases the first few real bases; the rest live behind the CTA. */
 const showcaseBases = computed(() => bases.value.slice(0, 4));
+
+/** Foto base yang gagal dimuat (URL mati) jatuh kembali ke inisial. */
+const failedAvatars = ref({});
 
 /** 14200 -> "14.2K" compact format for the members badge. */
 function formatMembers(count) {
@@ -188,6 +199,22 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.bci-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+}
+
+.bci-icon-initial {
+  font-size: 16px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
 
 .bci-meta h3 {
