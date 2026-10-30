@@ -78,6 +78,10 @@ export const api = {
   /* COMMENTS */
   getComments: (fessId, params) => client.get(`/fesses/${fessId}/comments`, { params }),
   addComment: (fessId, text) => client.post(`/fesses/${fessId}/comments`, { text }),
+  updateComment: (fessId, commentId, text) =>
+    client.patch(`/fesses/${fessId}/comments/${commentId}`, { text }),
+  deleteComment: (fessId, commentId) =>
+    client.delete(`/fesses/${fessId}/comments/${commentId}`),
 
   /* NOTIFICATIONS */
   getNotifications: (params) => client.get('/notifications', { params }),

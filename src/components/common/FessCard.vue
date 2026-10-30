@@ -373,7 +373,11 @@
       <!-- Comments List -->
       <div v-else class="comments-list">
         <div v-for="comment in commentsList" :key="comment.id" class="comment-item">
-          <div class="comment-avatar">
+          <div
+            class="comment-avatar"
+            :style="{ background: colorForHandle(comment.author) }"
+            aria-hidden="true"
+          >
             <UserRound :size="12" />
           </div>
           <div class="comment-content-box">
@@ -381,15 +385,77 @@
               <span class="comment-author">{{ comment.author }}</span>
               <span class="comment-time">{{ comment.time }}</span>
             </div>
-            <p class="comment-text">{{ comment.text }}</p>
 
-            <!-- Reply Button (mention-style, flat thread) -->
-            <div class="comment-action-links">
-              <button type="button" class="btn-reply-link" @click="initiateReply(comment)">
-                <CornerDownRight :size="12" />
-                <span>Balas</span>
-              </button>
-            </div>
+            <!-- Mode edit inline: hanya penulis komentar -->
+            <form
+              v-if="editingId === comment.id"
+              class="comment-edit-form"
+              @submit.prevent="saveEdit(comment)"
+            >
+              <input
+                v-model="editingText"
+                type="text"
+                class="comment-text-field"
+                maxlength="500"
+                aria-label="Ubah komentar"
+              />
+              <div class="comment-edit-actions">
+                <button
+                  type="submit"
+                  class="btn-submit-comment"
+                  :disabled="!editingText.trim() || editingSaving"
+                >
+                  {{ editingSaving ? 'Menyimpan…' : 'Simpan' }}
+                </button>
+                <button type="button" class="btn-reply-link" @click="cancelEdit">Batal</button>
+              </div>
+            </form>
+
+            <template v-else>
+              <p class="comment-text">{{ comment.text }}</p>
+
+              <!-- Reply Button (mention-style, flat thread) -->
+              <div class="comment-action-links">
+                <button type="button" class="btn-reply-link" @click="initiateReply(comment)">
+                  <CornerDownRight :size="12" />
+                  <span>Balas</span>
+                </button>
+                <button
+                  v-if="comment.canEdit"
+                  type="button"
+                  class="btn-reply-link"
+                  @click="startEdit(comment)"
+                >
+                  <Pencil :size="12" />
+                  <span>Edit</span>
+                </button>
+                <template v-if="comment.canDelete">
+                  <template v-if="deletingId === comment.id">
+                    <span class="comment-delete-confirm">Hapus?</span>
+                    <button
+                      type="button"
+                      class="btn-reply-link is-danger"
+                      :disabled="deletingSaving"
+                      @click="deleteComment(comment)"
+                    >
+                      {{ deletingSaving ? 'Menghapus…' : 'Ya' }}
+                    </button>
+                    <button type="button" class="btn-reply-link" @click="deletingId = null">
+                      Batal
+                    </button>
+                  </template>
+                  <button
+                    v-else
+                    type="button"
+                    class="btn-reply-link is-danger"
+                    @click="deletingId = comment.id"
+                  >
+                    <Trash2 :size="12" />
+                    <span>Hapus</span>
+                  </button>
+                </template>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -607,13 +673,14 @@ import {
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
+  Pencil,
 } from 'lucide-vue-next';
 import ReportFessModal from './ReportFessModal.vue';
 import MediaViewer from './MediaViewer.vue';
 import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 import { copyText } from '../../utils/clipboard';
-import { mapFessComment } from '../../utils/fessMapper';
+import { mapFessComment, colorForHandle } from '../../utils/fessMapper';
 import { safeExternalUrl } from '../../utils/url';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -1575,6 +1642,61 @@ const commentsLoading = ref(false);
 const commentsError = ref(null);
 const commentsSending = ref(false);
 
+/* Edit & hapus komentar — hanya muncul saat server mengizinkan (is_mine /
+ * can_delete). Base Admin mendapat can_delete untuk base yang dikelolanya. */
+const editingId = ref(null);
+const editingText = ref('');
+const editingSaving = ref(false);
+const deletingId = ref(null);
+const deletingSaving = ref(false);
+
+function startEdit(comment) {
+  editingId.value = comment.id;
+  editingText.value = comment.text;
+  deletingId.value = null;
+  replyTarget.value = null;
+}
+
+function cancelEdit() {
+  editingId.value = null;
+  editingText.value = '';
+}
+
+async function saveEdit(comment) {
+  const text = editingText.value.trim();
+  if (!text || editingSaving.value) return;
+
+  editingSaving.value = true;
+  try {
+    await api.updateComment(props.post.id, comment.id, text);
+    cancelEdit();
+    await loadComments();
+    triggerToast('Komentar berhasil diperbarui');
+  } catch (e) {
+    triggerToast(e?.message || 'Gagal memperbarui komentar. Coba lagi.', 'error');
+  } finally {
+    editingSaving.value = false;
+  }
+}
+
+async function deleteComment(comment) {
+  if (deletingSaving.value) return;
+
+  deletingSaving.value = true;
+  try {
+    await api.deleteComment(props.post.id, comment.id);
+    deletingId.value = null;
+    if (editingId.value === comment.id) cancelEdit();
+    commentsCount.value = Math.max(0, commentsCount.value - 1);
+    await loadComments();
+    triggerToast('Komentar dihapus');
+  } catch (e) {
+    triggerToast(e?.message || 'Gagal menghapus komentar. Coba lagi.', 'error');
+  } finally {
+    deletingSaving.value = false;
+  }
+}
+
 async function loadComments() {
   commentsLoading.value = true;
   commentsError.value = null;
@@ -1596,6 +1718,8 @@ function toggleComments() {
     loadComments();
   } else {
     replyTarget.value = null;
+    cancelEdit();
+    deletingId.value = null;
   }
 }
 
@@ -2562,8 +2686,9 @@ function formatCount(num) {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--shell-text-muted);
+  color: var(--text-on-accent);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .comment-content-box {
@@ -2597,6 +2722,10 @@ function formatCount(num) {
 
 .comment-action-links {
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .btn-reply-link {
@@ -2616,6 +2745,33 @@ function formatCount(num) {
 
 .btn-reply-link:hover {
   color: var(--shell-text);
+}
+
+.btn-reply-link.is-danger {
+  color: var(--danger-text);
+}
+
+.btn-reply-link.is-danger:hover {
+  color: var(--danger-text);
+  text-decoration: underline;
+}
+
+.comment-delete-confirm {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--danger-text);
+}
+
+.comment-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.comment-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Nested Replies List */

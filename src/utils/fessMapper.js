@@ -37,6 +37,9 @@ export function mapFessComment(c) {
     author: c.author || '@anonim',
     text: c.text,
     time: formatRelativeTime(c.created_at ?? c.createdAt ?? Date.now()),
+    isMine: Boolean(c.is_mine ?? c.isMine),
+    canEdit: Boolean(c.can_edit ?? c.canEdit),
+    canDelete: Boolean(c.can_delete ?? c.canDelete),
   };
 }
 
