@@ -705,7 +705,9 @@ watch(
 // go into an <img>, initials fall back to the designed initial-letter core.
 const baseAvatar = computed(() => {
   const avatar = baseData.value?.avatar;
-  return typeof avatar === 'string' && /^(https?:|data:|blob:)/i.test(avatar) ? avatar : null;
+  return typeof avatar === 'string' && /^(https?:|data:|blob:|\/(?!\/))/i.test(avatar)
+    ? avatar
+    : null;
 });
 
 // Following State

@@ -128,7 +128,7 @@
               <td>
                 <div class="pc-user-cell">
                   <span class="pc-user-avatar">
-                    <img v-if="user.avatar" :src="user.avatar" alt="" />
+                    <img v-if="isAvatarImage(user.avatar)" :src="user.avatar" alt="" />
                     <template v-else>{{ initials(user) }}</template>
                   </span>
                   <span>
@@ -248,7 +248,7 @@
       <div v-if="selectedUser" class="pc-stack">
         <div class="pc-user-hero">
           <span class="pc-user-avatar pc-user-avatar--lg">
-            <img v-if="selectedUser.avatar" :src="selectedUser.avatar" alt="" />
+            <img v-if="isAvatarImage(selectedUser.avatar)" :src="selectedUser.avatar" alt="" />
             <template v-else>{{ initials(selectedUser) }}</template>
           </span>
           <div>
@@ -528,6 +528,7 @@ import ConsoleDrawer from '../../components/super-admin/ConsoleDrawer.vue';
 import ConsolePageHeader from '../../components/super-admin/ConsolePageHeader.vue';
 import ConsoleStatusBadge from '../../components/super-admin/ConsoleStatusBadge.vue';
 import { formatDate, formatDateTime, formatNumber } from '../../utils/console';
+import { isAvatarImage } from '../../utils/avatar';
 
 const authStore = useAuthStore();
 

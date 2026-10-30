@@ -148,7 +148,7 @@ const loaded = ref({ followers: false, following: false });
 const busyId = ref(null);
 
 const isImageSrc = (value) =>
-  typeof value === 'string' && /^(https?:|data:|blob:)/i.test(value);
+  typeof value === 'string' && /^(https?:|data:|blob:|\/(?!\/))/i.test(value);
 
 const initials = (name) => {
   const clean = String(name || 'AN').trim();

@@ -20,8 +20,10 @@
       </div>
     </div>
 
-    <!-- PROFILE HEADER (IG STYLE FOR BASE ADMIN) -->
-    <div class="ig-header-container">
+    <!-- PROFILE HEADER (IG STYLE FOR BASE ADMIN) — jangan render sebelum data
+         base ada; fallback ke username pribadi membuat nama akun berkedip
+         sebelum berubah menjadi nama base. -->
+    <div v-if="base" class="ig-header-container">
       <div class="ig-header-top-row">
         <!-- SEBELAH KIRI ATAS: FOTO PROFILE & TOMBOL EDIT PROFIL -->
         <div class="ig-left-col">
@@ -847,10 +849,8 @@ const managedHandle = computed(
   () => base.value?.handle || authStore.user?.managedBases?.[0] || null,
 );
 
-const baseName = computed(() => base.value?.name || authStore.user?.username || 'Base');
-const baseHandle = computed(
-  () => base.value?.handle || managedHandle.value || authStore.user?.handle || '',
-);
+const baseName = computed(() => base.value?.name || '');
+const baseHandle = computed(() => base.value?.handle || managedHandle.value || '');
 const baseBio = computed(() => base.value?.bio || '');
 const baseInitial = computed(() =>
   String(base.value?.initial || baseName.value)
@@ -859,7 +859,9 @@ const baseInitial = computed(() =>
 );
 const baseAvatarUrl = computed(() => {
   const avatar = base.value?.avatar;
-  return typeof avatar === 'string' && /^(https?:|data:|blob:)/i.test(avatar) ? avatar : null;
+  return typeof avatar === 'string' && /^(https?:|data:|blob:|\/(?!\/))/i.test(avatar)
+    ? avatar
+    : null;
 });
 const igAccount = computed(() => base.value?.ig_account || '');
 const followersCount = computed(() => base.value?.followers_count ?? 0);

@@ -348,7 +348,14 @@
                 title="Lihat profil base"
               >
                 <div class="following-avatar" :style="{ background: base.color || '#2d68ff' }">
-                  {{ base.name.charAt(0) }}
+                  <img
+                    v-if="isAvatarImage(base.avatar) && !failedAvatars[base.handle]"
+                    :src="base.avatar"
+                    :alt="base.name"
+                    class="following-avatar-img"
+                    @error="failedAvatars[base.handle] = true"
+                  />
+                  <span v-else>{{ avatarInitials(base.name, base.initial) }}</span>
                 </div>
                 <div class="following-details">
                   <div class="following-name">{{ base.name }}</div>
@@ -729,6 +736,7 @@ import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 import { mapFessToPost } from '../../utils/fessMapper';
 import { formatNumber } from '../../utils/format';
+import { avatarInitials, isAvatarImage } from '../../utils/avatar';
 import { mapBase } from '../../composables/useBases';
 import { useFollowBase } from '../../composables/useFollowBase';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
@@ -745,6 +753,8 @@ const emit = defineEmits(['setTheme', 'logout', 'openCompose', 'openSubPanel']);
 
 const authStore = useAuthStore();
 const router = useRouter();
+/** Foto base yang gagal dimuat → kembali ke inisial. */
+const failedAvatars = ref({});
 const { followedHandles, toggleFollowBase } = useFollowBase();
 
 function goToBase(handle) {
@@ -1887,13 +1897,20 @@ function confirmLogout() {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  color: #fff;
+  color: var(--text-on-accent);
   font-weight: 900;
   font-size: 17px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.following-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .following-details {

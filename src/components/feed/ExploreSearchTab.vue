@@ -81,7 +81,14 @@
             title="Lihat profil base"
           >
             <div class="eb-avatar-box" :style="{ background: base.color }">
-              <span>{{ base.initial }}</span>
+              <img
+                v-if="isAvatarImage(base.avatar) && !failedAvatars[base.handle]"
+                :src="base.avatar"
+                :alt="base.name"
+                class="eb-avatar-img"
+                @error="failedAvatars[base.handle] = true"
+              />
+              <span v-else>{{ avatarInitials(base.name, base.initial) }}</span>
             </div>
             <div class="eb-meta-info">
               <div class="eb-name-text">{{ base.name }}</div>
@@ -182,8 +189,11 @@ import { toast } from '../../composables/useToast';
 import { mapBase } from '../../composables/useBases';
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll';
 import { mapFessToPost } from '../../utils/fessMapper';
+import { avatarInitials, isAvatarImage } from '../../utils/avatar';
 
 const router = useRouter();
+/** Foto base yang gagal dimuat → tampilkan inisial, bukan gambar rusak. */
+const failedAvatars = ref({});
 
 function goToBase(handle) {
   if (!handle) return;
@@ -678,6 +688,13 @@ const emptyBaseDescription = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.eb-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .eb-name-text {

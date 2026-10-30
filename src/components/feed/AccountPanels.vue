@@ -205,7 +205,14 @@
         <div v-else class="following-list">
           <div v-for="base in filteredFollowing" :key="base.handle" class="following-card">
             <div class="following-avatar" :style="{ background: base.color }">
-              {{ base.initial }}
+              <img
+                v-if="isAvatarImage(base.avatar) && !failedAvatars[base.handle]"
+                :src="base.avatar"
+                :alt="base.name"
+                class="following-avatar-img"
+                @error="failedAvatars[base.handle] = true"
+              />
+              <span v-else>{{ avatarInitials(base.name, base.initial) }}</span>
             </div>
             <div class="following-info">
               <div class="following-name">{{ base.name }}</div>
@@ -454,6 +461,7 @@ import {
 import { api } from '../../api';
 import { toast } from '../../composables/useToast';
 import { mapFessToPost } from '../../utils/fessMapper';
+import { avatarInitials, isAvatarImage } from '../../utils/avatar';
 import { formatRelativeTime } from '../../utils/format';
 import { useBases } from '../../composables/useBases';
 import { useFollowBase } from '../../composables/useFollowBase';
@@ -593,6 +601,8 @@ const filteredMyFess = computed(() => {
 const { bases, ensureLoaded: ensureBasesLoaded } = useBases();
 const { followedHandles, toggleFollowBase, syncFollowing } = useFollowBase();
 const followSearch = ref('');
+/** Foto base yang gagal dimuat → kembali ke inisial, bukan ikon rusak. */
+const failedAvatars = ref({});
 const followingLoading = ref(false);
 const followingError = ref(null);
 
@@ -1532,8 +1542,15 @@ function handleReport() {
   justify-content: center;
   font-size: 12px;
   font-weight: 900;
-  color: #fff;
+  color: var(--text-on-accent);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.following-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .following-name {

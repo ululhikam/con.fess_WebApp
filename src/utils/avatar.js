@@ -14,6 +14,24 @@ export function isAvatarImage(value) {
   );
 }
 
+/**
+ * Inisial 2 huruf dari nama, dipakai saat foto tidak ada/gagal dimuat.
+ *
+ * Backend menyimpan foto profil dan inisial di kolom yang sama (`avatar`):
+ * unggahan berisi URL/data-URI, sedangkan base lama hanya berisi "BA"/"US".
+ * Helper ini memastikan teks inisial tidak pernah masuk ke `<img src>`.
+ */
+export function avatarInitials(name, fallback = 'BA') {
+  const clean = String(name || '')
+    .replace(/^@/, '')
+    .trim();
+  if (!clean) return String(fallback || 'BA').slice(0, 2).toUpperCase();
+
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return clean.slice(0, 2).toUpperCase();
+}
+
 /** Preset avatar lokal agar tidak bergantung pada gambar eksternal. */
 export function avatarPreset(from, to, label = 'F') {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
