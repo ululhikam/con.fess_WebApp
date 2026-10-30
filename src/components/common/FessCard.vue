@@ -375,10 +375,21 @@
         <div v-for="comment in commentThreads" :key="comment.id" class="comment-item">
           <div
             class="comment-avatar"
-            :style="{ background: colorForHandle(comment.author) }"
+            :style="{ background: comment.avatarBg || colorForHandle(comment.author) }"
             aria-hidden="true"
           >
-            <UserRound :size="12" />
+            <img
+              v-if="comment.avatarImg && !commentAvatarFailed[comment.id]"
+              :src="comment.avatarImg"
+              alt=""
+              class="comment-avatar-img"
+              loading="lazy"
+              @error="markCommentAvatarFailed(comment.id)"
+            />
+            <span v-else-if="comment.avatarText" class="comment-avatar-initial">
+              {{ comment.avatarText }}
+            </span>
+            <UserRound v-else :size="12" />
           </div>
           <div class="comment-content-box">
             <div class="comment-meta-row">
@@ -466,10 +477,21 @@
               >
                 <div
                   class="comment-avatar"
-                  :style="{ background: colorForHandle(reply.author) }"
+                  :style="{ background: reply.avatarBg || colorForHandle(reply.author) }"
                   aria-hidden="true"
                 >
-                  <UserRound :size="11" />
+                  <img
+                    v-if="reply.avatarImg && !commentAvatarFailed[reply.id]"
+                    :src="reply.avatarImg"
+                    alt=""
+                    class="comment-avatar-img"
+                    loading="lazy"
+                    @error="markCommentAvatarFailed(reply.id)"
+                  />
+                  <span v-else-if="reply.avatarText" class="comment-avatar-initial">
+                    {{ reply.avatarText }}
+                  </span>
+                  <UserRound v-else :size="11" />
                 </div>
                 <div class="comment-content-box">
                   <div class="comment-meta-row">
@@ -1731,6 +1753,8 @@ const commentsList = ref([]);
 const commentsLoading = ref(false);
 const commentsError = ref(null);
 const commentsSending = ref(false);
+/** Foto avatar komentar yang gagal dimuat -> fallback ke inisial/ikon. */
+const commentAvatarFailed = ref({});
 
 /* Edit & hapus komentar — hanya muncul saat server mengizinkan (is_mine /
  * can_delete). Base Admin mendapat can_delete untuk base yang dikelolanya. */
@@ -1817,12 +1841,18 @@ async function deleteComment(comment) {
   }
 }
 
+function markCommentAvatarFailed(commentId) {
+  if (!commentId) return;
+  commentAvatarFailed.value = { ...commentAvatarFailed.value, [commentId]: true };
+}
+
 async function loadComments() {
   commentsLoading.value = true;
   commentsError.value = null;
   try {
     const res = await api.getComments(props.post.id, { limit: 50 });
     const list = res?.data ?? res ?? [];
+    commentAvatarFailed.value = {};
     commentsList.value = list.map(mapFessComment);
     commentsCount.value = Math.max(commentsCount.value, commentsList.value.length);
   } catch (e) {
@@ -2827,6 +2857,21 @@ function formatCount(num) {
   overflow: hidden;
 }
 
+.comment-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.comment-avatar-initial {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text-on-accent);
+}
+
 .comment-content-box {
   flex: 1 1 0;
   /* Penting: tanpa min-width: 0 flex item menolak menyusut di bawah lebar
@@ -2945,6 +2990,10 @@ function formatCount(num) {
 .nested-replies-list .comment-avatar {
   width: 22px;
   height: 22px;
+}
+
+.nested-replies-list .comment-avatar-initial {
+  font-size: 9px;
 }
 
 .nested-replies-list .comment-author {

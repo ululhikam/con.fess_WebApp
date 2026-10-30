@@ -32,10 +32,25 @@ export function colorForHandle(handle = '') {
 /** API Comment → card comment model. */
 export function mapFessComment(c) {
   if (!c) return null;
+  const author = c.author || '@anonim';
+
+  // Komentar Base Admin membawa avatar base dari server (foto atau inisial).
+  // Pengguna biasa sengaja tidak punya avatar agar tetap anonim.
+  const rawAvatar = c.author_avatar ?? c.authorAvatar ?? null;
+  const avatarImg =
+    typeof rawAvatar === 'string' && IMAGE_URL_RE.test(rawAvatar) ? rawAvatar : null;
+  const avatarText =
+    !avatarImg && typeof rawAvatar === 'string' && rawAvatar.trim()
+      ? rawAvatar.trim().slice(0, 3).toUpperCase()
+      : avatarInitials(author);
+
   return {
     id: c.id,
     parentId: c.parent_id ?? c.parentId ?? null,
-    author: c.author || '@anonim',
+    author,
+    avatarImg,
+    avatarText,
+    avatarBg: c.author_color ?? c.authorColor ?? null,
     text: c.text,
     time: formatRelativeTime(c.created_at ?? c.createdAt ?? Date.now()),
     isMine: Boolean(c.is_mine ?? c.isMine),
@@ -64,6 +79,21 @@ export function mapQuotedFess(q) {
 
 /** Avatar base bisa berupa URL/data-URL foto atau inisial teks. */
 const IMAGE_URL_RE = /^(data:image\/|https?:\/\/|\/)/i;
+
+/** Inisial nama base untuk fallback saat foto avatar gagal dimuat. */
+function avatarInitials(name) {
+  const words = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  // Alias anonim tidak punya identitas visual; biarkan ikon generik.
+  if (!words.length || /^anonim\b/i.test(String(name))) return '';
+  return words
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+}
 
 /** API Fess → card model used by FessCard / FeedHomeTab / moderation. */
 export function mapFessToPost(f) {
