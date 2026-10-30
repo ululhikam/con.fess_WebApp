@@ -77,7 +77,8 @@ export const api = {
 
   /* COMMENTS */
   getComments: (fessId, params) => client.get(`/fesses/${fessId}/comments`, { params }),
-  addComment: (fessId, text) => client.post(`/fesses/${fessId}/comments`, { text }),
+  addComment: (fessId, text, parentId = null) =>
+    client.post(`/fesses/${fessId}/comments`, parentId ? { text, parent_id: parentId } : { text }),
   updateComment: (fessId, commentId, text) =>
     client.patch(`/fesses/${fessId}/comments/${commentId}`, { text }),
   deleteComment: (fessId, commentId) =>

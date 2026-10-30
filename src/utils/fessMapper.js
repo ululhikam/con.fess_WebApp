@@ -34,6 +34,7 @@ export function mapFessComment(c) {
   if (!c) return null;
   return {
     id: c.id,
+    parentId: c.parent_id ?? c.parentId ?? null,
     author: c.author || '@anonim',
     text: c.text,
     time: formatRelativeTime(c.created_at ?? c.createdAt ?? Date.now()),
