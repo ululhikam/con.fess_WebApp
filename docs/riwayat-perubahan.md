@@ -9,6 +9,17 @@ Urutan: **terbaru di atas**. Semua commit sudah ada di `main` (dan di `origin/ma
 
 ## 30 Okt 2026
 
+### Perbaikan suite test backend — `b6fb373` (repo `be_FnC`)
+
+`scripts/measure-templates.mjs` diawali shebang `#!/usr/bin/env node`. File itu di-import
+dinamis oleh `src/utils/template-admin.util.ts`, dan transformer Vitest/esbuild menolak file
+ber-shebang → 7 test di `tests/template-admin.util.test.ts` gagal dengan
+`SyntaxError: Invalid or unexpected token`.
+
+Shebang dihapus (tidak dibutuhkan karena `npm run template:measure` memanggilnya lewat
+`node ...mjs`). Diverifikasi ulang: `docs/template-geometry.json` yang dihasilkan tetap
+identik, `tsc --noEmit` exit 0, seluruh **50/50 berkas test backend lulus**.
+
 ### SEO, sitemap, dan logo Google — `dabac23`
 
 Detail: [`seo-dan-logo-google.md`](./seo-dan-logo-google.md)
@@ -144,16 +155,19 @@ Branch remote yang isinya sudah 100% ada di `main` dan aman dihapus:
 > yang tertinggal — dan menggabungkannya ulang justru menghapus 248 baris
 > `TemplatesPage.vue` yang sudah lebih baru di `main`.
 
-### Test backend yang gagal (di luar lingkup frontend)
+### Test backend — sudah hijau semua
 
-`tests/template-admin.util.test.ts` — 7 gagal dengan
+Sebelumnya `tests/template-admin.util.test.ts` gagal 7 test dengan
 `SyntaxError: Invalid or unexpected token`.
 
-Penyebab: `scripts/measure-templates.mjs` diawali shebang `#!/usr/bin/env node`. Node biasa
-bisa meng-import file itu (sudah diuji), tetapi transformer Vitest/esbuild menolaknya.
+**Penyebab:** `scripts/measure-templates.mjs` diawali shebang `#!/usr/bin/env node`. Node
+biasa bisa meng-import file itu, tetapi transformer Vitest/esbuild menolaknya — dan file itu
+di-import dinamis oleh `src/utils/template-admin.util.ts`, jadi satu shebang menjatuhkan
+seluruh berkas test (termasuk test keamanan SVG).
 
-- **Bukan** akibat perubahan SEO/domain
-- **Tidak** memengaruhi produksi
-- Sudah dipastikan gagal juga pada `facae06` sebelum perubahan apa pun
+**Perbaikan** (`backend` commit `b6fb373`): shebang dihapus. Tidak ada fungsionalitas yang
+hilang karena `npm run template:measure` memanggilnya lewat `node scripts/measure-templates.mjs`.
+Sudah diverifikasi ulang bahwa script tetap menghasilkan `docs/template-geometry.json` yang
+identik.
 
-Status keseluruhan backend: **629 lulus / 7 gagal (semua dari satu file di atas)**.
+Status keseluruhan backend sekarang: **50/50 berkas test lulus**.
