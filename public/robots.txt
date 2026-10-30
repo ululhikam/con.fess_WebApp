@@ -1,0 +1,35 @@
+# robots.txt — Fess n Curious
+# Canonical host: https://www.fnc.web.id
+#
+# Hanya halaman publik yang boleh dirayapi. Semua area yang butuh login
+# (feed, wallet, konsol admin, detail fess, profil base) ditutup supaya
+# crawl budget tidak terbuang dan halaman privat tidak masuk indeks.
+
+User-agent: *
+Allow: /$
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /data-deletion
+
+Disallow: /feed
+Disallow: /create
+Disallow: /wallet
+Disallow: /profile
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /verify-email
+Disallow: /register
+Disallow: /onboarding
+Disallow: /base-admin
+Disallow: /super-admin
+Disallow: /fess/
+Disallow: /base/
+
+# Aset statis tidak perlu dirayapi.
+Disallow: /assets/
+Disallow: /ffmpeg/
+Disallow: /api/
+
+Sitemap: https://www.fnc.web.id/sitemap.xml

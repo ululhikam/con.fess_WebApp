@@ -310,7 +310,7 @@
             </div>
           </a>
           <a
-            href="https://fessncurious.vercel.app"
+            href="https://www.fnc.web.id"
             target="_blank"
             rel="noopener noreferrer"
             class="contact-card"
@@ -318,7 +318,7 @@
             <ExternalLink :size="20" class="contact-icon" />
             <div>
               <div class="contact-title">Website</div>
-              <div class="contact-val">fessncurious.vercel.app</div>
+              <div class="contact-val">www.fnc.web.id</div>
             </div>
           </a>
         </div>

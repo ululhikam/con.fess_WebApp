@@ -2,37 +2,70 @@
 <html lang="id" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+
+    <!--
+      Ikon situs — Google hanya memakai favicon yang persegi dengan ukuran
+      kelipatan 48 px (48/96/144/192). Aset lama 64 px & 32 px adalah sebab
+      logo brand tidak muncul di hasil pencarian. Turunan dibuat oleh
+      scripts/generate-favicons.ps1 dari public/logo.png.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="icon" type="image/png" sizes="144x144" href="/favicon-144.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0038FF" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Fess n Curious" />
 
     <!--
-      Verifikasi domain fessncurious.vercel.app di Meta Business
+      Verifikasi domain di Meta Business
       (Business Settings > Brand safety > Domains). Jangan dihapus —
       Meta dapat mengecek ulang secara berkala.
     -->
     <meta name="facebook-domain-verification" content="itcukd16r3er5bo9clet1ethkbvij2" />
     <meta
       name="description"
-      content="Fess n Curious — platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI. Harga paket top up CTF transparan dan bisa dilihat tanpa login."
+      content="Fessncurious (Fess n Curious) — platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI. Kirim fess, kelola Base komunitas, dan auto-post ke Instagram. Harga paket top up CTF transparan dan bisa dilihat tanpa login."
+    />
+    <meta
+      name="keywords"
+      content="fessncurious, fess n curious, fnc, fess anonim, confess anonim, base confess, platform sosial anonim, auto post instagram, moderasi ai, top up ctf"
     />
     <meta name="author" content="Concern Dev" />
     <meta name="publisher" content="Concern Dev" />
     <link rel="me" href="https://concern.web.id" />
-    <title>Fess n Curious - Auto-Base Social Platform &amp; Anon Engine</title>
+    <title>Fess n Curious (Fessncurious) - Auto-Base Social Platform &amp; Anon Engine</title>
+
+    <!--
+      Canonical: apex (fnc.web.id) sudah di-308 ke www oleh Vercel, jadi
+      seluruh URL absolut memakai https://www.fnc.web.id. Nilai di bawah
+      adalah default untuk beranda; router (src/utils/seo.js)
+      menimpanya per halaman saat navigasi.
+    -->
+    <link rel="canonical" href="https://www.fnc.web.id/" />
+    <link rel="alternate" hreflang="id" href="https://www.fnc.web.id/" />
+    <link rel="alternate" hreflang="x-default" href="https://www.fnc.web.id/" />
+
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <meta
+      name="googlebot"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
 
     <!--
       Structured data: Fess n Curious sebagai produk, Concern Dev sebagai
-      penyelenggara. `publisher` menghubungkan keduanya agar mesin pencari
-      tahu siapa yang membangun platform ini.
+      penyelenggara. `logo` wajib ada agar Google punya sumber gambar brand
+      untuk hasil pencarian. Semua URL sengaja absolut.
     -->
     <script type="application/ld+json">
       {
@@ -43,6 +76,14 @@
             "@id": "https://concern.web.id/#organization",
             "name": "Concern Dev",
             "url": "https://concern.web.id",
+            "description": "Pengembang dan penyelenggara platform Fess n Curious.",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://www.fnc.web.id/concern-logo.png",
+              "width": 96,
+              "height": 96
+            },
+            "sameAs": ["https://concern.web.id"],
             "contactPoint": {
               "@type": "ContactPoint",
               "contactType": "customer support",
@@ -52,29 +93,60 @@
           },
           {
             "@type": "WebSite",
+            "@id": "https://www.fnc.web.id/#website",
             "name": "Fess n Curious",
-            "alternateName": "FnC",
-            "url": "/",
+            "alternateName": ["Fessncurious", "FnC", "Fess and Curious"],
+            "url": "https://www.fnc.web.id/",
+            "inLanguage": "id-ID",
+            "publisher": { "@id": "https://concern.web.id/#organization" }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://www.fnc.web.id/#webapp",
+            "name": "Fess n Curious",
+            "url": "https://www.fnc.web.id/",
+            "alternateName": ["Fessncurious", "FnC"],
+            "description": "Platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI.",
+            "applicationCategory": "SocialNetworkingApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "id-ID",
+            "isAccessibleForFree": true,
+            "image": "https://www.fnc.web.id/og-image.jpg",
             "publisher": { "@id": "https://concern.web.id/#organization" }
           }
         ]
       }
     </script>
 
-    <!-- Open Graph -->
+    <!-- Open Graph — URL harus absolut, crawler tidak me-resolve path relatif -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Fess n Curious - Auto-Base Social Platform" />
-    <meta property="og:description" content="Platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI." />
-    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:site_name" content="Fess n Curious" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:url" content="https://www.fnc.web.id/" />
+    <meta property="og:title" content="Fess n Curious (Fessncurious) - Auto-Base Social Platform" />
+    <meta
+      property="og:description"
+      content="Platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI."
+    />
+    <meta property="og:image" content="https://www.fnc.web.id/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="Fess n Curious" />
+    <meta property="og:image:alt" content="Logo Fess n Curious di atas latar biru" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Fess n Curious - Auto-Base Social Platform" />
-    <meta name="twitter:description" content="Platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI." />
-    <meta name="twitter:image" content="/og-image.jpg" />
+    <meta
+      name="twitter:title"
+      content="Fess n Curious (Fessncurious) - Auto-Base Social Platform"
+    />
+    <meta
+      name="twitter:description"
+      content="Platform sosial anonim berbasis Base dengan auto-routing, canvas render, dan moderasi AI."
+    />
+    <meta name="twitter:image" content="https://www.fnc.web.id/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Logo Fess n Curious di atas latar biru" />
 
     <!-- Google Fonts: UI + 4 keluarga tipografi template (optimized subset) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -88,7 +160,6 @@
     <link rel="dns-prefetch" href="https://be-fnc.vercel.app" />
     <link rel="preconnect" href="https://be-fnc.vercel.app" crossorigin />
     <link rel="dns-prefetch" href="https://supabase.co" />
-
 
     <!--
       Theme bootstrap — runs BEFORE first paint so there is no flash of the

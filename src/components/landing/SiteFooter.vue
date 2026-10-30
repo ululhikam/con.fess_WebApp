@@ -5,7 +5,7 @@
         <img src="/logo.png" alt="Fess n Curious Logo" class="footer-logo-img" />
         <span class="logo-text">FESS <strong>N CURIOUS</strong></span>
       </div>
-      <p>© 2026 Fess n Curious - Automatic Social Media Confession Platform.</p>
+      <p>© 2026 Fess n Curious (Fessncurious) - Automatic Social Media Confession Platform.</p>
       <ConcernAttribution variant="footer" class="footer-attribution" />
     </div>
 

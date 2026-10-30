@@ -21,6 +21,10 @@
     <!-- HERO CONTAINER & MAIN TYPOGRAPHY -->
     <div v-else class="hero-main">
       <h1 class="hero-title-wrap">
+        <!-- Nama brand dibaca mesin pencari & screen reader, tidak tampil visual.
+             Tanpa ini h1 hanya berbunyi "#CONFESS AUTO POST BASE" sehingga
+             Google bisa salah menebak nama situs di hasil pencarian. -->
+        <span class="sr-only">Fessncurious (Fess n Curious) — platform sosial anonim untuk </span>
         <span class="hero-title-line">#CONFESS</span>
         <span class="hero-title-line">AUTO POST</span>
         <span class="hero-title-line">BASE</span>

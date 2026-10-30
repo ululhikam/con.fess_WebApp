@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/authStore';
 import { isTokenExpired } from '../utils/authToken';
+import { applySeo, seoForRoute } from '../utils/seo';
 
 /**
  * Routes are code-split with dynamic `import()` so each screen ships as its
@@ -15,7 +16,12 @@ const routes = [
     path: '/',
     name: 'Landing',
     component: () => import('../views/LandingPage.vue'),
-    meta: { title: 'Beranda' },
+    meta: {
+      title: 'Beranda',
+      titleFull: 'Fess n Curious (Fessncurious) - Auto-Base Social Platform & Anon Engine',
+      description:
+        'Fessncurious (Fess n Curious) adalah platform sosial anonim berbasis Base: kirim fess anonim, moderasi AI, dan auto-post ke Instagram. Harga paket top up CTF transparan tanpa login.',
+    },
   },
   {
     path: '/login',
@@ -180,7 +186,11 @@ const routes = [
     path: '/about',
     name: 'About',
     component: () => import('../views/AboutPage.vue'),
-    meta: { title: 'Tentang Kami' },
+    meta: {
+      title: 'Tentang Kami',
+      description:
+        'Kenali Fessncurious (Fess n Curious): platform sosial anonim berbasis Base yang dibangun Concern Dev, lengkap dengan moderasi AI dan auto-post Instagram.',
+    },
   },
   // Kontak publik — dipakai juga sebagai tautan "Contact Us" di footer untuk
   // syarat verifikasi payment gateway.
@@ -188,7 +198,11 @@ const routes = [
     path: '/contact',
     name: 'Contact',
     component: () => import('../views/ContactPage.vue'),
-    meta: { title: 'Hubungi Kami' },
+    meta: {
+      title: 'Hubungi Kami',
+      description:
+        'Hubungi tim Fessncurious (Fess n Curious) untuk bantuan akun, kerja sama Base, atau pertanyaan seputar layanan. Email: fessncurious@gmail.com.',
+    },
   },
   // Halaman legal publik (tanpa login) — dipakai juga sebagai URL kebijakan
   // Meta App Review (Instagram Platform).
@@ -196,19 +210,34 @@ const routes = [
     path: '/privacy',
     name: 'PrivacyPolicy',
     component: () => import('../views/LegalPage.vue'),
-    meta: { title: 'Kebijakan Privasi', legal: 'privacy' },
+    meta: {
+      title: 'Kebijakan Privasi',
+      legal: 'privacy',
+      description:
+        'Kebijakan privasi Fessncurious (Fess n Curious): data apa yang kami simpan, bagaimana fess anonim diproses, dan cara meminta penghapusan data.',
+    },
   },
   {
     path: '/terms',
     name: 'TermsOfService',
     component: () => import('../views/LegalPage.vue'),
-    meta: { title: 'Ketentuan Layanan', legal: 'terms' },
+    meta: {
+      title: 'Ketentuan Layanan',
+      legal: 'terms',
+      description:
+        'Ketentuan layanan Fessncurious (Fess n Curious): aturan komunitas, moderasi AI, penggunaan CTF, dan tanggung jawab pengguna platform.',
+    },
   },
   {
     path: '/data-deletion',
     name: 'DataDeletion',
     component: () => import('../views/LegalPage.vue'),
-    meta: { title: 'Penghapusan Data', legal: 'data-deletion' },
+    meta: {
+      title: 'Penghapusan Data',
+      legal: 'data-deletion',
+      description:
+        'Cara meminta penghapusan data akun dan konten di Fessncurious (Fess n Curious), termasuk data yang tersinkron dari Instagram.',
+    },
   },
   {
     path: '/:pathMatch(.*)*',
@@ -277,7 +306,7 @@ router.beforeEach(async (to, from, next) => {
       return next(
         target && !target.startsWith('/base-admin') && !target.startsWith('/super-admin')
           ? target
-          : { name: 'Feed' }
+          : { name: 'Feed' },
       );
     }
 
@@ -344,10 +373,7 @@ router.beforeEach(async (to, from, next) => {
   // Platform operations and base operations are separate consoles. A Super
   // Admin must support a base through the read-only platform panel, not by
   // entering the Base Admin dashboard.
-  if (
-    userRole === 'Super Admin' &&
-    (to.name === 'BaseAdmin' || to.name === 'BaseOnboarding')
-  ) {
+  if (userRole === 'Super Admin' && (to.name === 'BaseAdmin' || to.name === 'BaseOnboarding')) {
     return next({ name: 'SuperAdmin' });
   }
 
@@ -377,8 +403,9 @@ router.beforeEach(async (to, from, next) => {
 });
 
 router.afterEach((to) => {
-  const base = 'Fess n Curious';
-  document.title = to.meta.title ? `${to.meta.title} · ${base}` : base;
+  // title + description + canonical + robots + OG/Twitter per halaman.
+  // Halaman yang butuh login otomatis diberi `noindex` oleh seoForRoute().
+  applySeo(seoForRoute(to));
 });
 
 export default router;

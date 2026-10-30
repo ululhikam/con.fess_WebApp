@@ -80,7 +80,7 @@
           <img
             class="contact-organizer-logo"
             :src="ORGANIZER_LOGO"
-            alt=""
+            alt="Logo Concern Dev"
             width="40"
             height="40"
             loading="lazy"

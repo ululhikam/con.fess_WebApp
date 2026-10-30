@@ -1,0 +1,26 @@
+{
+  "name": "Fess n Curious",
+  "short_name": "FnC",
+  "description": "Platform sosial anonim berbasis Base: kirim fess, moderasi AI, dan auto-post ke Instagram.",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b39fa",
+  "theme_color": "#0b39fa",
+  "icons": [
+    {
+      "src": "/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
