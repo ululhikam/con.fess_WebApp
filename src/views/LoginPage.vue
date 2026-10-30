@@ -298,6 +298,9 @@ const GOOGLE_ERROR_MESSAGES = {
   google_failed: 'Login Google dibatalkan atau akun tidak diizinkan.',
   google_not_configured: 'Login Google belum dikonfigurasi di server.',
   email_verification_failed: 'Verifikasi email gagal dimulai. Coba masuk kembali.',
+  // State OAuth kedaluwarsa (masa berlaku 10 menit) atau tidak berasal dari
+  // server ini — bisa jadi tab lama, atau percobaan login CSRF.
+  oauth_state_invalid: 'Sesi login Google kedaluwarsa. Silakan coba masuk lagi.',
 };
 
 /**
