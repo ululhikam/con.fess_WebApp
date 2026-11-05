@@ -166,8 +166,8 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
         reject(
           new ApiError(
             'Koneksi jaringan terputus atau gagal terhubung ke server saat mengunggah.',
-            0
-          )
+            0,
+          ),
         );
       };
 
@@ -175,8 +175,8 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
         reject(
           new ApiError(
             'Waktu unggah habis (timeout). File terlalu besar atau koneksi internet lambat.',
-            408
-          )
+            408,
+          ),
         );
       };
 
@@ -241,8 +241,8 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
         reject(
           new ApiError(
             'Koneksi terputus saat mengunggah ke storage. Periksa koneksi internet lalu coba lagi.',
-            0
-          )
+            0,
+          ),
         );
       };
 
@@ -250,8 +250,8 @@ export function createApiClient(baseUrl = DEFAULT_BASE, getToken = () => null) {
         reject(
           new ApiError(
             'Waktu unggah habis (timeout). File terlalu besar atau koneksi internet lambat.',
-            408
-          )
+            408,
+          ),
         );
       };
 

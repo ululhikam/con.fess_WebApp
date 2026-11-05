@@ -34,16 +34,12 @@
     </div>
 
     <template v-else-if="summary">
-      <div
-        v-if="isProduction"
-        class="pc-callout pc-callout--danger"
-        style="margin-bottom: 16px"
-      >
+      <div v-if="isProduction" class="pc-callout pc-callout--danger" style="margin-bottom: 16px">
         <LockKeyhole :size="16" />
         <div>
           <strong>Mode produksi terdeteksi.</strong>
-          Konfigurasi dan flag sistem tetap read-only. Jangan melakukan perubahan
-          produksi tanpa sign-off eksplisit.
+          Konfigurasi dan flag sistem tetap read-only. Jangan melakukan perubahan produksi tanpa
+          sign-off eksplisit.
         </div>
       </div>
 
@@ -128,9 +124,7 @@
                   </span>
                   <span>
                     <strong>{{ summary.counts.payouts_requested }} payout menunggu review</strong>
-                    <small>
-                      Tertua {{ relativeTime(summary.oldest.payout_requested_at) }}
-                    </small>
+                    <small> Tertua {{ relativeTime(summary.oldest.payout_requested_at) }} </small>
                   </span>
                   <ArrowUpRight :size="15" />
                 </router-link>
@@ -194,7 +188,9 @@
             <div class="pc-card__head">
               <div>
                 <h2 class="pc-card__title">Audit admin terbaru</h2>
-                <p class="pc-card__desc">Aksi berisiko tinggi selalu meninggalkan jejak permanen.</p>
+                <p class="pc-card__desc">
+                  Aksi berisiko tinggi selalu meninggalkan jejak permanen.
+                </p>
               </div>
               <router-link to="/super-admin/keamanan" class="pc-link pc-small">
                 Lihat semua
@@ -239,7 +235,11 @@
               <dl class="pc-kv">
                 <dt>Database latency</dt>
                 <dd>
-                  {{ summary.health.db_latency_ms == null ? 'Tidak merespons' : `${summary.health.db_latency_ms} ms` }}
+                  {{
+                    summary.health.db_latency_ms == null
+                      ? 'Tidak merespons'
+                      : `${summary.health.db_latency_ms} ms`
+                  }}
                 </dd>
                 <dt>Log terakhir</dt>
                 <dd>{{ relativeTime(summary.health.last_system_log_at) }}</dd>
@@ -378,7 +378,7 @@ const actionCount = computed(() => {
 const isProduction = computed(
   () =>
     summary.value?.environment?.node_env === 'production' ||
-    summary.value?.environment?.midtrans_is_production === true
+    summary.value?.environment?.midtrans_is_production === true,
 );
 
 async function load() {

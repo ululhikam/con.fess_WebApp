@@ -13,7 +13,13 @@
       <!-- Header: counter + tutup -->
       <div class="mv-topbar" :class="{ 'mv-chrome-hidden': !chromeVisible }" @click.stop>
         <span class="mv-counter">{{ activeIndex + 1 }} / {{ items.length }}</span>
-        <button type="button" class="mv-close" title="Tutup (ESC)" aria-label="Tutup" @click.stop="requestClose">
+        <button
+          type="button"
+          class="mv-close"
+          title="Tutup (ESC)"
+          aria-label="Tutup"
+          @click.stop="requestClose"
+        >
           <X :size="20" />
         </button>
       </div>
@@ -87,16 +93,24 @@
               alt=""
               @error="avatarFailed = true"
             />
-            <span v-else>{{ post?.avatarText || (post?.handle || '@fess').slice(1, 3).toUpperCase() }}</span>
+            <span v-else>{{
+              post?.avatarText || (post?.handle || '@fess').slice(1, 3).toUpperCase()
+            }}</span>
           </div>
           <div class="mv-info-meta">
-            <span class="mv-info-handle">{{ post?.handle || post?.senderHandle || '@anonim' }}</span>
+            <span class="mv-info-handle">{{
+              post?.handle || post?.senderHandle || '@anonim'
+            }}</span>
             <span class="mv-info-time">{{ post?.time || 'Baru saja' }}</span>
           </div>
-          <span v-if="activeItem?.caption" class="mv-info-caption-inline">{{ activeItem.caption }}</span>
+          <span v-if="activeItem?.caption" class="mv-info-caption-inline">{{
+            activeItem.caption
+          }}</span>
         </div>
         <p class="mv-info-content">{{ post?.content }}</p>
-        <p v-if="items.length > 1" class="mv-info-hint">Geser untuk lihat media lain • cubit untuk menutup</p>
+        <p v-if="items.length > 1" class="mv-info-hint">
+          Geser untuk lihat media lain • cubit untuk menutup
+        </p>
       </div>
     </div>
   </Teleport>
@@ -128,7 +142,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const activeIndex = ref(Math.min(Math.max(0, props.initialIndex), Math.max(0, props.items.length - 1)));
+const activeIndex = ref(
+  Math.min(Math.max(0, props.initialIndex), Math.max(0, props.items.length - 1)),
+);
 const activeItem = computed(() => props.items[activeIndex.value] || null);
 
 /** Jangan biarkan avatar rusak meninggalkan kotak kosong di panel viewer. */
@@ -137,7 +153,7 @@ watch(
   () => props.post?.avatarImg,
   () => {
     avatarFailed.value = false;
-  }
+  },
 );
 
 /* ── Audio video viewer ──────────────────────────────────────────────────── */
@@ -226,7 +242,8 @@ onMounted(async () => {
             transformOrigin: 'top left',
             borderRadius: '0px',
             opacity: 1,
-            transition: 'transform 340ms cubic-bezier(0.22, 0.61, 0.36, 1), border-radius 340ms ease',
+            transition:
+              'transform 340ms cubic-bezier(0.22, 0.61, 0.36, 1), border-radius 340ms ease',
           };
         });
       });
@@ -269,7 +286,10 @@ const chromeVisible = ref(true);
 
 const trackStyle = computed(() => ({
   transform: `translate3d(${dragX.value}px, ${dragY.value}px, 0)`,
-  transition: dragging.value || slideReset.value ? 'none' : 'transform 250ms cubic-bezier(0.22, 0.61, 0.36, 1)',
+  transition:
+    dragging.value || slideReset.value
+      ? 'none'
+      : 'transform 250ms cubic-bezier(0.22, 0.61, 0.36, 1)',
 }));
 
 const zoomStyle = computed(() => ({
@@ -412,7 +432,8 @@ function onRootClick(e) {
 
 function onKeydown(e) {
   if (e.key === 'Escape') requestClose();
-  else if (e.key === 'ArrowRight' && activeIndex.value < props.items.length - 1) goTo(activeIndex.value + 1, 1);
+  else if (e.key === 'ArrowRight' && activeIndex.value < props.items.length - 1)
+    goTo(activeIndex.value + 1, 1);
   else if (e.key === 'ArrowLeft' && activeIndex.value > 0) goTo(activeIndex.value - 1, -1);
 }
 
@@ -521,7 +542,9 @@ function requestClose() {
   justify-content: space-between;
   padding: 14px 16px;
   z-index: 5;
-  transition: opacity 200ms ease, transform 200ms ease;
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
 }
 
 .mv-counter {
@@ -546,7 +569,9 @@ function requestClose() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 
 .mv-close:hover {
@@ -594,7 +619,9 @@ function requestClose() {
   padding: 14px 18px calc(16px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, rgba(8, 10, 16, 0), rgba(8, 10, 16, 0.92) 34%);
   z-index: 4;
-  transition: opacity 220ms ease, transform 220ms ease;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
 }
 
 .mv-chrome-hidden {

@@ -261,8 +261,7 @@ export function useFeedPosts() {
     // Billing metadata is returned only when CTF was actually charged. Keep it
     // on the mapped post so the composer can surface the cost and new balance.
     mapped.chargedCtf = Number(created.charged_ctf ?? 0);
-    mapped.ctfBalance =
-      typeof created.ctf_balance === 'number' ? created.ctf_balance : null;
+    mapped.ctfBalance = typeof created.ctf_balance === 'number' ? created.ctf_balance : null;
     mapped.baseBilling = created.base_billing ?? null;
 
     // PENTING: fess yang baru dibuat biasanya berstatus "pending" (harus dimoderasi

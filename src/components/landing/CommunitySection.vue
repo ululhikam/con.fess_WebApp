@@ -39,7 +39,9 @@
               class="bci-icon-img"
               @error="failedAvatars[base.handle] = true"
             />
-            <span v-else class="bci-icon-initial">{{ avatarInitials(base.name, base.initial) }}</span>
+            <span v-else class="bci-icon-initial">{{
+              avatarInitials(base.name, base.initial)
+            }}</span>
           </div>
           <div class="bci-meta">
             <h3>{{ base.name }}</h3>

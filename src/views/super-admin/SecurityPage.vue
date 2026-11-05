@@ -8,12 +8,7 @@
       :health-tone="healthTone"
     >
       <template #actions>
-        <ConsoleStatusBadge
-          v-if="settings"
-          status="audit"
-          label="Audit trail aktif"
-          tone="lime"
-        />
+        <ConsoleStatusBadge v-if="settings" status="audit" label="Audit trail aktif" tone="lime" />
         <button
           type="button"
           class="pc-btn pc-btn--ghost"
@@ -30,9 +25,8 @@
       <ShieldCheck :size="16" />
       <div>
         <strong>Guardrail platform.</strong>
-        Aksi payout, KYC, freeForever, dan ban membutuhkan re-auth kata sandi, rate limit,
-        serta audit berisi aktor, alasan, IP, dan user agent. Tidak ada endpoint untuk
-        menghapus audit.
+        Aksi payout, KYC, freeForever, dan ban membutuhkan re-auth kata sandi, rate limit, serta
+        audit berisi aktor, alasan, IP, dan user agent. Tidak ada endpoint untuk menghapus audit.
       </div>
     </div>
 
@@ -40,7 +34,13 @@
       <div class="pc-stat pc-stat--lime">
         <p class="pc-stat__label">Re-auth aksi sensitif</p>
         <p class="pc-stat__value pc-stat__value--small">
-          {{ settings ? (settings.security.reauth_required_for_high_risk ? 'Aktif' : 'Nonaktif') : '—' }}
+          {{
+            settings
+              ? settings.security.reauth_required_for_high_risk
+                ? 'Aktif'
+                : 'Nonaktif'
+              : '—'
+          }}
         </p>
         <p class="pc-stat__hint">Payout, KYC, freeForever, ban/unban</p>
       </div>
@@ -54,7 +54,13 @@
       <div class="pc-stat pc-stat--amber">
         <p class="pc-stat__label">Webhook signature</p>
         <p class="pc-stat__value pc-stat__value--small">
-          {{ settings ? (settings.security.webhook_signature_verification ? 'Diverifikasi' : 'Tidak') : '—' }}
+          {{
+            settings
+              ? settings.security.webhook_signature_verification
+                ? 'Diverifikasi'
+                : 'Tidak'
+              : '—'
+          }}
         </p>
         <p class="pc-stat__hint">Verifikasi signature Midtrans</p>
       </div>
@@ -63,7 +69,9 @@
         <p class="pc-stat__value pc-stat__value--small">
           {{ settings ? `${settings.security.global_rate_limit_per_minute}/menit` : '—' }}
         </p>
-        <p class="pc-stat__hint">{{ settings?.security.global_rate_limit_scope || 'Runtime config' }}</p>
+        <p class="pc-stat__hint">
+          {{ settings?.security.global_rate_limit_scope || 'Runtime config' }}
+        </p>
       </div>
     </div>
 
@@ -333,17 +341,14 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="log in logs.data"
-              :key="log.id"
-              class="is-clickable"
-              @click="openLog(log)"
-            >
+            <tr v-for="log in logs.data" :key="log.id" class="is-clickable" @click="openLog(log)">
               <td>
                 {{ formatDateTime(log.created_at) }}
                 <span class="pc-table__sub">{{ relativeTime(log.created_at) }}</span>
               </td>
-              <td><span class="pc-badge pc-badge--neutral pc-mono">{{ log.source }}</span></td>
+              <td>
+                <span class="pc-badge pc-badge--neutral pc-mono">{{ log.source }}</span>
+              </td>
               <td>
                 <ConsoleStatusBadge
                   :status="log.tone"
@@ -358,9 +363,7 @@
       </div>
 
       <div v-if="logs.total_pages > 1" class="pc-pagination">
-        <span>
-          {{ logs.total }} log · halaman {{ logs.page }} dari {{ logs.total_pages }}
-        </span>
+        <span> {{ logs.total }} log · halaman {{ logs.page }} dari {{ logs.total_pages }} </span>
         <div class="pc-pagination__buttons">
           <button
             type="button"
@@ -453,8 +456,8 @@
         <div class="pc-callout">
           <LockKeyhole :size="15" />
           <div>
-            Audit ini tidak dapat diubah atau dihapus dari konsol. Untuk koreksi, lakukan
-            aksi baru yang juga akan tercatat.
+            Audit ini tidak dapat diubah atau dihapus dari konsol. Untuk koreksi, lakukan aksi baru
+            yang juga akan tercatat.
           </div>
         </div>
       </div>
@@ -522,13 +525,7 @@ import { api } from '../../api';
 import ConsoleDrawer from '../../components/super-admin/ConsoleDrawer.vue';
 import ConsolePageHeader from '../../components/super-admin/ConsolePageHeader.vue';
 import ConsoleStatusBadge from '../../components/super-admin/ConsoleStatusBadge.vue';
-import {
-  formatDateTime,
-  relativeTime,
-  safeJson,
-  shortId,
-  titleCase,
-} from '../../utils/console';
+import { formatDateTime, relativeTime, safeJson, shortId, titleCase } from '../../utils/console';
 
 const route = useRoute();
 const router = useRouter();
@@ -726,7 +723,7 @@ watch(
     if (tab === activeTab.value) return;
     activeTab.value = tab;
     ensureTab(tab);
-  }
+  },
 );
 
 onMounted(() => {

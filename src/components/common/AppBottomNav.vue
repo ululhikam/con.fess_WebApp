@@ -77,14 +77,14 @@
 <script setup>
 /**
  * AppBottomNav.vue — Unified 5-element Bottom Navigation Bar for User and Base Admin.
- * 
+ *
  * 5 Navigation items:
  *   1. Home
  *   2. Search
  *   3. [+] Center FAB (Compose / Broadcast)
  *   4. Notif
  *   5. Akun (Instagram-style Profile)
- * 
+ *
  * Aesthetic:
  *   - Floating rounded pill detached from the viewport edge
  *   - Single design tokens (--shell-card, --shell-border-strong, --shell-active, --shell-sub-accent)

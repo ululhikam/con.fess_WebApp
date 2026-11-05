@@ -44,7 +44,9 @@
             v-model="search"
             type="text"
             class="follow-search-input"
-            :placeholder="tab === 'followers' ? 'Cari di daftar follower...' : 'Cari di daftar following...'"
+            :placeholder="
+              tab === 'followers' ? 'Cari di daftar follower...' : 'Cari di daftar following...'
+            "
           />
           <button v-if="search" type="button" class="btn-clear-search" @click="search = ''">
             <X :size="13" />
@@ -84,7 +86,9 @@
               >
                 {{ initials(item.name) }}
               </span>
-              <span v-if="item.isVerified" class="follow-verified-dot" title="Terverifikasi">✓</span>
+              <span v-if="item.isVerified" class="follow-verified-dot" title="Terverifikasi"
+                >✓</span
+              >
             </div>
 
             <div class="follow-user-info">
@@ -172,17 +176,15 @@ const emptyLabel = computed(() => {
 
 const filtered = computed(() => {
   const source =
-    props.tab === 'followers'
-      ? users.value
-      : props.followingSource === 'me'
-        ? bases.value
-        : [];
+    props.tab === 'followers' ? users.value : props.followingSource === 'me' ? bases.value : [];
   const q = search.value.trim().toLowerCase();
   if (!q) return source;
   return source.filter(
     (i) =>
       i.name.toLowerCase().includes(q) ||
-      String(i.handle || '').toLowerCase().includes(q)
+      String(i.handle || '')
+        .toLowerCase()
+        .includes(q),
   );
 });
 
@@ -210,7 +212,11 @@ async function loadTab(force = false) {
           isVerified: false,
           followedAtText:
             date && !Number.isNaN(date.getTime())
-              ? date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+              ? date.toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })
               : '',
         };
       });
@@ -274,7 +280,7 @@ watch(
     search.value = '';
     error.value = '';
     loadTab(true);
-  }
+  },
 );
 
 // Ganti tab -> muat daftarnya kalau belum (dalam sesi modal ini).
@@ -285,7 +291,7 @@ watch(
     search.value = '';
     error.value = '';
     loadTab();
-  }
+  },
 );
 </script>
 
@@ -305,8 +311,12 @@ watch(
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-card {
@@ -318,8 +328,14 @@ watch(
 }
 
 @keyframes modalScaleUp {
-  from { transform: scale(0.96); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .follow-modal-card {

@@ -1,6 +1,10 @@
 <template>
   <figure class="fess-chart" role="img" :aria-label="ariaLabel">
-    <svg :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`" class="fess-chart-svg" preserveAspectRatio="xMidYMid meet">
+    <svg
+      :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`"
+      class="fess-chart-svg"
+      preserveAspectRatio="xMidYMid meet"
+    >
       <defs>
         <linearGradient :id="gradientId" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#baff00" stop-opacity="0.35" />
@@ -104,17 +108,14 @@ const coords = computed(() => {
   const total = props.points.length;
   return props.points.map((point, index) => {
     const value = Number(point.value) || 0;
-    const x =
-      total > 1 ? PAD.left + (plotW * index) / (total - 1) : PAD.left + plotW / 2;
+    const x = total > 1 ? PAD.left + (plotW * index) / (total - 1) : PAD.left + plotW / 2;
     const y = PAD.top + plotH - (value / yMax.value) * plotH;
     return { x, y, label: point.label, tooltip: point.tooltip || point.label, value };
   });
 });
 
 const linePath = computed(() =>
-  coords.value
-    .map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`)
-    .join(' '),
+  coords.value.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' '),
 );
 
 const areaPath = computed(() => {
@@ -138,9 +139,7 @@ const xLabels = computed(() => {
   if (!total) return [];
   const maxLabels = 7;
   const step = Math.max(1, Math.ceil(total / maxLabels));
-  const picked = coords.value.filter(
-    (_, index) => index % step === 0 || index === total - 1,
-  );
+  const picked = coords.value.filter((_, index) => index % step === 0 || index === total - 1);
   return picked.map((c) => ({ key: c.label, label: c.label, x: c.x }));
 });
 

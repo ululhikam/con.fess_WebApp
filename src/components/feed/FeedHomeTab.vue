@@ -109,8 +109,7 @@ const emit = defineEmits([
 const loadSentinel = ref(null);
 useInfiniteScroll(loadSentinel, {
   onLoad: () => emit('loadMore'),
-  canLoad: () =>
-    props.hasMore && !props.loading && !props.loadingMore && !props.loadMoreError,
+  canLoad: () => props.hasMore && !props.loading && !props.loadingMore && !props.loadMoreError,
   deps: () => [props.posts.length, props.hasMore, props.loadingMore],
 });
 </script>

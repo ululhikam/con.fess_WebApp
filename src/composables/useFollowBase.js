@@ -91,7 +91,8 @@ export function useFollowBase() {
       const res = await api.followBase(target.replace(/^@/, ''));
       const nowFollowing = res?.is_following ?? !wasFollowing;
       if (nowFollowing) {
-        if (!isFollowing(target)) sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
+        if (!isFollowing(target))
+          sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
       } else {
         sharedFollowedHandles.value = sharedFollowedHandles.value.filter((h) => h !== target);
       }
@@ -100,7 +101,8 @@ export function useFollowBase() {
     } catch (e) {
       // Rollback on failure
       if (wasFollowing) {
-        if (!isFollowing(target)) sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
+        if (!isFollowing(target))
+          sharedFollowedHandles.value = [...sharedFollowedHandles.value, target];
       } else {
         sharedFollowedHandles.value = sharedFollowedHandles.value.filter((h) => h !== target);
       }

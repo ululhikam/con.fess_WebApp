@@ -97,8 +97,6 @@ defineEmits(['openCompose']);
   color: var(--shell-text);
 }
 
-
-
 .btn-header-kirim {
   display: inline-flex;
   align-items: center;

@@ -38,7 +38,11 @@
           <div class="stage-header-row mb-4">
             <h1 class="stage-title">Notifikasi</h1>
 
-            <div class="segmented-tabs-container" role="tablist" aria-label="Kategori Notifikasi Admin">
+            <div
+              class="segmented-tabs-container"
+              role="tablist"
+              aria-label="Kategori Notifikasi Admin"
+            >
               <button
                 v-for="filter in ADMIN_NOTIF_FILTERS"
                 :key="filter.key"
@@ -155,14 +159,7 @@
  */
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import {
-  Bell,
-  CheckCircle2,
-  MessageCircle,
-  Inbox,
-  CheckCheck,
-  X,
-} from 'lucide-vue-next';
+import { Bell, CheckCircle2, MessageCircle, Inbox, CheckCheck, X } from 'lucide-vue-next';
 
 import BaseAdminBottomNav from '../components/admin/BaseAdminBottomNav.vue';
 import BaseAdminProfileTab from '../components/admin/BaseAdminProfileTab.vue';
@@ -191,9 +188,7 @@ async function handleToggleFollow(handle) {
   const name = String(handle || '').startsWith('@') ? String(handle) : `@${handle}`;
   try {
     const nowFollowing = await toggleFollowBase(name);
-    toast.success(
-      nowFollowing ? `Berhasil mengikuti ${name}` : `Berhenti mengikuti ${name}`,
-    );
+    toast.success(nowFollowing ? `Berhasil mengikuti ${name}` : `Berhenti mengikuti ${name}`);
   } catch {
     toast.error('Gagal memperbarui status ikuti. Coba lagi.');
   }
@@ -201,7 +196,7 @@ async function handleToggleFollow(handle) {
 
 const initialTab = route.query.tab;
 const activeNav = ref(
-  initialTab ? (initialTab === 'profile' || initialTab === 'akun' ? 'akun' : initialTab) : 'home'
+  initialTab ? (initialTab === 'profile' || initialTab === 'akun' ? 'akun' : initialTab) : 'home',
 );
 const homeTab = ref('forYou');
 
@@ -211,7 +206,7 @@ watch(
     if (newTab) {
       activeNav.value = newTab === 'profile' || newTab === 'akun' ? 'akun' : newTab;
     }
-  }
+  },
 );
 
 /* Search State (Synced with ExploreSearchTab) */
@@ -232,7 +227,7 @@ const filteredBases = computed(() => {
       (b) =>
         b.name.toLowerCase().includes(q) ||
         b.handle.toLowerCase().includes(q) ||
-        (b.keyword && b.keyword.toLowerCase().includes(q))
+        (b.keyword && b.keyword.toLowerCase().includes(q)),
     );
   }
   return list;
@@ -383,8 +378,18 @@ useInfiniteScroll(adminNotifSentinel, {
 
 /** Presentation mapping for API notification types (icons are UI assets). */
 const NOTIF_PRESENTATION = {
-  moderation: { category: 'moderasi', icon: Bell, type: 'type-pending', title: 'Fess Menunggu Moderasi' },
-  vote: { category: 'sistem', icon: CheckCircle2, type: 'type-success', title: 'Fess Menerima Vote' },
+  moderation: {
+    category: 'moderasi',
+    icon: Bell,
+    type: 'type-pending',
+    title: 'Fess Menunggu Moderasi',
+  },
+  vote: {
+    category: 'sistem',
+    icon: CheckCircle2,
+    type: 'type-success',
+    title: 'Fess Menerima Vote',
+  },
   comment: { category: 'sistem', icon: MessageCircle, type: 'type-alert', title: 'Komentar Baru' },
 };
 
@@ -440,9 +445,7 @@ async function loadMoreAdminNotifs() {
     const nextPage = notifPage + 1;
     const res = await api.getNotifications({ page: nextPage, limit: 20 });
     const seen = new Set(notifItems.value.map((n) => String(n.id)));
-    const extra = (res?.data ?? [])
-      .filter((n) => !seen.has(String(n.id)))
-      .map(mapNotification);
+    const extra = (res?.data ?? []).filter((n) => !seen.has(String(n.id))).map(mapNotification);
     notifItems.value = [...notifItems.value, ...extra];
     notifPage = nextPage;
     notifTotal.value = res?.total ?? notifTotal.value;
@@ -635,9 +638,15 @@ useVisibilityRefresh(() => {
   font-weight: 900;
 }
 
-.text-lime { color: var(--shell-text); }
-.text-blue { color: var(--shell-text); }
-.text-pink { color: var(--shell-text); }
+.text-lime {
+  color: var(--shell-text);
+}
+.text-blue {
+  color: var(--shell-text);
+}
+.text-pink {
+  color: var(--shell-text);
+}
 
 .status-lbl {
   font-size: 10.5px;
@@ -868,7 +877,9 @@ useVisibilityRefresh(() => {
   font-size: 12.5px;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .segmented-btn.active {
@@ -895,7 +906,9 @@ useVisibilityRefresh(() => {
   font-weight: 700;
   font-size: 12.5px;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .notif-toolbar-btn:hover:not(:disabled) {
@@ -994,10 +1007,22 @@ useVisibilityRefresh(() => {
   flex-shrink: 0;
 }
 
-.type-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.type-ig { background: rgba(225, 48, 108, 0.15); color: #e1306c; }
-.type-success { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-.type-alert { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.type-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+.type-ig {
+  background: rgba(225, 48, 108, 0.15);
+  color: #e1306c;
+}
+.type-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+.type-alert {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
 
 .notif-content-col {
   flex: 1;

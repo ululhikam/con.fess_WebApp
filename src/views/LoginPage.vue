@@ -40,8 +40,16 @@
       <FormField
         id="login-identifier"
         v-model="form.values.identifier"
-        :label="selectedRole === 'Base Admin' ? 'Email Admin atau Handle Base' : 'Email atau Username User'"
-        :placeholder="selectedRole === 'Base Admin' ? 'contoh: admin@codememfess.id' : 'contoh: alexdev@base.eth'"
+        :label="
+          selectedRole === 'Base Admin'
+            ? 'Email Admin atau Handle Base'
+            : 'Email atau Username User'
+        "
+        :placeholder="
+          selectedRole === 'Base Admin'
+            ? 'contoh: admin@codememfess.id'
+            : 'contoh: alexdev@base.eth'
+        "
         autocomplete="username"
         required
         :error="fieldError('identifier')"
@@ -174,7 +182,8 @@ const isSubmitting = ref(false);
 
 const sessionNotice = computed(() => {
   const reason = route.query.reason;
-  if (reason === 'expired') return 'Sesi kamu berakhir karena masa berlaku login habis. Silakan masuk kembali.';
+  if (reason === 'expired')
+    return 'Sesi kamu berakhir karena masa berlaku login habis. Silakan masuk kembali.';
   if (reason === 'logged_out') return 'Kamu sudah keluar dari akun ini.';
   return '';
 });
@@ -311,7 +320,8 @@ onMounted(async () => {
   const { token, error, google, instagram, ...rest } = route.query;
 
   if (typeof error === 'string' && error) {
-    googleError.value = GOOGLE_ERROR_MESSAGES[error] || decodeURIComponent(error) || 'Login gagal. Coba lagi.';
+    googleError.value =
+      GOOGLE_ERROR_MESSAGES[error] || decodeURIComponent(error) || 'Login gagal. Coba lagi.';
     toast.error(googleError.value);
   }
 

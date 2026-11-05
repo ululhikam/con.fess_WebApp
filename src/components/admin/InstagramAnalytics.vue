@@ -78,10 +78,16 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="m in summaryMetrics" :key="m.metric" :class="{ 'is-muted': !m.available }">
+                <tr
+                  v-for="m in summaryMetrics"
+                  :key="m.metric"
+                  :class="{ 'is-muted': !m.available }"
+                >
                   <th scope="row" class="ig-metric-name">
                     {{ m.label }}
-                    <span v-if="!m.available && !hasFollowerFallback(m)" class="ig-mini-note">tidak tersedia</span>
+                    <span v-if="!m.available && !hasFollowerFallback(m)" class="ig-mini-note"
+                      >tidak tersedia</span
+                    >
                   </th>
                   <td class="ig-num">{{ formatPeriodCell(m) }}</td>
                   <td class="ig-num">{{ hasComparison(m) ? formatNumber(m.last7) : '—' }}</td>
@@ -168,7 +174,14 @@
 
               <g v-for="s in summaryChart.series" :key="`series-${s.key}`">
                 <path :d="s.areaPath" :fill="`url(#ig-area-${s.key})`" />
-                <path :d="s.linePath" fill="none" :stroke="s.color" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                <path
+                  :d="s.linePath"
+                  fill="none"
+                  :stroke="s.color"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </g>
 
               <g class="ig-grid-labels">
@@ -197,7 +210,8 @@
             </svg>
           </div>
           <p v-else class="ig-note">
-            Data tren belum tersedia dari Meta. Pastikan izin <strong>instagram_business_manage_insights</strong>
+            Data tren belum tersedia dari Meta. Pastikan izin
+            <strong>instagram_business_manage_insights</strong>
             aktif pada koneksi Instagram.
           </p>
         </div>
@@ -206,8 +220,8 @@
           <ShieldAlert :size="16" aria-hidden="true" />
           <div>
             <p>
-              Meta tidak mengembalikan metrik akun. Koneksi Instagram kemungkinan tidak memiliki izin
-              insights atau akun bukan Business/Creator.
+              Meta tidak mengembalikan metrik akun. Koneksi Instagram kemungkinan tidak memiliki
+              izin insights atau akun bukan Business/Creator.
             </p>
             <button type="button" class="ig-btn" @click="$emit('open-connections')">
               Hubungkan Ulang Instagram
@@ -242,7 +256,12 @@
               <h4 class="ig-panel-title">Matriks Konten Instagram</h4>
               <p class="ig-panel-sub">6 konten terbaru dari akun base</p>
             </div>
-            <button type="button" class="ig-mini-refresh" :disabled="mediaLoading" @click="refreshMedia">
+            <button
+              type="button"
+              class="ig-mini-refresh"
+              :disabled="mediaLoading"
+              @click="refreshMedia"
+            >
               <RefreshCw :size="12" :class="{ 'ig-spin': mediaLoading }" aria-hidden="true" />
               {{ mediaLoading ? 'Memuat…' : 'Perbarui konten' }}
             </button>
@@ -284,12 +303,30 @@
                 </div>
                 <p class="ig-media-caption">{{ item.caption || 'Tanpa caption' }}</p>
                 <div class="ig-media-metrics">
-                  <span><Eye :size="12" aria-hidden="true" /> {{ formatNumber(item.insights?.views) }}</span>
-                  <span><Radio :size="12" aria-hidden="true" /> {{ formatNumber(item.insights?.reach) }}</span>
-                  <span><Heart :size="12" aria-hidden="true" /> {{ formatNumber(item.insights?.likes ?? item.likeCount) }}</span>
-                  <span><MessageSquare :size="12" aria-hidden="true" /> {{ formatNumber(item.insights?.comments ?? item.commentsCount) }}</span>
-                  <span><Bookmark :size="12" aria-hidden="true" /> {{ formatNumber(item.insights?.saved) }}</span>
-                  <span><Share2 :size="12" aria-hidden="true" /> {{ formatNumber(item.insights?.shares) }}</span>
+                  <span
+                    ><Eye :size="12" aria-hidden="true" />
+                    {{ formatNumber(item.insights?.views) }}</span
+                  >
+                  <span
+                    ><Radio :size="12" aria-hidden="true" />
+                    {{ formatNumber(item.insights?.reach) }}</span
+                  >
+                  <span
+                    ><Heart :size="12" aria-hidden="true" />
+                    {{ formatNumber(item.insights?.likes ?? item.likeCount) }}</span
+                  >
+                  <span
+                    ><MessageSquare :size="12" aria-hidden="true" />
+                    {{ formatNumber(item.insights?.comments ?? item.commentsCount) }}</span
+                  >
+                  <span
+                    ><Bookmark :size="12" aria-hidden="true" />
+                    {{ formatNumber(item.insights?.saved) }}</span
+                  >
+                  <span
+                    ><Share2 :size="12" aria-hidden="true" />
+                    {{ formatNumber(item.insights?.shares) }}</span
+                  >
                 </div>
               </div>
 
@@ -326,7 +363,9 @@
               <span class="ig-bar-track">
                 <i :style="{ width: interactionWidth(item) }" />
               </span>
-              <span class="ig-bar-value">{{ formatNumber(item.insights?.total_interactions) }}</span>
+              <span class="ig-bar-value">{{
+                formatNumber(item.insights?.total_interactions)
+              }}</span>
             </div>
           </div>
         </div>
@@ -365,7 +404,9 @@
               <h4 class="ig-panel-title">Pengikut Baru per Hari</h4>
               <p class="ig-panel-sub">{{ rangeLabel }} · follow baru, belum dikurangi unfollow</p>
             </div>
-            <span class="ig-badge">{{ metricDisplay(newFollowersMetric, 'total') }} follow baru</span>
+            <span class="ig-badge"
+              >{{ metricDisplay(newFollowersMetric, 'total') }} follow baru</span
+            >
           </div>
           <div class="ig-chart">
             <svg
@@ -393,7 +434,14 @@
 
               <g v-for="s in newFollowersChart.series" :key="`f-series-${s.key}`">
                 <path :d="s.areaPath" fill="url(#ig-area-followers)" />
-                <path :d="s.linePath" fill="none" :stroke="s.color" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                <path
+                  :d="s.linePath"
+                  fill="none"
+                  :stroke="s.color"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </g>
 
               <g class="ig-grid-labels">
@@ -435,7 +483,11 @@
             <div v-for="group in demographicGroups" :key="group.metric" class="ig-audience-block">
               <div class="ig-audience-title">{{ group.label }}</div>
               <div v-if="group.available" class="ig-hbars">
-                <div v-for="row in topItems(group)" :key="`${group.metric}-${row.label}`" class="ig-hbar">
+                <div
+                  v-for="row in topItems(group)"
+                  :key="`${group.metric}-${row.label}`"
+                  class="ig-hbar"
+                >
                   <span class="ig-hbar-label" :title="formatAudienceLabel(group.metric, row.label)">
                     {{ formatAudienceLabel(group.metric, row.label) }}
                   </span>
@@ -471,8 +523,8 @@
         <div class="ig-panel ig-panel-note">
           <Info :size="15" aria-hidden="true" />
           <p>
-            Jangkauan, tayangan, dan kunjungan profil dihitung dari metrik akun Instagram.
-            Data audiens hanya tersedia bila akun memiliki minimal 100 pengikut.
+            Jangkauan, tayangan, dan kunjungan profil dihitung dari metrik akun Instagram. Data
+            audiens hanya tersedia bila akun memiliki minimal 100 pengikut.
           </p>
         </div>
       </template>
@@ -573,13 +625,13 @@ function parseDateLabel(value) {
 const hasAccountData = computed(() => Boolean(accountData.value));
 const hasConnection = computed(() => Boolean(account.value || accountData.value));
 const loading = computed(
-  () => accountLoading.value || (props.section === 'content' && mediaLoading.value)
+  () => accountLoading.value || (props.section === 'content' && mediaLoading.value),
 );
 
 const notConnectedMessage = computed(
   () =>
     accountMessage.value ||
-    'Hubungkan akun Instagram Business/Creator dari menu Koneksi Medsos untuk melihat analitik medsos di sini.'
+    'Hubungkan akun Instagram Business/Creator dari menu Koneksi Medsos untuk melihat analitik medsos di sini.',
 );
 
 const errorMessage = computed(() => {
@@ -698,14 +750,9 @@ const followerGrowthLabel = computed(() => {
   const change = item.change || 0;
   const sign = change > 0 ? '+' : '';
   const pct = item.changePct === null ? '' : ` (${sign}${item.changePct.toFixed(1)}%)`;
-  const net30 =
-    item.first !== null && item.first !== item.latest
-      ? item.latest - item.first
-      : null;
+  const net30 = item.first !== null && item.first !== item.latest ? item.latest - item.first : null;
   const suffix =
-    net30 !== null
-      ? ` · ${net30 >= 0 ? '+' : ''}${formatNumber(net30)} dalam 30 hari`
-      : '';
+    net30 !== null ? ` · ${net30 >= 0 ? '+' : ''}${formatNumber(net30)} dalam 30 hari` : '';
   return `${sign}${formatNumber(change)} bersih dalam 7 hari${pct}${suffix}`;
 });
 
@@ -776,29 +823,25 @@ const summaryChart = computed(() =>
   buildChartSeries([
     { key: 'reach', metric: 'reach', label: 'Reach', color: '#8b5cf6' },
     { key: 'views', metric: 'views', label: 'Tayangan', color: '#0ea5e9' },
-  ])
+  ]),
 );
 
 const summaryChartTitle = computed(() =>
   summaryChart.value.series.some((series) => series.key === 'views')
     ? 'Tren Jangkauan & Tayangan'
-    : 'Tren Jangkauan'
+    : 'Tren Jangkauan',
 );
 
 const newFollowersChart = computed(() =>
   buildChartSeries([
     { key: 'new_followers', metric: 'new_followers', label: 'Pengikut Baru', color: '#22c55e' },
-  ])
+  ]),
 );
 
 function buildGridLines(chart) {
   const innerHeight = CHART_HEIGHT - CHART_PAD_TOP - CHART_PAD_BOTTOM;
   const bottom = CHART_PAD_TOP + innerHeight;
-  return [
-    { y: CHART_PAD_TOP },
-    { y: CHART_PAD_TOP + innerHeight / 2 },
-    { y: bottom },
-  ];
+  return [{ y: CHART_PAD_TOP }, { y: CHART_PAD_TOP + innerHeight / 2 }, { y: bottom }];
 }
 
 const chartGridLines = computed(() => buildGridLines(summaryChart.value));
@@ -848,7 +891,7 @@ const mediaTotals = computed(() => {
   const items = media.value || [];
   const interactions = items.reduce(
     (total, item) => total + (item.insights?.total_interactions || 0),
-    0
+    0,
   );
   const views = items.reduce((total, item) => total + (item.insights?.views || 0), 0);
   const reach = items.reduce((total, item) => total + (item.insights?.reach || 0), 0);
@@ -861,7 +904,7 @@ const mediaTotals = computed(() => {
 });
 
 const maxInteractions = computed(() =>
-  Math.max(...(media.value || []).map((item) => item.insights?.total_interactions || 0), 1)
+  Math.max(...(media.value || []).map((item) => item.insights?.total_interactions || 0), 1),
 );
 
 function interactionWidth(item) {
@@ -870,7 +913,9 @@ function interactionWidth(item) {
 }
 
 function shortCaption(item) {
-  const text = String(item.caption || 'Tanpa caption').replace(/\s+/g, ' ').trim();
+  const text = String(item.caption || 'Tanpa caption')
+    .replace(/\s+/g, ' ')
+    .trim();
   return text.length > 34 ? `${text.slice(0, 34)}…` : text;
 }
 
@@ -886,11 +931,11 @@ function mediaTypeLabel(item) {
 const audienceGroups = computed(() => accountData.value?.audience || []);
 
 const demographicGroups = computed(() =>
-  audienceGroups.value.filter((group) => group.metric !== 'online_followers')
+  audienceGroups.value.filter((group) => group.metric !== 'online_followers'),
 );
 
 const onlineFollowers = computed(() =>
-  audienceGroups.value.find((group) => group.metric === 'online_followers')
+  audienceGroups.value.find((group) => group.metric === 'online_followers'),
 );
 
 function topItems(group) {
@@ -916,7 +961,9 @@ const regionNames = (() => {
 })();
 
 function formatCountryLabel(label) {
-  const code = String(label || '').trim().toUpperCase();
+  const code = String(label || '')
+    .trim()
+    .toUpperCase();
   if (!/^[A-Z]{2}$/.test(code)) return String(label || '');
   return regionNames?.of(code) || code;
 }
@@ -974,7 +1021,7 @@ watch(
     if (section === 'content') {
       loadMediaInsights();
     }
-  }
+  },
 );
 </script>
 

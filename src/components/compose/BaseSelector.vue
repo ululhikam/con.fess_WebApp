@@ -29,8 +29,12 @@
           <MessageSquare :size="16" />
         </span>
         <div class="base-selector__info">
-          <span class="base-selector__handle">{{ selectedBase?.handle || modelValue || 'Pilih base fess' }}</span>
-          <span class="base-selector__name" v-if="selectedBase">{{ selectedBase.name || selectedBase.handle }}</span>
+          <span class="base-selector__handle">{{
+            selectedBase?.handle || modelValue || 'Pilih base fess'
+          }}</span>
+          <span class="base-selector__name" v-if="selectedBase">{{
+            selectedBase.name || selectedBase.handle
+          }}</span>
         </div>
       </div>
       <Lock v-if="disabled" :size="16" class="base-selector__lock" aria-label="Base terkunci" />

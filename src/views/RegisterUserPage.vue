@@ -1,22 +1,17 @@
 <template>
   <AuthShell logo-word="USER" subtitle="Buat Akun Pengguna & Mulai Kirim Menfess" :max-width="480">
     <!-- Account Type / Role Switcher Tabs (hanya tampil di Step 1) -->
-    <div v-if="currentStep === 1" class="account-type-tabs" role="tablist" aria-label="Pilih tipe registrasi">
-      <router-link
-        to="/register/user"
-        class="tab-btn active-user"
-        role="tab"
-        aria-selected="true"
-      >
+    <div
+      v-if="currentStep === 1"
+      class="account-type-tabs"
+      role="tablist"
+      aria-label="Pilih tipe registrasi"
+    >
+      <router-link to="/register/user" class="tab-btn active-user" role="tab" aria-selected="true">
         <UserRound :size="15" aria-hidden="true" />
         <span>Akun User (Biasa)</span>
       </router-link>
-      <router-link
-        to="/register/base"
-        class="tab-btn"
-        role="tab"
-        aria-selected="false"
-      >
+      <router-link to="/register/base" class="tab-btn" role="tab" aria-selected="false">
         <ShieldCheck :size="15" aria-hidden="true" />
         <span>Akun Base Confess</span>
       </router-link>
@@ -133,7 +128,12 @@
       </div>
 
       <div class="social-login">
-        <button type="button" class="btn-google" :disabled="isSubmitting" @click="handleGoogleRegister">
+        <button
+          type="button"
+          class="btn-google"
+          :disabled="isSubmitting"
+          @click="handleGoogleRegister"
+        >
           <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="#4285F4"
@@ -197,7 +197,9 @@
                 class="user-avatar-img"
                 @error="avatarError = true"
               />
-              <span v-else class="user-avatar-initials" aria-hidden="true">{{ avatarInitials }}</span>
+              <span v-else class="user-avatar-initials" aria-hidden="true">{{
+                avatarInitials
+              }}</span>
             </div>
           </div>
 
@@ -210,7 +212,7 @@
               :class="{ active: form.avatar === preset }"
               @click="selectAvatarPreset(preset)"
             >
-              <img :src="preset" :alt="`Pilihan Avatar ${i+1}`" />
+              <img :src="preset" :alt="`Pilihan Avatar ${i + 1}`" />
             </button>
           </div>
         </div>
@@ -241,12 +243,7 @@
         <!-- Bio Pengguna -->
         <div class="form-field-group">
           <label for="user-bio" class="form-label">Bio Singkat</label>
-          <textarea
-            id="user-bio"
-            v-model="form.bio"
-            rows="2"
-            class="form-textarea"
-          ></textarea>
+          <textarea id="user-bio" v-model="form.bio" rows="2" class="form-textarea"></textarea>
         </div>
 
         <!-- Submission Error Alert -->

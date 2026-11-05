@@ -1,26 +1,17 @@
 <template>
-  <AuthShell
-    logo-word="CONFESS"
-    subtitle="Pendaftaran Akun Admin Base"
-    :max-width="520"
-  >
+  <AuthShell logo-word="CONFESS" subtitle="Pendaftaran Akun Admin Base" :max-width="520">
     <!-- Account Type / Role Switcher Tabs (hanya tampil di Step 1) -->
-    <div v-if="currentStep === 1" class="account-type-tabs" role="tablist" aria-label="Pilih tipe registrasi">
-      <router-link
-        to="/register/user"
-        class="tab-btn"
-        role="tab"
-        aria-selected="false"
-      >
+    <div
+      v-if="currentStep === 1"
+      class="account-type-tabs"
+      role="tablist"
+      aria-label="Pilih tipe registrasi"
+    >
+      <router-link to="/register/user" class="tab-btn" role="tab" aria-selected="false">
         <UserRound :size="15" aria-hidden="true" />
         <span>Akun User (Biasa)</span>
       </router-link>
-      <router-link
-        to="/register/base"
-        class="tab-btn active-base"
-        role="tab"
-        aria-selected="true"
-      >
+      <router-link to="/register/base" class="tab-btn active-base" role="tab" aria-selected="true">
         <ShieldCheck :size="15" aria-hidden="true" />
         <span>Akun Base Confess</span>
       </router-link>
@@ -51,7 +42,8 @@
       <div class="step-hero mb-4">
         <h2 class="step-title">1. Buat Akun Admin Base</h2>
         <p class="step-desc">
-          Masukkan email dan kata sandi atau daftar instan dengan Google untuk mengelola portal base.
+          Masukkan email dan kata sandi atau daftar instan dengan Google untuk mengelola portal
+          base.
         </p>
       </div>
 
@@ -118,7 +110,12 @@
       </div>
 
       <div class="social-login">
-        <button type="button" class="btn-google" :disabled="isSubmitting" @click="handleGoogleRegister">
+        <button
+          type="button"
+          class="btn-google"
+          :disabled="isSubmitting"
+          @click="handleGoogleRegister"
+        >
           <svg class="google-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="#4285F4"
@@ -147,9 +144,9 @@
       <div class="step-hero mb-4">
         <h2 class="step-title">2. Hubungkan Instagram (Opsional)</h2>
         <p class="step-desc">
-          Tanpa menghubungkan Instagram, fess tetap terbit normal di FnC saja.
-          Koneksi sosmed hanya diperlukan jika kamu ingin fess juga diposting otomatis
-          ke Feed atau Reels Instagram base. Kamu bisa menghubungkannya nanti dari dashboard.
+          Tanpa menghubungkan Instagram, fess tetap terbit normal di FnC saja. Koneksi sosmed hanya
+          diperlukan jika kamu ingin fess juga diposting otomatis ke Feed atau Reels Instagram base.
+          Kamu bisa menghubungkannya nanti dari dashboard.
         </p>
       </div>
 
@@ -163,7 +160,11 @@
             <div class="medsos-info">
               <div class="medsos-name">Instagram Graph API Integration</div>
               <div class="medsos-status">
-                {{ igConnected ? '✓ Terhubung ke Instagram Auto-Post' : 'Opsional — hanya untuk auto-post Instagram' }}
+                {{
+                  igConnected
+                    ? '✓ Terhubung ke Instagram Auto-Post'
+                    : 'Opsional — hanya untuk auto-post Instagram'
+                }}
               </div>
             </div>
             <span v-if="igConnected" class="badge-connected">AKTIF</span>
@@ -179,19 +180,14 @@
               <Instagram :size="15" />
               <span>Hubungkan Akun Instagram via Meta OAuth</span>
             </button>
-            <button
-              v-else
-              type="button"
-              class="btn-meta-oauth-connected"
-              @click="disconnectIg"
-            >
+            <button v-else type="button" class="btn-meta-oauth-connected" @click="disconnectIg">
               <span>✓ Terhubung ({{ form.igAccount }}) — Putuskan</span>
             </button>
           </div>
 
           <p v-if="!igConnected" class="ig-oauth-hint">
-            Kamu akan memilih akun Instagram profesional base langsung di halaman resmi
-            Meta. Tidak perlu mengetik handle — akun yang terhubung akan terisi otomatis.
+            Kamu akan memilih akun Instagram profesional base langsung di halaman resmi Meta. Tidak
+            perlu mengetik handle — akun yang terhubung akan terisi otomatis.
           </p>
 
           <!-- Feature Highlights of Instagram Link -->
@@ -223,8 +219,8 @@
         </button>
       </div>
       <p v-if="!igConnected" class="wizard-skip-note">
-        Tanpa Instagram, fess tetap terbit di FnC. Kamu bisa menghubungkannya kapan saja
-        lewat menu Koneksi Medsos di dashboard.
+        Tanpa Instagram, fess tetap terbit di FnC. Kamu bisa menghubungkannya kapan saja lewat menu
+        Koneksi Medsos di dashboard.
       </p>
     </section>
 
@@ -308,12 +304,7 @@
         <!-- Bio Base -->
         <div class="form-field-group">
           <label for="base-bio" class="form-label">Bio Base</label>
-          <textarea
-            id="base-bio"
-            v-model="form.bio"
-            rows="2"
-            class="form-textarea"
-          ></textarea>
+          <textarea id="base-bio" v-model="form.bio" rows="2" class="form-textarea"></textarea>
         </div>
 
         <div class="wizard-nav-buttons mt-6">
@@ -524,7 +515,7 @@ function handleInstagramOAuth() {
       JSON.stringify({
         step: 2,
         form: { ...form, password: '', confirmPassword: '' },
-      })
+      }),
     );
   } catch {
     // Ignored
@@ -800,7 +791,14 @@ onMounted(() => {
 }
 
 .ig-brand {
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   box-shadow: 0 4px 12px rgba(225, 48, 108, 0.35);
 }
 
@@ -839,7 +837,14 @@ onMounted(() => {
   width: 100%;
   padding: 10px 16px;
   border-radius: 12px;
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   color: #fff;
   border: none;
   font-family: inherit;
@@ -991,7 +996,9 @@ onMounted(() => {
   cursor: pointer;
   background: none;
   overflow: hidden;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn-base-preset img {
@@ -1134,10 +1141,18 @@ onMounted(() => {
   transition: background 0.2s ease;
 }
 
-.strength__bar.is-on[data-level='0'] { background: #ef4444; }
-.strength__bar.is-on[data-level='1'] { background: #f59e0b; }
-.strength__bar.is-on[data-level='2'] { background: #3b82f6; }
-.strength__bar.is-on[data-level='3'] { background: #10b981; }
+.strength__bar.is-on[data-level='0'] {
+  background: #ef4444;
+}
+.strength__bar.is-on[data-level='1'] {
+  background: #f59e0b;
+}
+.strength__bar.is-on[data-level='2'] {
+  background: #3b82f6;
+}
+.strength__bar.is-on[data-level='3'] {
+  background: #10b981;
+}
 
 .strength__label {
   font-size: 11px;

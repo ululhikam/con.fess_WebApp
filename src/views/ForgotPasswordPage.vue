@@ -12,8 +12,8 @@
     <!-- STEP 1: minta kode OTP -->
     <form v-if="step === 'email'" class="auth-form" novalidate @submit.prevent="handleSendOtp">
       <p class="fp-lead">
-        Masukkan email akunmu. Kami akan mengirim kode OTP 6 digit sebagai verifikasi
-        bahwa ini benar-benar kamu.
+        Masukkan email akunmu. Kami akan mengirim kode OTP 6 digit sebagai verifikasi bahwa ini
+        benar-benar kamu.
       </p>
 
       <FormField
@@ -48,7 +48,8 @@
     <!-- STEP 2: verifikasi kode OTP -->
     <form v-else-if="step === 'otp'" class="auth-form" novalidate @submit.prevent="handleVerifyOtp">
       <div class="fp-info-box">
-        Kode OTP telah dikirim ke <strong>{{ emailForm.values.email }}</strong>. Silakan periksa kotak masuk atau folder spam email kamu. Kode berlaku 10 menit.
+        Kode OTP telah dikirim ke <strong>{{ emailForm.values.email }}</strong
+        >. Silakan periksa kotak masuk atau folder spam email kamu. Kode berlaku 10 menit.
       </div>
 
       <FormField
@@ -176,9 +177,7 @@ const router = useRouter();
 
 /* ---------- step state ---------- */
 const step = ref('email'); // 'email' | 'otp' | 'password' | 'done'
-const stepIndex = computed(
-  () => ({ email: 1, otp: 2, password: 3, done: 3 })[step.value] ?? 1,
-);
+const stepIndex = computed(() => ({ email: 1, otp: 2, password: 3, done: 3 })[step.value] ?? 1);
 const resetToken = ref('');
 
 /* ---------- resend cooldown ---------- */
@@ -257,7 +256,9 @@ function touch(form, name) {
 
 /* ---------- helpers ---------- */
 function handleOtpInput(value) {
-  otpForm.values.otp = String(value || '').replace(/\D/g, '').slice(0, 6);
+  otpForm.values.otp = String(value || '')
+    .replace(/\D/g, '')
+    .slice(0, 6);
 }
 
 function goLogin() {
@@ -419,7 +420,6 @@ async function handleResetPassword() {
   font-size: 12.5px;
   line-height: 1.6;
 }
-
 
 /* ---------- form ---------- */
 .auth-form {

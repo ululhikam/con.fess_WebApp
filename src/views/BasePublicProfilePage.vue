@@ -19,7 +19,9 @@
             <span>{{ baseData?.handle || (cleanHandle ? `@${cleanHandle}` : 'Profil Base') }}</span>
             <ShieldCheck v-if="baseData?.verified" :size="16" class="verified-icon" />
           </div>
-          <span class="top-sub-tag">{{ baseData?.category ? `${baseData.category} Base` : 'Base' }}</span>
+          <span class="top-sub-tag">{{
+            baseData?.category ? `${baseData.category} Base` : 'Base'
+          }}</span>
         </div>
 
         <button
@@ -49,404 +51,415 @@
           v-else-if="baseError && !baseData"
           variant="error"
           :title="baseNotFound ? 'Base tidak ditemukan' : 'Profil base gagal dimuat'"
-          :description="baseNotFound
-            ? `Base @${cleanHandle} tidak ditemukan. Periksa kembali tautan atau cari base lain dari feed.`
-            : 'Terjadi kesalahan saat mengambil profil base. Periksa koneksi internetmu, lalu coba lagi.'"
+          :description="
+            baseNotFound
+              ? `Base @${cleanHandle} tidak ditemukan. Periksa kembali tautan atau cari base lain dari feed.`
+              : 'Terjadi kesalahan saat mengambil profil base. Periksa koneksi internetmu, lalu coba lagi.'
+          "
           action-label="Coba lagi"
           @action="loadBase"
         />
 
         <template v-else-if="baseData">
-        <!-- COVER & HERO BANNER -->
-        <section class="base-hero-card">
-          <!-- Cover Banner with dynamic depth, glows, and category badges -->
-          <div
-            class="base-cover-banner"
-            :style="{
-              background: `linear-gradient(135deg, ${baseData.color || '#0055ff'} 0%, #151c38 55%, #080c18 100%)`
-            }"
-          >
+          <!-- COVER & HERO BANNER -->
+          <section class="base-hero-card">
+            <!-- Cover Banner with dynamic depth, glows, and category badges -->
             <div
-              class="cover-ambient-glow"
-              :style="{ background: `radial-gradient(circle, ${baseData.color || '#0055ff'}77 0%, transparent 70%)` }"
-            ></div>
-            <div class="cover-ambient-orb-secondary"></div>
-            <div class="cover-overlay-pattern"></div>
-            <div class="cover-glass-flare"></div>
-            
-            <div class="cover-top-row">
-              <div v-if="baseData.verified" class="cover-status-badge">
-                <Sparkles :size="12" class="sparkle-anim-icon" />
-                <span>Base Resmi Aktif</span>
-              </div>
-
-              <div class="cover-category-badge">
-                <span class="category-dot"></span>
-                <span>{{ baseData.category }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Profile Head (Avatar + Quick Action) -->
-          <div class="hero-body-content">
-            <div class="hero-avatar-stage">
-              <div
-                class="avatar-ring-wrapper"
-                :style="{ '--base-glow': baseData.color || '#0055ff' }"
-              >
-                <img
-                  v-if="baseAvatar"
-                  :src="baseAvatar"
-                  :alt="baseData.name"
-                  class="base-avatar-img"
-                />
-                <div
-                  v-else
-                  class="base-avatar-core"
-                  :style="{ background: `linear-gradient(135deg, ${baseData.color || '#0055ff'}, #002db3)` }"
-                >
-                  <span>{{ baseData.initial }}</span>
-                </div>
-                
-                <span v-if="baseData.verified" class="avatar-verified-shield" title="Base Resmi Terverifikasi">
-                  <ShieldCheck :size="15" :stroke-width="2.6" />
-                </span>
-              </div>
-
-              <!-- Quick share action on top right of the card body -->
-              <div class="avatar-stage-right">
-                <button
-                  type="button"
-                  class="btn-quick-share"
-                  title="Bagikan Tautan Profil Base"
-                  @click="handleShare"
-                >
-                  <Share2 :size="14" />
-                  <span>Bagikan</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Name, Handle, Badges & Bio -->
-            <div class="base-identity-block">
-              <div class="name-badge-row">
-                <h1 class="base-display-name">{{ baseData.name }}</h1>
-                <div v-if="baseData.verified" class="badge-official-base" title="Base Resmi Terverifikasi Platform">
-                  <ShieldCheck :size="13" class="badge-icon" />
-                  <span>OFFICIAL BASE</span>
-                </div>
-              </div>
-
-              <div class="base-handle-line">
-                <button
-                  type="button"
-                  class="btn-handle-copy"
-                  title="Klik untuk menyalin username base"
-                  @click="copyHandle"
-                >
-                  <span class="handle-text">{{ baseData.handle }}</span>
-                  <Copy :size="12" class="copy-handle-icon" />
-                </button>
-              </div>
-
-              <p class="base-bio-paragraph">{{ baseData.bio }}</p>
-
-              <!-- Medsos & Feature Badges -->
-              <div class="base-medsos-strip">
-                <a
-                  v-if="baseData.igAccount"
-                  :href="'https://instagram.com/' + baseData.igAccount.replace(/^@/, '')"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="medsos-item-chip ig-chip"
-                  title="Kunjungi Instagram Resmi Base"
-                >
-                  <Instagram :size="14" class="ig-icon" />
-                  <span class="medsos-handle">{{ baseData.igAccount }}</span>
-                  <ExternalLink :size="11" class="medsos-ext-icon" />
-                </a>
-
-                <div
-                  v-if="baseData.instagramConnected"
-                  class="medsos-item-chip auto-sync-chip"
-                  title="Integrasi Auto-Post Instagram Aktif"
-                >
-                  <span class="pulse-radar-wrap">
-                    <span class="radar-wave"></span>
-                    <span class="radar-dot"></span>
-                  </span>
-                  <span>Auto-Post Feed Aktif</span>
-                </div>
-
-                <div
-                  v-if="billingBadge"
-                  class="medsos-item-chip billing-chip"
-                  :class="billingBadge.className"
-                  :title="billingBadge.title"
-                >
-                  <Coins v-if="billingBadge.paid" :size="14" />
-                  <Sparkles v-else :size="14" />
-                  <span>{{ billingBadge.label }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 3 BENTO METRIC TILES (Fess Terbit, Mengikuti, Pengikut) -->
-            <div class="base-stats-bento-grid">
-              <div class="bento-stat-card">
-                <div class="bento-stat-top">
-                  <span class="bento-stat-num">{{ baseData.fessCount }}</span>
-                  <MessageSquare :size="14" class="bento-stat-icon-muted" />
-                </div>
-                <div class="bento-stat-bottom">
-                  <span class="bento-stat-label">Fess Terbit</span>
-                  <span class="bento-stat-sub">confessions</span>
-                </div>
-              </div>
-
-              <!-- Daftar following base tidak diekspos ke publik. -->
-              <div class="bento-stat-card">
-                <div class="bento-stat-top">
-                  <span class="bento-stat-num">{{ baseData.followingCount }}</span>
-                </div>
-                <div class="bento-stat-bottom">
-                  <span class="bento-stat-label">Mengikuti</span>
-                  <span class="bento-stat-sub">akun</span>
-                </div>
-              </div>
-
-              <!-- Daftar pengikut hanya bisa dibuka oleh pemilik base. -->
-              <component
-                :is="isBaseOwner ? 'button' : 'div'"
-                :type="isBaseOwner ? 'button' : undefined"
-                class="bento-stat-card"
-                :class="{ 'bento-clickable': isBaseOwner }"
-                :title="
-                  isBaseOwner
-                    ? 'Lihat pengikut base'
-                    : 'Hanya pemilik base yang dapat melihat daftar pengikut'
-                "
-                @click="isBaseOwner && openFollowModal('followers')"
-              >
-                <div class="bento-stat-top">
-                  <span class="bento-stat-num">{{ currentFollowersDisplay }}</span>
-                  <ChevronRight v-if="isBaseOwner" :size="14" class="bento-stat-arrow" />
-                </div>
-                <div class="bento-stat-bottom">
-                  <span class="bento-stat-label">Pengikut</span>
-                  <span class="bento-stat-sub">komunitas</span>
-                </div>
-              </component>
-            </div>
-
-            <!-- Visitor Action Buttons: Follow / Send Fess -->
-            <div class="hero-actions-row">
-              <button
-                type="button"
-                :class="['btn-follow-action', { following: isBaseFollowed }]"
-                :aria-pressed="isBaseFollowed"
-                @click="handleToggleFollow"
-              >
-                <UserCheck v-if="isBaseFollowed" :size="17" class="btn-action-icon" />
-                <UserPlus v-else :size="17" class="btn-action-icon" />
-                <span class="follow-label-text">{{ isBaseFollowed ? 'Mengikuti' : 'Ikuti Base' }}</span>
-              </button>
-
-              <button
-                type="button"
-                class="btn-send-fess-primary"
-                title="Kirim confession ke base ini"
-                @click="handleSendFess"
-              >
-                <div class="btn-glow-shimmer"></div>
-                <Send :size="17" class="btn-send-icon" />
-                <span>Kirim Fess</span>
-              </button>
-            </div>
-
-            <!-- Notice Banner IF viewed by its own Base Admin -->
-            <div v-if="isOwnBase" class="own-base-notice-box mt-4">
-              <div class="notice-icon-circle">
-                <Sparkles :size="16" />
-              </div>
-              <div class="notice-text-col">
-                <div class="notice-title-row">
-                  <span class="notice-title">Mode Pratinjau Tampilan Publik</span>
-                  <span class="notice-role-pill">Admin Base</span>
-                </div>
-                <p class="notice-desc">
-                  Ini adalah tampilan profil luar yang dilihat oleh user dan admin base lain. Panel moderasi dan pengelolaan antrean fess Anda berada di Dasbor Admin.
-                </p>
-              </div>
-              <button
-                type="button"
-                class="btn-goto-admin"
-                @click="router.push('/base-admin')"
-              >
-                <span>Buka Dasbor Admin</span>
-                <ChevronRight :size="14" />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- SUB-TABS NAVIGATION (Fess Terbit, Aturan, Tentang) -->
-        <nav class="public-tabs-nav mt-4" role="tablist" aria-label="Navigasi Profil Base">
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'posts'"
-            :class="['profile-subtab-btn', { active: activeTab === 'posts' }]"
-            @click="activeTab = 'posts'"
-          >
-            <FileText :size="16" />
-            <span>Fess Terbit</span>
-            <span class="tab-pill-count">{{ baseFesses.length }}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'rules'"
-            :class="['profile-subtab-btn', { active: activeTab === 'rules' }]"
-            @click="activeTab = 'rules'"
-          >
-            <ShieldAlert :size="16" />
-            <span>Aturan Base</span>
-            <span class="tab-pill-count">{{ baseData.rules.length }}</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'about'"
-            :class="['profile-subtab-btn', { active: activeTab === 'about' }]"
-            @click="activeTab = 'about'"
-          >
-            <Info :size="16" />
-            <span>Tentang Base</span>
-          </button>
-        </nav>
-
-        <!-- TAB CONTENT 1: FESS TERBIT -->
-        <section v-if="activeTab === 'posts'" class="tab-pane-container mt-4">
-          <ContentSkeleton
-            v-if="fessesLoading && !baseFesses.length"
-            type="feed-card"
-            :count="3"
-            label="Memuat fess…"
-          />
-
-          <AppStateView
-            v-else-if="fessesError && !baseFesses.length"
-            variant="error"
-            title="Fess gagal dimuat"
-            description="Terjadi kesalahan saat mengambil fess base ini. Coba muat ulang."
-            action-label="Coba lagi"
-            @action="loadBaseFesses()"
-          />
-
-          <div v-else-if="baseFesses.length" class="fess-feed-stream flex flex-col gap-4">
-            <FessCard
-              v-for="post in baseFesses"
-              :key="post.id"
-              :post="post"
-              :is-admin="false"
-              @like="handleLikePost"
-              @report="(e) => {
-                baseFesses.value = baseFesses.value.filter(
-                  (f) => String(f.id) !== String(e.postId),
-                );
+              class="base-cover-banner"
+              :style="{
+                background: `linear-gradient(135deg, ${baseData.color || '#0055ff'} 0%, #151c38 55%, #080c18 100%)`,
               }"
-            />
-          </div>
+            >
+              <div
+                class="cover-ambient-glow"
+                :style="{
+                  background: `radial-gradient(circle, ${baseData.color || '#0055ff'}77 0%, transparent 70%)`,
+                }"
+              ></div>
+              <div class="cover-ambient-orb-secondary"></div>
+              <div class="cover-overlay-pattern"></div>
+              <div class="cover-glass-flare"></div>
 
-          <!-- Empty state if no fess -->
-          <div v-else class="empty-base-fess-state">
-            <Inbox :size="40" class="empty-icon" />
-            <h3 class="empty-title">Belum ada fess terbit</h3>
-            <p class="empty-sub">
-              Belum ada confession yang diterbitkan di base ini. Jadilah yang pertama mengirim fess!
-            </p>
+              <div class="cover-top-row">
+                <div v-if="baseData.verified" class="cover-status-badge">
+                  <Sparkles :size="12" class="sparkle-anim-icon" />
+                  <span>Base Resmi Aktif</span>
+                </div>
+
+                <div class="cover-category-badge">
+                  <span class="category-dot"></span>
+                  <span>{{ baseData.category }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profile Head (Avatar + Quick Action) -->
+            <div class="hero-body-content">
+              <div class="hero-avatar-stage">
+                <div
+                  class="avatar-ring-wrapper"
+                  :style="{ '--base-glow': baseData.color || '#0055ff' }"
+                >
+                  <img
+                    v-if="baseAvatar"
+                    :src="baseAvatar"
+                    :alt="baseData.name"
+                    class="base-avatar-img"
+                  />
+                  <div
+                    v-else
+                    class="base-avatar-core"
+                    :style="{
+                      background: `linear-gradient(135deg, ${baseData.color || '#0055ff'}, #002db3)`,
+                    }"
+                  >
+                    <span>{{ baseData.initial }}</span>
+                  </div>
+
+                  <span
+                    v-if="baseData.verified"
+                    class="avatar-verified-shield"
+                    title="Base Resmi Terverifikasi"
+                  >
+                    <ShieldCheck :size="15" :stroke-width="2.6" />
+                  </span>
+                </div>
+
+                <!-- Quick share action on top right of the card body -->
+                <div class="avatar-stage-right">
+                  <button
+                    type="button"
+                    class="btn-quick-share"
+                    title="Bagikan Tautan Profil Base"
+                    @click="handleShare"
+                  >
+                    <Share2 :size="14" />
+                    <span>Bagikan</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Name, Handle, Badges & Bio -->
+              <div class="base-identity-block">
+                <div class="name-badge-row">
+                  <h1 class="base-display-name">{{ baseData.name }}</h1>
+                  <div
+                    v-if="baseData.verified"
+                    class="badge-official-base"
+                    title="Base Resmi Terverifikasi Platform"
+                  >
+                    <ShieldCheck :size="13" class="badge-icon" />
+                    <span>OFFICIAL BASE</span>
+                  </div>
+                </div>
+
+                <div class="base-handle-line">
+                  <button
+                    type="button"
+                    class="btn-handle-copy"
+                    title="Klik untuk menyalin username base"
+                    @click="copyHandle"
+                  >
+                    <span class="handle-text">{{ baseData.handle }}</span>
+                    <Copy :size="12" class="copy-handle-icon" />
+                  </button>
+                </div>
+
+                <p class="base-bio-paragraph">{{ baseData.bio }}</p>
+
+                <!-- Medsos & Feature Badges -->
+                <div class="base-medsos-strip">
+                  <a
+                    v-if="baseData.igAccount"
+                    :href="'https://instagram.com/' + baseData.igAccount.replace(/^@/, '')"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="medsos-item-chip ig-chip"
+                    title="Kunjungi Instagram Resmi Base"
+                  >
+                    <Instagram :size="14" class="ig-icon" />
+                    <span class="medsos-handle">{{ baseData.igAccount }}</span>
+                    <ExternalLink :size="11" class="medsos-ext-icon" />
+                  </a>
+
+                  <div
+                    v-if="baseData.instagramConnected"
+                    class="medsos-item-chip auto-sync-chip"
+                    title="Integrasi Auto-Post Instagram Aktif"
+                  >
+                    <span class="pulse-radar-wrap">
+                      <span class="radar-wave"></span>
+                      <span class="radar-dot"></span>
+                    </span>
+                    <span>Auto-Post Feed Aktif</span>
+                  </div>
+
+                  <div
+                    v-if="billingBadge"
+                    class="medsos-item-chip billing-chip"
+                    :class="billingBadge.className"
+                    :title="billingBadge.title"
+                  >
+                    <Coins v-if="billingBadge.paid" :size="14" />
+                    <Sparkles v-else :size="14" />
+                    <span>{{ billingBadge.label }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3 BENTO METRIC TILES (Fess Terbit, Mengikuti, Pengikut) -->
+              <div class="base-stats-bento-grid">
+                <div class="bento-stat-card">
+                  <div class="bento-stat-top">
+                    <span class="bento-stat-num">{{ baseData.fessCount }}</span>
+                    <MessageSquare :size="14" class="bento-stat-icon-muted" />
+                  </div>
+                  <div class="bento-stat-bottom">
+                    <span class="bento-stat-label">Fess Terbit</span>
+                    <span class="bento-stat-sub">confessions</span>
+                  </div>
+                </div>
+
+                <!-- Daftar following base tidak diekspos ke publik. -->
+                <div class="bento-stat-card">
+                  <div class="bento-stat-top">
+                    <span class="bento-stat-num">{{ baseData.followingCount }}</span>
+                  </div>
+                  <div class="bento-stat-bottom">
+                    <span class="bento-stat-label">Mengikuti</span>
+                    <span class="bento-stat-sub">akun</span>
+                  </div>
+                </div>
+
+                <!-- Daftar pengikut hanya bisa dibuka oleh pemilik base. -->
+                <component
+                  :is="isBaseOwner ? 'button' : 'div'"
+                  :type="isBaseOwner ? 'button' : undefined"
+                  class="bento-stat-card"
+                  :class="{ 'bento-clickable': isBaseOwner }"
+                  :title="
+                    isBaseOwner
+                      ? 'Lihat pengikut base'
+                      : 'Hanya pemilik base yang dapat melihat daftar pengikut'
+                  "
+                  @click="isBaseOwner && openFollowModal('followers')"
+                >
+                  <div class="bento-stat-top">
+                    <span class="bento-stat-num">{{ currentFollowersDisplay }}</span>
+                    <ChevronRight v-if="isBaseOwner" :size="14" class="bento-stat-arrow" />
+                  </div>
+                  <div class="bento-stat-bottom">
+                    <span class="bento-stat-label">Pengikut</span>
+                    <span class="bento-stat-sub">komunitas</span>
+                  </div>
+                </component>
+              </div>
+
+              <!-- Visitor Action Buttons: Follow / Send Fess -->
+              <div class="hero-actions-row">
+                <button
+                  type="button"
+                  :class="['btn-follow-action', { following: isBaseFollowed }]"
+                  :aria-pressed="isBaseFollowed"
+                  @click="handleToggleFollow"
+                >
+                  <UserCheck v-if="isBaseFollowed" :size="17" class="btn-action-icon" />
+                  <UserPlus v-else :size="17" class="btn-action-icon" />
+                  <span class="follow-label-text">{{
+                    isBaseFollowed ? 'Mengikuti' : 'Ikuti Base'
+                  }}</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-send-fess-primary"
+                  title="Kirim confession ke base ini"
+                  @click="handleSendFess"
+                >
+                  <div class="btn-glow-shimmer"></div>
+                  <Send :size="17" class="btn-send-icon" />
+                  <span>Kirim Fess</span>
+                </button>
+              </div>
+
+              <!-- Notice Banner IF viewed by its own Base Admin -->
+              <div v-if="isOwnBase" class="own-base-notice-box mt-4">
+                <div class="notice-icon-circle">
+                  <Sparkles :size="16" />
+                </div>
+                <div class="notice-text-col">
+                  <div class="notice-title-row">
+                    <span class="notice-title">Mode Pratinjau Tampilan Publik</span>
+                    <span class="notice-role-pill">Admin Base</span>
+                  </div>
+                  <p class="notice-desc">
+                    Ini adalah tampilan profil luar yang dilihat oleh user dan admin base lain.
+                    Panel moderasi dan pengelolaan antrean fess Anda berada di Dasbor Admin.
+                  </p>
+                </div>
+                <button type="button" class="btn-goto-admin" @click="router.push('/base-admin')">
+                  <span>Buka Dasbor Admin</span>
+                  <ChevronRight :size="14" />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- SUB-TABS NAVIGATION (Fess Terbit, Aturan, Tentang) -->
+          <nav class="public-tabs-nav mt-4" role="tablist" aria-label="Navigasi Profil Base">
             <button
               type="button"
-              class="btn-send-fess-primary mt-3"
-              @click="handleSendFess"
+              role="tab"
+              :aria-selected="activeTab === 'posts'"
+              :class="['profile-subtab-btn', { active: activeTab === 'posts' }]"
+              @click="activeTab = 'posts'"
             >
-              <Send :size="15" />
-              <span>Kirim Fess Sekarang</span>
+              <FileText :size="16" />
+              <span>Fess Terbit</span>
+              <span class="tab-pill-count">{{ baseFesses.length }}</span>
             </button>
-          </div>
-        </section>
 
-        <!-- TAB CONTENT 2: ATURAN BASE -->
-        <section v-else-if="activeTab === 'rules'" class="tab-pane-container mt-4">
-          <div class="rules-card-box">
-            <div class="rules-header">
-              <ShieldAlert :size="20" class="rules-accent-icon" />
-              <div>
-                <h2 class="rules-main-title">Panduan &amp; Ketentuan Pengiriman Fess</h2>
-                <p class="rules-sub-title">Harap baca sebelum mengirim fess ke {{ baseData.handle }}</p>
-              </div>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeTab === 'rules'"
+              :class="['profile-subtab-btn', { active: activeTab === 'rules' }]"
+              @click="activeTab = 'rules'"
+            >
+              <ShieldAlert :size="16" />
+              <span>Aturan Base</span>
+              <span class="tab-pill-count">{{ baseData.rules.length }}</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="activeTab === 'about'"
+              :class="['profile-subtab-btn', { active: activeTab === 'about' }]"
+              @click="activeTab = 'about'"
+            >
+              <Info :size="16" />
+              <span>Tentang Base</span>
+            </button>
+          </nav>
+
+          <!-- TAB CONTENT 1: FESS TERBIT -->
+          <section v-if="activeTab === 'posts'" class="tab-pane-container mt-4">
+            <ContentSkeleton
+              v-if="fessesLoading && !baseFesses.length"
+              type="feed-card"
+              :count="3"
+              label="Memuat fess…"
+            />
+
+            <AppStateView
+              v-else-if="fessesError && !baseFesses.length"
+              variant="error"
+              title="Fess gagal dimuat"
+              description="Terjadi kesalahan saat mengambil fess base ini. Coba muat ulang."
+              action-label="Coba lagi"
+              @action="loadBaseFesses()"
+            />
+
+            <div v-else-if="baseFesses.length" class="fess-feed-stream flex flex-col gap-4">
+              <FessCard
+                v-for="post in baseFesses"
+                :key="post.id"
+                :post="post"
+                :is-admin="false"
+                @like="handleLikePost"
+                @report="
+                  (e) => {
+                    baseFesses.value = baseFesses.value.filter(
+                      (f) => String(f.id) !== String(e.postId),
+                    );
+                  }
+                "
+              />
             </div>
 
-            <ol class="rules-ordered-list">
-              <li v-for="(rule, index) in baseData.rules" :key="index" class="rule-list-item">
-                <span class="rule-number">{{ index + 1 }}</span>
-                <span class="rule-text">{{ rule }}</span>
-              </li>
-            </ol>
-
-            <div class="rules-note-callout mt-4">
-              <Info :size="16" class="note-icon" />
-              <p class="note-text">
-                Fess yang melanggar aturan akan otomatis ditolak oleh moderator demi menjaga kenyamanan bersama.
+            <!-- Empty state if no fess -->
+            <div v-else class="empty-base-fess-state">
+              <Inbox :size="40" class="empty-icon" />
+              <h3 class="empty-title">Belum ada fess terbit</h3>
+              <p class="empty-sub">
+                Belum ada confession yang diterbitkan di base ini. Jadilah yang pertama mengirim
+                fess!
               </p>
-            </div>
-          </div>
-        </section>
-
-        <!-- TAB CONTENT 3: TENTANG BASE -->
-        <section v-else-if="activeTab === 'about'" class="tab-pane-container mt-4">
-          <div class="about-card-box">
-            <h2 class="about-section-title">Informasi Base</h2>
-
-            <div class="about-meta-grid">
-              <div class="meta-item">
-                <span class="meta-lbl">Kategori</span>
-                <span class="meta-val">{{ baseData.category }}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-lbl">Instagram Sync</span>
-                <span class="meta-val">
-                  {{ baseData.igAccount || 'Tidak terhubung — fess terbit di FnC saja' }}
-                </span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-lbl">Status Verifikasi</span>
-                <span :class="['meta-val', { 'status-verified': baseData.verified }]">
-                  {{ baseData.verified ? 'Resmi Terverifikasi' : 'Belum Terverifikasi' }}
-                </span>
-              </div>
-            </div>
-
-            <div class="about-bio-box mt-4">
-              <h3 class="about-sub-heading">Deskripsi Komunitas</h3>
-              <p class="about-bio-text">{{ baseData.bio }}</p>
-            </div>
-
-            <div class="about-cta-box mt-4">
-              <button
-                type="button"
-                class="btn-send-fess-primary w-full"
-                @click="handleSendFess"
-              >
-                <Send :size="16" />
-                <span>Kirim Confession ke Base Ini</span>
+              <button type="button" class="btn-send-fess-primary mt-3" @click="handleSendFess">
+                <Send :size="15" />
+                <span>Kirim Fess Sekarang</span>
               </button>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <!-- TAB CONTENT 2: ATURAN BASE -->
+          <section v-else-if="activeTab === 'rules'" class="tab-pane-container mt-4">
+            <div class="rules-card-box">
+              <div class="rules-header">
+                <ShieldAlert :size="20" class="rules-accent-icon" />
+                <div>
+                  <h2 class="rules-main-title">Panduan &amp; Ketentuan Pengiriman Fess</h2>
+                  <p class="rules-sub-title">
+                    Harap baca sebelum mengirim fess ke {{ baseData.handle }}
+                  </p>
+                </div>
+              </div>
+
+              <ol class="rules-ordered-list">
+                <li v-for="(rule, index) in baseData.rules" :key="index" class="rule-list-item">
+                  <span class="rule-number">{{ index + 1 }}</span>
+                  <span class="rule-text">{{ rule }}</span>
+                </li>
+              </ol>
+
+              <div class="rules-note-callout mt-4">
+                <Info :size="16" class="note-icon" />
+                <p class="note-text">
+                  Fess yang melanggar aturan akan otomatis ditolak oleh moderator demi menjaga
+                  kenyamanan bersama.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB CONTENT 3: TENTANG BASE -->
+          <section v-else-if="activeTab === 'about'" class="tab-pane-container mt-4">
+            <div class="about-card-box">
+              <h2 class="about-section-title">Informasi Base</h2>
+
+              <div class="about-meta-grid">
+                <div class="meta-item">
+                  <span class="meta-lbl">Kategori</span>
+                  <span class="meta-val">{{ baseData.category }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-lbl">Instagram Sync</span>
+                  <span class="meta-val">
+                    {{ baseData.igAccount || 'Tidak terhubung — fess terbit di FnC saja' }}
+                  </span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-lbl">Status Verifikasi</span>
+                  <span :class="['meta-val', { 'status-verified': baseData.verified }]">
+                    {{ baseData.verified ? 'Resmi Terverifikasi' : 'Belum Terverifikasi' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="about-bio-box mt-4">
+                <h3 class="about-sub-heading">Deskripsi Komunitas</h3>
+                <p class="about-bio-text">{{ baseData.bio }}</p>
+              </div>
+
+              <div class="about-cta-box mt-4">
+                <button type="button" class="btn-send-fess-primary w-full" @click="handleSendFess">
+                  <Send :size="16" />
+                  <span>Kirim Confession ke Base Ini</span>
+                </button>
+              </div>
+            </div>
+          </section>
         </template>
       </div>
     </main>
@@ -698,7 +711,7 @@ watch(
   () => route.params.handle,
   () => {
     loadBase();
-  }
+  },
 );
 
 // Base avatar — the API may return an image URL or just initials; only URLs
@@ -725,9 +738,7 @@ async function handleToggleFollow() {
   }
   try {
     const nowFollowing = await toggleFollowBase(handle);
-    toast.success(
-      nowFollowing ? `Berhasil mengikuti ${handle}` : `Berhenti mengikuti ${handle}`,
-    );
+    toast.success(nowFollowing ? `Berhasil mengikuti ${handle}` : `Berhenti mengikuti ${handle}`);
   } catch (e) {
     toast.error('Gagal memperbarui status ikuti. Coba lagi.');
   }
@@ -847,12 +858,14 @@ function handleBottomNavChange(tabKey) {
     if (tabKey === 'home') router.push('/base-admin');
     else if (tabKey === 'search') router.push({ path: '/base-admin', query: { tab: 'search' } });
     else if (tabKey === 'notif') router.push({ path: '/base-admin', query: { tab: 'notif' } });
-    else if (tabKey === 'profile' || tabKey === 'akun') router.push({ path: '/base-admin', query: { tab: 'akun' } });
+    else if (tabKey === 'profile' || tabKey === 'akun')
+      router.push({ path: '/base-admin', query: { tab: 'akun' } });
   } else {
     if (tabKey === 'home') router.push('/feed');
     else if (tabKey === 'search') router.push({ path: '/feed', query: { tab: 'search' } });
     else if (tabKey === 'notif') router.push({ path: '/feed', query: { tab: 'notif' } });
-    else if (tabKey === 'profile' || tabKey === 'akun') router.push({ path: '/feed', query: { tab: 'profile' } });
+    else if (tabKey === 'profile' || tabKey === 'akun')
+      router.push({ path: '/feed', query: { tab: 'profile' } });
   }
 }
 </script>
@@ -980,8 +993,12 @@ function handleBottomNavChange(tabKey) {
   border: 1px solid var(--shell-border, rgba(255, 255, 255, 0.08));
   border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.03);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.03);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 [data-theme='dark'] .base-hero-card {
@@ -1219,7 +1236,9 @@ function handleBottomNavChange(tabKey) {
 
 .copy-handle-icon {
   opacity: 0.65;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .btn-handle-copy:hover .copy-handle-icon {
@@ -1333,8 +1352,14 @@ function handleBottomNavChange(tabKey) {
 }
 
 @keyframes radarPing {
-  0% { transform: scale(0.8); opacity: 0.9; }
-  100% { transform: scale(2.2); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
 }
 
 /* 3 BENTO METRIC TILES */
@@ -1399,7 +1424,9 @@ function handleBottomNavChange(tabKey) {
 .bento-stat-arrow {
   color: var(--shell-text-muted);
   opacity: 0.6;
-  transition: transform 0.18s ease, color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    color 0.18s ease;
 }
 
 .bento-clickable:hover .bento-stat-arrow {

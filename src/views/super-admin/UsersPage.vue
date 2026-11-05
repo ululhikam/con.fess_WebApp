@@ -42,11 +42,13 @@
         <div>
           <h2 class="pc-card__title">Direktori akun</h2>
           <p class="pc-card__desc">
-            Perubahan peran tetap manual di v1. Konsol ini hanya untuk pencarian dan
-            moderasi akses akun.
+            Perubahan peran tetap manual di v1. Konsol ini hanya untuk pencarian dan moderasi akses
+            akun.
           </p>
         </div>
-        <span class="pc-badge pc-badge--neutral">Halaman {{ users.page }} / {{ users.total_pages }}</span>
+        <span class="pc-badge pc-badge--neutral"
+          >Halaman {{ users.page }} / {{ users.total_pages }}</span
+        >
       </div>
 
       <div class="pc-filters">
@@ -197,7 +199,11 @@
                     type="button"
                     class="pc-btn pc-btn--danger pc-btn--sm"
                     :disabled="isProtectedUser(user)"
-                    :title="isProtectedUser(user) ? 'Super Admin dan akun sendiri tidak dapat dibekukan' : 'Bekukan akun'"
+                    :title="
+                      isProtectedUser(user)
+                        ? 'Super Admin dan akun sendiri tidak dapat dibekukan'
+                        : 'Bekukan akun'
+                    "
                     @click="openBan(user)"
                   >
                     <Ban :size="12" />
@@ -253,10 +259,7 @@
           </span>
           <div>
             <div class="pc-inline">
-              <ConsoleStatusBadge
-                :status="selectedUser.role"
-                :tone="roleTone(selectedUser.role)"
-              />
+              <ConsoleStatusBadge :status="selectedUser.role" :tone="roleTone(selectedUser.role)" />
               <ConsoleStatusBadge
                 :status="selectedUser.ban_active ? 'banned' : 'active'"
                 :label="selectedUser.ban_active ? 'Dibekukan' : 'Aktif'"
@@ -265,8 +268,8 @@
             </div>
             <p class="pc-user-hero__name">{{ selectedUser.username }}</p>
             <p class="pc-user-hero__meta">
-              {{ selectedUser.handle }} · level {{ selectedUser.level }} ·
-              bergabung {{ formatDate(selectedUser.created_at) }}
+              {{ selectedUser.handle }} · level {{ selectedUser.level }} · bergabung
+              {{ formatDate(selectedUser.created_at) }}
             </p>
           </div>
         </div>
@@ -329,7 +332,13 @@
               <dt>Flag is_banned</dt>
               <dd>{{ selectedUser.is_banned ? 'true' : 'false' }}</dd>
               <dt>Email terverifikasi</dt>
-              <dd>{{ selectedUser.email_verified_at ? formatDateTime(selectedUser.email_verified_at) : 'Belum' }}</dd>
+              <dd>
+                {{
+                  selectedUser.email_verified_at
+                    ? formatDateTime(selectedUser.email_verified_at)
+                    : 'Belum'
+                }}
+              </dd>
             </dl>
           </div>
         </section>
@@ -337,8 +346,8 @@
         <div class="pc-callout pc-callout--lime">
           <ShieldCheck :size="15" />
           <div>
-            Ban/unban membutuhkan kata sandi Super Admin dan menghasilkan audit permanen.
-            Perubahan peran akun belum tersedia di v1.
+            Ban/unban membutuhkan kata sandi Super Admin dan menghasilkan audit permanen. Perubahan
+            peran akun belum tersedia di v1.
           </div>
         </div>
       </div>
@@ -444,8 +453,8 @@
       <div class="pc-callout pc-callout--danger" style="margin-top: 12px">
         <Ban :size="15" />
         <div>
-          Akun akan langsung kehilangan akses. Ban sementara berakhir otomatis saat
-          kedaluwarsa, tetapi tetap tercatat di audit.
+          Akun akan langsung kehilangan akses. Ban sementara berakhir otomatis saat kedaluwarsa,
+          tetapi tetap tercatat di audit.
         </div>
       </div>
     </ConsoleDialog>
@@ -583,9 +592,7 @@ const banCanSubmit = computed(() => {
   return true;
 });
 
-const unbanCanSubmit = computed(() =>
-  Boolean(unbanDialog.user && unbanDialog.password.trim())
-);
+const unbanCanSubmit = computed(() => Boolean(unbanDialog.user && unbanDialog.password.trim()));
 
 let searchTimer = null;
 

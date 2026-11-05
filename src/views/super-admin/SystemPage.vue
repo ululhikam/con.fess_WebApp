@@ -12,12 +12,7 @@
           <LockKeyhole :size="11" />
           Tidak ada aksi tulis
         </span>
-        <button
-          type="button"
-          class="pc-btn pc-btn--ghost"
-          :disabled="loading"
-          @click="load"
-        >
+        <button type="button" class="pc-btn pc-btn--ghost" :disabled="loading" @click="load">
           <RefreshCw :size="14" :class="{ 'pc-spin': loading }" />
           {{ loading ? 'Memuat…' : 'Muat ulang' }}
         </button>
@@ -28,9 +23,9 @@
       <LockKeyhole :size="16" />
       <div>
         <strong>Konfigurasi platform read-only.</strong>
-        Flag ENV dan secret dibaca saat boot, berbeda per instance, dan tidak boleh diubah
-        dari UI. Perubahan harus lewat deploy terkontrol dan sign-off eksplisit. Nilai
-        secret tidak pernah ditampilkan, hanya status terkonfigurasi.
+        Flag ENV dan secret dibaca saat boot, berbeda per instance, dan tidak boleh diubah dari UI.
+        Perubahan harus lewat deploy terkontrol dan sign-off eksplisit. Nilai secret tidak pernah
+        ditampilkan, hanya status terkonfigurasi.
       </div>
     </div>
 
@@ -94,7 +89,9 @@
           <div class="pc-card__body">
             <dl class="pc-kv">
               <dt>NODE_ENV</dt>
-              <dd><span class="pc-badge pc-badge--neutral">{{ settings.app.node_env }}</span></dd>
+              <dd>
+                <span class="pc-badge pc-badge--neutral">{{ settings.app.node_env }}</span>
+              </dd>
               <dt>Deployment</dt>
               <dd>{{ settings.app.deployment || 'Local / tidak tersedia' }}</dd>
               <dt>Commit</dt>
@@ -154,7 +151,9 @@
               <dd>
                 <ConsoleStatusBadge
                   :status="settings.security.webhook_signature_verification ? 'active' : 'disabled'"
-                  :label="settings.security.webhook_signature_verification ? 'Diverifikasi' : 'Tidak'"
+                  :label="
+                    settings.security.webhook_signature_verification ? 'Diverifikasi' : 'Tidak'
+                  "
                 />
               </dd>
               <dt>Rate limit global</dt>
@@ -195,11 +194,15 @@
                   <h3 class="pc-integration__title">Midtrans</h3>
                   <p class="pc-integration__sub">
                     {{ settings.integrations.midtrans.mode }} ·
-                    {{ settings.environment.payments_enabled ? 'payments aktif' : 'payments nonaktif' }}
+                    {{
+                      settings.environment.payments_enabled ? 'payments aktif' : 'payments nonaktif'
+                    }}
                   </p>
                 </div>
                 <ConsoleStatusBadge
-                  :status="settings.integrations.midtrans.server_key_configured ? 'active' : 'disabled'"
+                  :status="
+                    settings.integrations.midtrans.server_key_configured ? 'active' : 'disabled'
+                  "
                   :label="settings.integrations.midtrans.server_key_configured ? 'Siap' : 'Belum'"
                 />
               </div>
@@ -207,22 +210,40 @@
                 <span>Server key</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.midtrans.server_key_configured ? 'true' : 'false'"
-                  :label="settings.integrations.midtrans.server_key_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :label="
+                    settings.integrations.midtrans.server_key_configured
+                      ? 'Terkonfigurasi'
+                      : 'Belum'
+                  "
                 />
                 <span>Signature Secret Key</span>
                 <ConsoleStatusBadge
-                  :status="settings.integrations.midtrans.signature_secret_configured ? 'true' : 'false'"
-                  :label="settings.integrations.midtrans.signature_secret_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :status="
+                    settings.integrations.midtrans.signature_secret_configured ? 'true' : 'false'
+                  "
+                  :label="
+                    settings.integrations.midtrans.signature_secret_configured
+                      ? 'Terkonfigurasi'
+                      : 'Belum'
+                  "
                 />
                 <span>Client key</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.midtrans.client_key_configured ? 'true' : 'false'"
-                  :label="settings.integrations.midtrans.client_key_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :label="
+                    settings.integrations.midtrans.client_key_configured
+                      ? 'Terkonfigurasi'
+                      : 'Belum'
+                  "
                 />
                 <span>Merchant ID</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.midtrans.merchant_id_configured ? 'true' : 'false'"
-                  :label="settings.integrations.midtrans.merchant_id_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :label="
+                    settings.integrations.midtrans.merchant_id_configured
+                      ? 'Terkonfigurasi'
+                      : 'Belum'
+                  "
                 />
               </div>
             </div>
@@ -245,12 +266,20 @@
                 <span>App credentials</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.instagram.app_configured ? 'true' : 'false'"
-                  :label="settings.integrations.instagram.app_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :label="
+                    settings.integrations.instagram.app_configured ? 'Terkonfigurasi' : 'Belum'
+                  "
                 />
                 <span>Verify token</span>
                 <ConsoleStatusBadge
-                  :status="settings.integrations.instagram.verify_token_configured ? 'true' : 'false'"
-                  :label="settings.integrations.instagram.verify_token_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :status="
+                    settings.integrations.instagram.verify_token_configured ? 'true' : 'false'
+                  "
+                  :label="
+                    settings.integrations.instagram.verify_token_configured
+                      ? 'Terkonfigurasi'
+                      : 'Belum'
+                  "
                 />
                 <span>Token refresh</span>
                 <span class="pc-small pc-muted">
@@ -277,7 +306,9 @@
                 <span>Resend API key</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.email.resend_configured ? 'true' : 'false'"
-                  :label="settings.integrations.email.resend_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :label="
+                    settings.integrations.email.resend_configured ? 'Terkonfigurasi' : 'Belum'
+                  "
                 />
                 <span>Email from</span>
                 <ConsoleStatusBadge
@@ -299,15 +330,29 @@
                   <p class="pc-integration__sub">Manual dengan secret terpisah</p>
                 </div>
                 <ConsoleStatusBadge
-                  :status="settings.integrations.payment_reconcile.secret_configured ? 'manual' : 'disabled'"
-                  :label="settings.integrations.payment_reconcile.secret_configured ? 'Manual' : 'Nonaktif'"
+                  :status="
+                    settings.integrations.payment_reconcile.secret_configured
+                      ? 'manual'
+                      : 'disabled'
+                  "
+                  :label="
+                    settings.integrations.payment_reconcile.secret_configured
+                      ? 'Manual'
+                      : 'Nonaktif'
+                  "
                 />
               </div>
               <div class="pc-integration__rows">
                 <span>Reconcile secret</span>
                 <ConsoleStatusBadge
-                  :status="settings.integrations.payment_reconcile.secret_configured ? 'true' : 'false'"
-                  :label="settings.integrations.payment_reconcile.secret_configured ? 'Terkonfigurasi' : 'Belum'"
+                  :status="
+                    settings.integrations.payment_reconcile.secret_configured ? 'true' : 'false'
+                  "
+                  :label="
+                    settings.integrations.payment_reconcile.secret_configured
+                      ? 'Terkonfigurasi'
+                      : 'Belum'
+                  "
                 />
                 <span>Mode</span>
                 <span class="pc-badge pc-badge--warning">Manual</span>
@@ -348,7 +393,9 @@
                   <span class="pc-table__sub pc-mono">{{ job.id }}</span>
                 </td>
                 <td>{{ job.schedule }}</td>
-                <td><span class="pc-badge pc-badge--neutral">{{ job.mode }}</span></td>
+                <td>
+                  <span class="pc-badge pc-badge--neutral">{{ job.mode }}</span>
+                </td>
                 <td>
                   <ConsoleStatusBadge
                     :status="job.status"
@@ -386,10 +433,21 @@
           </div>
           <div class="pc-card__body">
             <ol class="pc-procedure">
-              <li>Perubahan flag atau secret dilakukan di environment provider (Vercel), bukan dari konsol ini.</li>
-              <li>Deploy ulang atau restart instance. Flag dibaca saat boot sehingga tidak berubah live.</li>
-              <li>Rotasi secret harus lewat dashboard provider dan tidak boleh ditempel ke chat atau commit.</li>
-              <li>Catat alasan, waktu, dan verifikasi pasca-perubahan pada runbook serta audit manual.</li>
+              <li>
+                Perubahan flag atau secret dilakukan di environment provider (Vercel), bukan dari
+                konsol ini.
+              </li>
+              <li>
+                Deploy ulang atau restart instance. Flag dibaca saat boot sehingga tidak berubah
+                live.
+              </li>
+              <li>
+                Rotasi secret harus lewat dashboard provider dan tidak boleh ditempel ke chat atau
+                commit.
+              </li>
+              <li>
+                Catat alasan, waktu, dan verifikasi pasca-perubahan pada runbook serta audit manual.
+              </li>
             </ol>
           </div>
         </section>
@@ -413,13 +471,15 @@
             </div>
             <div class="pc-inline">
               <CheckCircle2 :size="14" class="pc-muted" />
-              <span class="pc-small">Tidak ada perubahan role otomatis; role tetap manual di v1.</span>
+              <span class="pc-small"
+                >Tidak ada perubahan role otomatis; role tetap manual di v1.</span
+              >
             </div>
             <div class="pc-callout">
               <Info :size="15" />
               <div>
-                Aksi operasional aman dapat ditambahkan setelah ada runbook, guardrail, dan
-                audit yang disetujui.
+                Aksi operasional aman dapat ditambahkan setelah ada runbook, guardrail, dan audit
+                yang disetujui.
               </div>
             </div>
           </div>

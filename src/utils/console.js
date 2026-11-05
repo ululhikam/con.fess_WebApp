@@ -70,22 +70,20 @@ export function titleCase(value) {
 export function statusTone(status) {
   const key = String(status || '').toLowerCase();
   if (
-    ['ok', 'active', 'connected', 'paid', 'verified', 'approved', 'success', 'true'].includes(
-      key
-    )
+    ['ok', 'active', 'connected', 'paid', 'verified', 'approved', 'success', 'true'].includes(key)
   ) {
     return 'success';
   }
   if (
     ['pending', 'requested', 'warning', 'manual', 'lazy', 'degraded', 'unknown', 'info'].includes(
-      key
+      key,
     )
   ) {
     return 'warning';
   }
   if (
     ['error', 'failed', 'rejected', 'banned', 'danger', 'invalid_signature', 'disabled'].includes(
-      key
+      key,
     )
   ) {
     return 'danger';

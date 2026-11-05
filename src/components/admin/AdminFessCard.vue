@@ -33,12 +33,22 @@
               aria-label="Aksi admin"
               @click.stop
             >
-              <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(saveFessCard)">
+              <button
+                type="button"
+                role="menuitem"
+                class="admin-menu-item"
+                @click="runAction(saveFessCard)"
+              >
                 <Download :size="14" />
                 <span>Simpan Card</span>
               </button>
 
-              <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(copyFessText)">
+              <button
+                type="button"
+                role="menuitem"
+                class="admin-menu-item"
+                @click="runAction(copyFessText)"
+              >
                 <Copy :size="14" />
                 <span>Salin Teks Fess</span>
               </button>
@@ -82,7 +92,12 @@
 
               <div class="admin-menu-divider" role="separator" />
 
-              <button type="button" role="menuitem" class="admin-menu-item" @click="runAction(openReportModal)">
+              <button
+                type="button"
+                role="menuitem"
+                class="admin-menu-item"
+                @click="runAction(openReportModal)"
+              >
                 <Flag :size="14" />
                 <span>Laporkan Fess</span>
               </button>
