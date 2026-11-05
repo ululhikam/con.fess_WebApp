@@ -1051,6 +1051,13 @@ function errorMessage(error) {
     case 'UNKNOWN_PACKAGE':
     case 'UNKNOWN_PAYMENT_METHOD':
       return 'Paket atau metode pembayaran tidak tersedia. Muat ulang halaman.';
+    // Server sudah mengirim penjelasan berbahasa Indonesia yang spesifik
+    // (mis. kanal pembayaran belum aktif di Midtrans), jadi pesannya dipakai
+    // apa adanya alih-alih ditimpa teks generik.
+    case 'PAYMENT_METHOD_UNAVAILABLE':
+    case 'PAYMENT_REJECTED':
+    case 'PAYMENT_GATEWAY_UNAVAILABLE':
+      return error?.message || 'Pembayaran belum bisa diproses. Coba lagi atau pilih metode lain.';
     default:
       return error?.message || 'Gagal membuat pembayaran. Coba lagi.';
   }

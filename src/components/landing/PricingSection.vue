@@ -160,8 +160,13 @@ const FALLBACK_PACKAGES = [
   },
 ];
 
-/** Cermin dari PAYMENT_METHODS, dikelompokkan untuk tampilan publik. */
+/**
+ * Cermin dari `PAYMENT_METHODS` di backend, dikelompokkan untuk tampilan publik.
+ * Semua metode ditampilkan; daftar dari API tetap yang utama, ini hanya
+ * cadangan saat API belum merespons.
+ */
 const FALLBACK_METHOD_GROUPS = [
+  { label: 'QRIS', methods: [{ code: 'qris', label: 'QRIS' }] },
   {
     label: 'Virtual Account',
     methods: [
@@ -169,12 +174,16 @@ const FALLBACK_METHOD_GROUPS = [
       { code: 'bri_va', label: 'BRI' },
       { code: 'cimb_va', label: 'CIMB Niaga' },
       { code: 'permata_va', label: 'Permata' },
+      { code: 'bca_va', label: 'BCA' },
       { code: 'mandiri_bill', label: 'Mandiri' },
     ],
   },
   {
     label: 'E-Wallet',
-    methods: [{ code: 'gopay', label: 'GoPay' }],
+    methods: [
+      { code: 'gopay', label: 'GoPay' },
+      { code: 'shopeepay', label: 'ShopeePay' },
+    ],
   },
 ];
 
