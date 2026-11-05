@@ -52,7 +52,7 @@ export const TERMS_SECTIONS = [
     title: '6. Pembayaran & Transaksi',
     paragraphs: [
       'Top up CTF dilakukan melalui penyedia jasa pembayaran pihak ketiga, yaitu Midtrans (PT Midtrans). Seluruh pemrosesan data pembayaran — termasuk kartu, Virtual Account, QRIS, dan dompet digital — dilakukan oleh Midtrans sesuai kebijakan privasi dan keamanan mereka. Fess n Curious tidak menyimpan nomor kartu maupun kredensial pembayaran kamu.',
-      'Metode pembayaran yang tersedia ditampilkan pada halaman Dompet sebelum transaksi dibuat, antara lain QRIS, Virtual Account (BCA, BNI, BRI, Permata, Mandiri), serta dompet digital GoPay dan ShopeePay.',
+      'Metode pembayaran yang tersedia ditampilkan pada halaman Dompet sebelum transaksi dibuat dan dapat berubah mengikuti kanal yang aktif di Midtrans. Saat ini metode yang tersedia adalah Transfer Virtual Account BNI, BRI, CIMB Niaga, Permata, Mandiri Bill Payment, serta dompet digital GoPay.',
       'Harga paket yang tertera di halaman publik maupun di dalam aplikasi dinyatakan dalam Rupiah (IDR) dan merupakan harga akhir. Fess n Curious dapat mengubah komposisi paket, jumlah CTF, atau harga sewaktu-waktu; perubahan tidak berlaku surut terhadap transaksi yang sudah dibayar.',
       'Setiap transaksi menghasilkan ID pesanan yang dapat kamu lihat pada riwayat transaksi di halaman Dompet. ID pesanan tersebut merupakan bukti transaksi resmi dan wajib disertakan dalam setiap pengaduan.',
       'Transaksi yang tidak diselesaikan dalam batas waktu yang ditentukan akan berstatus kedaluwarsa secara otomatis dan tidak menambah saldo CTF. Apabila pembayaran tetap terpotong setelah status kedaluwarsa, pengguna berhak mengajukan penelusuran sesuai ketentuan pengembalian dana.',
