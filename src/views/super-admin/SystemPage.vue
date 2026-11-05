@@ -209,6 +209,11 @@
                   :status="settings.integrations.midtrans.server_key_configured ? 'true' : 'false'"
                   :label="settings.integrations.midtrans.server_key_configured ? 'Terkonfigurasi' : 'Belum'"
                 />
+                <span>Signature Secret Key</span>
+                <ConsoleStatusBadge
+                  :status="settings.integrations.midtrans.signature_secret_configured ? 'true' : 'false'"
+                  :label="settings.integrations.midtrans.signature_secret_configured ? 'Terkonfigurasi' : 'Belum'"
+                />
                 <span>Client key</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.midtrans.client_key_configured ? 'true' : 'false'"
