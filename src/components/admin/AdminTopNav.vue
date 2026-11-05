@@ -1,5 +1,9 @@
 <template>
-  <nav class="admin-topnav" :class="{ 'admin-topnav--sticky': sticky }" aria-label="Navigasi portal admin">
+  <nav
+    class="admin-topnav"
+    :class="{ 'admin-topnav--sticky': sticky }"
+    aria-label="Navigasi portal admin"
+  >
     <div class="container flex items-center justify-between flex-wrap gap-3">
       <!-- Admin Portal Brand -->
       <router-link :to="homeTo" class="brand-logo" :aria-label="brandAriaLabel">
@@ -44,7 +48,12 @@
           <span class="admin-name">{{ authStore.displayName }}</span>
         </div>
 
-        <button type="button" class="btn-logout text-xs" @click="logout" aria-label="Keluar dari portal admin">
+        <button
+          type="button"
+          class="btn-logout text-xs"
+          @click="logout"
+          aria-label="Keluar dari portal admin"
+        >
           <LogOut :size="13" />
           <span>Keluar</span>
         </button>
@@ -76,7 +85,7 @@ const router = useRouter();
 const isSuperAdmin = computed(() => authStore.isSuperAdmin);
 const homeTo = computed(() => (isSuperAdmin.value ? '/super-admin' : '/base-admin'));
 const brandAriaLabel = computed(() =>
-  isSuperAdmin.value ? 'Konsol Platform — Beranda' : 'Portal Admin Base — Beranda'
+  isSuperAdmin.value ? 'Konsol Platform — Beranda' : 'Portal Admin Base — Beranda',
 );
 
 async function logout() {

@@ -921,7 +921,7 @@ watch(
   () => props.post?.isSaved,
   (value) => {
     isSaved.value = Boolean(value);
-  }
+  },
 );
 
 async function toggleBookmark() {
@@ -947,9 +947,7 @@ async function toggleBookmark() {
     } else {
       await api.unbookmarkFess(props.post.id);
     }
-    triggerToast(
-      next ? 'Fess disimpan ke tab Tersimpan' : 'Fess dihapus dari simpanan'
-    );
+    triggerToast(next ? 'Fess disimpan ke tab Tersimpan' : 'Fess dihapus dari simpanan');
     emit('bookmark', { id: props.post.id, isSaved: next });
   } catch (err) {
     isSaved.value = previous;
@@ -1501,7 +1499,7 @@ const igPostData = ref(null);
  * hanya http(s) dan path relatif yang boleh masuk `href`.
  */
 const igDownloadUrl = computed(() =>
-  safeExternalUrl(igPostData.value?.imageUrl || igPostData.value?.image_url || '')
+  safeExternalUrl(igPostData.value?.imageUrl || igPostData.value?.image_url || ''),
 );
 
 /**
@@ -1645,8 +1643,7 @@ async function openInstagramStoryAutoPost() {
       );
     } else if (igPostData.value?.ig_status === 'skipped' || igPostData.value?.skipped) {
       triggerToast(
-        igPostData.value?.message ||
-          'Fess hanya terbit di FnC karena Instagram belum terhubung.',
+        igPostData.value?.message || 'Fess hanya terbit di FnC karena Instagram belum terhubung.',
         'info',
       );
     } else {

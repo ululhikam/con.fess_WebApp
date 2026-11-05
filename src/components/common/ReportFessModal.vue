@@ -20,8 +20,10 @@
 
       <form class="modal-body" @submit.prevent="handleSubmit">
         <p class="modal-desc">
-          Bantu kami menjaga kenyamanan komunitas Fess n Curious. Pilih kategori pelanggaran untuk konten
-          <strong>{{ fessHandle || 'ini' }}</strong>:
+          Bantu kami menjaga kenyamanan komunitas Fess n Curious. Pilih kategori pelanggaran untuk
+          konten
+          <strong>{{ fessHandle || 'ini' }}</strong
+          >:
         </p>
 
         <div class="report-reasons-list">
@@ -142,8 +144,12 @@ function handleSubmit() {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-card {
@@ -158,8 +164,14 @@ function handleSubmit() {
 }
 
 @keyframes scaleUp {
-  from { transform: scale(0.96); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -231,7 +243,9 @@ function handleSubmit() {
   border: 1px solid var(--shell-border);
   border-radius: 12px;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
 }
 
 .reason-option-label:hover {

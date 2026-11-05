@@ -7,12 +7,7 @@
         role="presentation"
         @click.self="requestClose"
       >
-        <aside
-          class="pc-drawer"
-          role="dialog"
-          aria-modal="true"
-          :aria-labelledby="titleId"
-        >
+        <aside class="pc-drawer" role="dialog" aria-modal="true" :aria-labelledby="titleId">
           <header class="pc-drawer__head">
             <div>
               <p v-if="eyebrow" class="pc-drawer__eyebrow">{{ eyebrow }}</p>
@@ -82,7 +77,7 @@ watch(
       document.body.style.overflow = previousOverflow || '';
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 onMounted(() => window.addEventListener('keydown', handleKeydown));

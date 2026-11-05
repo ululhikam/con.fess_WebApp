@@ -354,7 +354,9 @@
                 <FileText :size="18" class="row-ico-blue" />
                 <div>
                   <div class="menu-row-label">Analitik Konten</div>
-                  <div class="menu-row-desc">Grafik fess per tanggal &amp; per jam, plus fess populer</div>
+                  <div class="menu-row-desc">
+                    Grafik fess per tanggal &amp; per jam, plus fess populer
+                  </div>
                 </div>
               </div>
               <ChevronRight :size="16" class="row-chevron" />
@@ -652,7 +654,9 @@
 
           <div v-else-if="reportCenterError" class="state-banner state-banner-error mb-3">
             {{ reportCenterError }}
-            <button type="button" class="btn-banner-retry" @click="loadFessReports">Coba lagi</button>
+            <button type="button" class="btn-banner-retry" @click="loadFessReports">
+              Coba lagi
+            </button>
           </div>
 
           <template v-else>
@@ -1329,7 +1333,8 @@ function openManualIgPostModal(fessId) {
 async function retryAutoIgPost(fessId) {
   const confirmed = await confirmDialog({
     title: 'Retry Auto-Post Instagram',
-    message: 'Mencoba post ulang ke Instagram via auto-post? Ini akan menjalankan ulang proses publish ke Instagram Graph API.',
+    message:
+      'Mencoba post ulang ke Instagram via auto-post? Ini akan menjalankan ulang proses publish ke Instagram Graph API.',
     confirmLabel: 'Retry',
     variant: 'primary',
   });
@@ -1343,9 +1348,7 @@ async function retryAutoIgPost(fessId) {
     } else if (data?.ig_pending) {
       toast.pending('Video sedang diproses Instagram. Postingan akan terbit otomatis.');
     } else if (data?.ig_status === 'skipped' || data?.skipped) {
-      toast.info(
-        data?.message || 'Fess hanya terbit di FnC karena Instagram belum terhubung.',
-      );
+      toast.info(data?.message || 'Fess hanya terbit di FnC karena Instagram belum terhubung.');
     } else {
       toast.error(data?.ig_error || 'Posting ke Instagram belum berhasil.');
     }

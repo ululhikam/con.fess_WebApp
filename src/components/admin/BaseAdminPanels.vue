@@ -300,9 +300,7 @@
             <FessHourlyChart :hours="fessHours" />
             <p class="text-xs text-muted chart-caption mb-0">
               Jam tersibuk: <strong>{{ fessPeakHourLabel }}</strong>
-              <template v-if="fessPeakHourCount > 0">
-                ({{ fessPeakHourCount }} fess)
-              </template>
+              <template v-if="fessPeakHourCount > 0"> ({{ fessPeakHourCount }} fess) </template>
             </p>
           </div>
 
@@ -1030,10 +1028,8 @@ const fessTrendPoints = computed(() => {
 
   return points.map((item) => {
     const value = counts.get(item.key) || 0;
-    const label =
-      item.day !== undefined ? `${item.day} ${MONTH_SHORT_ID[item.month]}` : item.key;
-    const full =
-      item.day !== undefined ? `${label} ${item.year}` : item.key;
+    const label = item.day !== undefined ? `${item.day} ${MONTH_SHORT_ID[item.month]}` : item.key;
+    const full = item.day !== undefined ? `${label} ${item.year}` : item.key;
     return { label, tooltip: `${full}: ${value} fess`, value };
   });
 });

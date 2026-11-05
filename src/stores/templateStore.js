@@ -50,12 +50,7 @@ export const useTemplateStore = defineStore('templates', {
       const scope = normalizeScope(handle);
       const cached = this.cache[scope];
 
-      if (
-        !force &&
-        cached &&
-        cached.items.length &&
-        Date.now() - cached.loadedAt < TTL_MS
-      ) {
+      if (!force && cached && cached.items.length && Date.now() - cached.loadedAt < TTL_MS) {
         if (this.baseHandle !== scope) {
           this.applyScope(scope, cached.items, cached.loadedAt);
         }

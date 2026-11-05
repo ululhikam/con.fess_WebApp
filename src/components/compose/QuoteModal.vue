@@ -63,13 +63,17 @@
             >
               <div class="quote-item-head">
                 <div class="quote-avatar" :style="{ background: post.avatarBg || '#0038FF' }">
-                  <span>{{ post.avatarText || (post.handle ? post.handle.slice(1, 3).toUpperCase() : 'QF') }}</span>
+                  <span>{{
+                    post.avatarText || (post.handle ? post.handle.slice(1, 3).toUpperCase() : 'QF')
+                  }}</span>
                 </div>
                 <div class="quote-meta">
                   <span class="quote-handle">{{ post.handle || post.senderHandle }}</span>
                   <span class="quote-time">• {{ post.time }}</span>
                 </div>
-                <span v-if="post.topicLabel || post.tag" class="quote-tag-chip">{{ post.topicLabel || post.tag }}</span>
+                <span v-if="post.topicLabel || post.tag" class="quote-tag-chip">{{
+                  post.topicLabel || post.tag
+                }}</span>
                 <Check v-if="selectedQuote?.id === post.id" :size="16" class="quote-check-icon" />
               </div>
               <p class="quote-snippet">{{ post.content }}</p>
@@ -82,12 +86,8 @@
         </div>
 
         <footer class="modal-footer">
-          <button type="button" class="btn-modal-cancel" @click="close">
-            Batal
-          </button>
-          <button type="button" class="btn-modal-confirm" @click="confirm">
-            Terapkan
-          </button>
+          <button type="button" class="btn-modal-cancel" @click="close">Batal</button>
+          <button type="button" class="btn-modal-confirm" @click="confirm">Terapkan</button>
         </footer>
       </div>
     </div>
@@ -145,7 +145,7 @@ watch(
       loadFesses();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(searchQuery, (q) => {
@@ -231,7 +231,9 @@ function confirm() {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .modal-close:hover {
@@ -315,7 +317,9 @@ function confirm() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .quote-item:hover {

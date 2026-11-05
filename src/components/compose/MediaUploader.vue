@@ -605,10 +605,9 @@ async function uploadItem(targetItem, originalFile = null) {
 
     mediaFiles.value = updated;
     emit('change', updated);
-    toast.success(
-      `${targetItem.type === 'video' ? 'Video' : 'Foto'} berhasil diunggah.`,
-      { duration: 2000 },
-    );
+    toast.success(`${targetItem.type === 'video' ? 'Video' : 'Foto'} berhasil diunggah.`, {
+      duration: 2000,
+    });
   } catch (e) {
     if (abortController.signal.aborted) return;
 

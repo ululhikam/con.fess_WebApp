@@ -27,7 +27,11 @@
           >
             Setujui
           </AdminButton>
-          <AdminButton v-if="fess.status !== 'rejected'" variant="reject" @click="handleHide(fess.id)">
+          <AdminButton
+            v-if="fess.status !== 'rejected'"
+            variant="reject"
+            @click="handleHide(fess.id)"
+          >
             Tolak
           </AdminButton>
           <AdminButton variant="export" @click="exportCanvas(fess)">Export Canvas</AdminButton>

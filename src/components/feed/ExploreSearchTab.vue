@@ -75,11 +75,7 @@
 
       <div v-else class="explore-base-list flex flex-col gap-3">
         <article v-for="base in visibleBases" :key="base.handle" class="centered-base-card">
-          <div
-            class="eb-clickable-col"
-            @click="goToBase(base.handle)"
-            title="Lihat profil base"
-          >
+          <div class="eb-clickable-col" @click="goToBase(base.handle)" title="Lihat profil base">
             <div class="eb-avatar-box" :style="{ background: base.color }">
               <img
                 v-if="isAvatarImage(base.avatar) && !failedAvatars[base.handle]"
@@ -216,13 +212,7 @@ const props = defineProps({
   isFollowing: { type: Function, default: () => () => false },
 });
 
-defineEmits([
-  'update:query',
-  'update:category',
-  'update:mode',
-  'toggleFollow',
-  'report',
-]);
+defineEmits(['update:query', 'update:category', 'update:mode', 'toggleFollow', 'report']);
 
 /* ---------- Menfess search (GET /fesses, debounced + lazy load) ---------- */
 const MENFESS_DEBOUNCE_MS = 300;
@@ -241,9 +231,7 @@ const reportedMenfessIds = ref(new Set());
 
 function handleMenfessReport(payload) {
   const id =
-    typeof payload === 'object' && payload !== null
-      ? payload.postId ?? payload.id
-      : payload;
+    typeof payload === 'object' && payload !== null ? (payload.postId ?? payload.id) : payload;
   if (id === undefined || id === null) return;
   reportedMenfessIds.value.add(String(id));
   toast.success('Fess disembunyikan dari hasil pencarian.', { duration: 2500 });
@@ -303,9 +291,7 @@ async function loadMoreMenfess() {
       sort: 'newest',
     });
     const seen = new Set(fessPosts.value.map((p) => String(p.id)));
-    const extra = (res?.data || [])
-      .map(mapFessToPost)
-      .filter((p) => p && !seen.has(String(p.id)));
+    const extra = (res?.data || []).map(mapFessToPost).filter((p) => p && !seen.has(String(p.id)));
     fessPosts.value = [...fessPosts.value, ...extra];
     fessTotal.value = res?.total ?? fessTotal.value;
     fessPage = nextPage;
@@ -359,9 +345,7 @@ onBeforeUnmount(() => {
 
 /** Category pills narrow the result list client-side (server has no pill taxonomy). */
 const visibleMenfess = computed(() => {
-  const list = fessPosts.value.filter(
-    (p) => !reportedMenfessIds.value.has(String(p.id)),
-  );
+  const list = fessPosts.value.filter((p) => !reportedMenfessIds.value.has(String(p.id)));
   const cat = props.category;
   if (!cat || cat === 'Semua') return list;
   const needle = cat.toLowerCase();
@@ -447,9 +431,7 @@ async function loadMoreBases() {
       page: nextPage,
     });
     const seen = new Set(baseResults.value.map((b) => b.handle));
-    const extra = (res?.data || [])
-      .map(mapBase)
-      .filter((b) => b && !seen.has(b.handle));
+    const extra = (res?.data || []).map(mapBase).filter((b) => b && !seen.has(b.handle));
     baseResults.value = [...baseResults.value, ...extra];
     baseTotal.value = res?.total ?? baseTotal.value;
     basePage = nextPage;
@@ -520,7 +502,6 @@ const emptyBaseDescription = computed(() => {
   }
   return 'Belum ada base yang dapat ditampilkan saat ini.';
 });
-
 </script>
 
 <style scoped>

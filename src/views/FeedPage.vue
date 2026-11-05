@@ -84,10 +84,7 @@
     />
 
     <!-- Account Sub-Page Slide-in Panels -->
-    <AccountPanels
-      v-model="activePanel"
-      :user="authStore.user"
-    />
+    <AccountPanels v-model="activePanel" :user="authStore.user" />
   </div>
 </template>
 
@@ -142,9 +139,7 @@ const reportedIds = ref(new Set());
 
 function handleReport(payload) {
   const id =
-    typeof payload === 'object' && payload !== null
-      ? payload.postId ?? payload.id
-      : payload;
+    typeof payload === 'object' && payload !== null ? (payload.postId ?? payload.id) : payload;
   if (id === undefined || id === null) return;
   reportedIds.value.add(String(id));
   toast.success('Fess disembunyikan dari feed kamu.', { duration: 2500 });
@@ -195,9 +190,7 @@ async function handleToggleFollow(handle) {
   }
   try {
     const nowFollowing = await toggleFollowBase(name);
-    toast.success(
-      nowFollowing ? `Berhasil mengikuti ${name}` : `Berhenti mengikuti ${name}`,
-    );
+    toast.success(nowFollowing ? `Berhasil mengikuti ${name}` : `Berhenti mengikuti ${name}`);
   } catch {
     toast.error('Gagal memperbarui status ikuti. Coba lagi.');
   }
@@ -335,14 +328,10 @@ watch(
       showFeedToast(
         `Fess terkirim! Fess tersimpan di antrean moderasi admin base.${chargeText}`,
         'pending',
-        5000
+        5000,
       );
     } else {
-      showFeedToast(
-        `Fess berhasil diterbitkan dan langsung tayang!${chargeText}`,
-        'success',
-        3500
-      );
+      showFeedToast(`Fess berhasil diterbitkan dan langsung tayang!${chargeText}`, 'success', 3500);
     }
     // Bersihkan query param agar refresh tidak memunculkan toast lagi
     const nextQuery = { ...route.query };
@@ -351,7 +340,7 @@ watch(
     delete nextQuery.balance;
     router.replace({ query: nextQuery });
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 /* ---------- Instagram/X style auto-refresh & new posts pill ---------- */
@@ -517,5 +506,4 @@ async function handleLogout() {
   opacity: 0;
   transform: translateX(-50%) translateY(-14px);
 }
-
 </style>

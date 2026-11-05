@@ -25,7 +25,10 @@ export function avatarInitials(name, fallback = 'BA') {
   const clean = String(name || '')
     .replace(/^@/, '')
     .trim();
-  if (!clean) return String(fallback || 'BA').slice(0, 2).toUpperCase();
+  if (!clean)
+    return String(fallback || 'BA')
+      .slice(0, 2)
+      .toUpperCase();
 
   const parts = clean.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();

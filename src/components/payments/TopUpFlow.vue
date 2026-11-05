@@ -724,9 +724,15 @@ import shopeepayLogo from '../../assets/payments/shopeepay.svg';
 import bcaLogo from '../../assets/payments/bca.svg';
 import bniLogo from '../../assets/payments/bni.svg';
 import briLogo from '../../assets/payments/bri.svg';
+import cimbLogo from '../../assets/payments/cimb.svg';
 import permataLogo from '../../assets/payments/permata.svg';
 import mandiriLogo from '../../assets/payments/mandiri.svg';
 
+/**
+ * Logo per metode. Semua metode yang dikenal kode tetap dipetakan di sini agar
+ * order lama (mis. QRIS dari sebelum channel dinonaktifkan) tetap tampil benar
+ * di riwayat.
+ */
 const METHOD_LOGOS = {
   qris: qrisLogo,
   gopay: gopayLogo,
@@ -734,6 +740,7 @@ const METHOD_LOGOS = {
   bca_va: bcaLogo,
   bni_va: bniLogo,
   bri_va: briLogo,
+  cimb_va: cimbLogo,
   permata_va: permataLogo,
   mandiri_bill: mandiriLogo,
 };
@@ -752,7 +759,7 @@ const config = ref(null);
 const configLoading = ref(true);
 const configError = ref('');
 const selectedPackageCode = ref('');
-const selectedMethod = ref('qris');
+const selectedMethod = ref('');
 const activeOrder = ref(null);
 const creating = ref(false);
 const checking = ref(false);
@@ -841,6 +848,7 @@ const bankLabel = computed(() => {
     BCA: 'BCA',
     BNI: 'BNI',
     BRI: 'BRI',
+    CIMB: 'CIMB Niaga',
     PERMATA: 'Permata',
     MANDIRI: 'Mandiri',
   };
@@ -1043,6 +1051,13 @@ function errorMessage(error) {
     case 'UNKNOWN_PACKAGE':
     case 'UNKNOWN_PAYMENT_METHOD':
       return 'Paket atau metode pembayaran tidak tersedia. Muat ulang halaman.';
+    // Server sudah mengirim penjelasan berbahasa Indonesia yang spesifik
+    // (mis. kanal pembayaran belum aktif di Midtrans), jadi pesannya dipakai
+    // apa adanya alih-alih ditimpa teks generik.
+    case 'PAYMENT_METHOD_UNAVAILABLE':
+    case 'PAYMENT_REJECTED':
+    case 'PAYMENT_GATEWAY_UNAVAILABLE':
+      return error?.message || 'Pembayaran belum bisa diproses. Coba lagi atau pilih metode lain.';
     default:
       return error?.message || 'Gagal membuat pembayaran. Coba lagi.';
   }
@@ -1137,7 +1152,7 @@ async function loadConfig() {
     }
     const availableMethods = response?.methods || [];
     if (!availableMethods.some((method) => method.code === selectedMethod.value)) {
-      selectedMethod.value = availableMethods[0]?.code || 'qris';
+      selectedMethod.value = availableMethods[0]?.code || '';
     }
 
     const queryOrderId =

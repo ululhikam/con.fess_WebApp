@@ -160,16 +160,21 @@ const FALLBACK_PACKAGES = [
   },
 ];
 
-/** Cermin dari PAYMENT_METHODS, dikelompokkan untuk tampilan publik. */
+/**
+ * Cermin dari `PAYMENT_METHODS` di backend, dikelompokkan untuk tampilan publik.
+ * Semua metode ditampilkan; daftar dari API tetap yang utama, ini hanya
+ * cadangan saat API belum merespons.
+ */
 const FALLBACK_METHOD_GROUPS = [
   { label: 'QRIS', methods: [{ code: 'qris', label: 'QRIS' }] },
   {
     label: 'Virtual Account',
     methods: [
-      { code: 'bca_va', label: 'BCA' },
       { code: 'bni_va', label: 'BNI' },
       { code: 'bri_va', label: 'BRI' },
+      { code: 'cimb_va', label: 'CIMB Niaga' },
       { code: 'permata_va', label: 'Permata' },
+      { code: 'bca_va', label: 'BCA' },
       { code: 'mandiri_bill', label: 'Mandiri' },
     ],
   },
@@ -194,6 +199,7 @@ const METHOD_SHORT_LABELS = {
   bca_va: 'BCA',
   bni_va: 'BNI',
   bri_va: 'BRI',
+  cimb_va: 'CIMB Niaga',
   permata_va: 'Permata',
   mandiri_bill: 'Mandiri',
   gopay: 'GoPay',

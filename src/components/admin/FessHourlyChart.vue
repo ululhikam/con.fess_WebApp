@@ -1,6 +1,10 @@
 <template>
   <figure class="fess-chart" role="img" :aria-label="ariaLabel">
-    <svg :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`" class="fess-chart-svg" preserveAspectRatio="xMidYMid meet">
+    <svg
+      :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`"
+      class="fess-chart-svg"
+      preserveAspectRatio="xMidYMid meet"
+    >
       <!-- Grid horizontal + label sumbu Y -->
       <g class="chart-grid">
         <line

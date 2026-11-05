@@ -3,12 +3,14 @@
     <div class="stage-header-row mb-4">
       <div class="stage-title-wrap">
         <h1 id="activity-title" class="stage-title">Notifikasi</h1>
-        <span v-if="unreadCount > 0" class="badge-title-count">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+        <span v-if="unreadCount > 0" class="badge-title-count">{{
+          unreadCount > 99 ? '99+' : unreadCount
+        }}</span>
       </div>
 
       <div class="segmented-tabs-container" role="tablist" aria-label="Jenis aktivitas">
         <button
-          v-for="filter in (filters.length ? filters : DEFAULT_FILTERS)"
+          v-for="filter in filters.length ? filters : DEFAULT_FILTERS"
           :key="filter.key"
           type="button"
           role="tab"
@@ -113,15 +115,7 @@
  */
 import { computed, markRaw, onActivated, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import {
-  Inbox,
-  CheckCircle2,
-  Heart,
-  MessageCircle,
-  Flag,
-  CheckCheck,
-  X,
-} from 'lucide-vue-next';
+import { Inbox, CheckCircle2, Heart, MessageCircle, Flag, CheckCheck, X } from 'lucide-vue-next';
 import ContentSkeleton from '../ui/ContentSkeleton.vue';
 import AppStateView from '../ui/AppStateView.vue';
 import { api } from '../../api';
@@ -289,9 +283,7 @@ async function loadMoreNotifications() {
     const res = await api.getNotifications({ page: nextPage, limit: 20 });
     if (seq !== requestSeq) return;
     const seen = new Set(notifications.value.map((n) => String(n.id)));
-    const extra = (res?.data || [])
-      .filter((n) => !seen.has(String(n.id)))
-      .map(mapNotification);
+    const extra = (res?.data || []).filter((n) => !seen.has(String(n.id))).map(mapNotification);
     notifications.value = [...notifications.value, ...extra];
     notifTotal.value = res?.total ?? notifTotal.value;
     notifPage = nextPage;
@@ -441,7 +433,9 @@ const filteredNotifications = computed(() => {
   font-size: 12.5px;
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .segmented-btn.active {
@@ -468,7 +462,9 @@ const filteredNotifications = computed(() => {
   font-weight: 700;
   font-size: 12.5px;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .notif-toolbar-btn:hover:not(:disabled) {

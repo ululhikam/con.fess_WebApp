@@ -37,21 +37,18 @@
     <main class="detail-main-stage">
       <div class="detail-stage-container">
         <!-- Loading skeleton while the fess is fetched -->
-        <ContentSkeleton
-          v-if="loading && !post"
-          type="feed-card"
-          :count="1"
-          label="Memuat fess…"
-        />
+        <ContentSkeleton v-if="loading && !post" type="feed-card" :count="1" label="Memuat fess…" />
 
         <!-- API error / 404 state -->
         <AppStateView
           v-else-if="error && !post"
           variant="error"
           :title="notFound ? 'Fess tidak ditemukan' : 'Fess gagal dimuat'"
-          :description="notFound
-            ? 'Fess ini mungkin sudah dihapus atau tautannya salah.'
-            : 'Terjadi kesalahan saat mengambil fess. Periksa koneksi internetmu, lalu coba lagi.'"
+          :description="
+            notFound
+              ? 'Fess ini mungkin sudah dihapus atau tautannya salah.'
+              : 'Terjadi kesalahan saat mengambil fess. Periksa koneksi internetmu, lalu coba lagi.'
+          "
           :action-label="notFound ? 'Kembali' : 'Coba lagi'"
           @action="notFound ? handleBack() : loadFess()"
         />
@@ -66,7 +63,6 @@
         />
       </div>
     </main>
-
   </div>
 </template>
 
@@ -142,7 +138,7 @@ watch(
       window.scrollTo({ top: 0 });
       loadFess();
     }
-  }
+  },
 );
 
 /* ---------- Like (optimistic, POST /fesses/:id/vote) ---------- */
@@ -316,5 +312,4 @@ async function shareFessLink() {
   max-width: 680px;
   margin: 0 auto;
 }
-
 </style>

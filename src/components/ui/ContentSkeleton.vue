@@ -4,7 +4,13 @@
     Accurately mirrors real components (FessCard, BasePublicProfile, UserProfileTab, etc.)
     so that there is ZERO layout shift (CLS = 0) and the page appearance is 100% consistent.
   -->
-  <div class="skeleton-stack" :class="`skeleton-type--${type}`" :aria-label="label" aria-busy="true" role="status">
+  <div
+    class="skeleton-stack"
+    :class="`skeleton-type--${type}`"
+    :aria-label="label"
+    aria-busy="true"
+    role="status"
+  >
     <span class="visually-hidden">{{ label }}</span>
 
     <!-- 1. FEED CARD (Exact 1:1 Mirror of FessCard.vue) ----------------- -->

@@ -4,7 +4,9 @@
       <header class="onb-head">
         <div class="onb-brand">Fess n Curious</div>
         <div class="onb-head-right">
-          <span v-if="accountLabel" class="onb-account" :title="accountLabel">{{ accountLabel }}</span>
+          <span v-if="accountLabel" class="onb-account" :title="accountLabel">{{
+            accountLabel
+          }}</span>
           <button
             type="button"
             class="onb-logout-head-btn"
@@ -34,7 +36,8 @@
       <section v-if="step === 1" class="onb-pane">
         <h1 class="onb-title">Lengkapi Profil Base</h1>
         <p class="onb-desc">
-          Akunmu terdaftar sebagai Base Admin. Buat base komunitasmu dulu sebelum masuk ke dashboard.
+          Akunmu terdaftar sebagai Base Admin. Buat base komunitasmu dulu sebelum masuk ke
+          dashboard.
         </p>
 
         <label class="onb-label" for="onb-name">Nama Base</label>
@@ -142,8 +145,8 @@
       <section v-else class="onb-pane">
         <h1 class="onb-title">Koneksi Sosmed (Opsional) &amp; Aturan</h1>
         <p class="onb-desc">
-          Langkah terakhir — atur aturan komunitas. Instagram sepenuhnya opsional:
-          tanpa menghubungkannya, fess tetap terbit normal di FnC saja.
+          Langkah terakhir — atur aturan komunitas. Instagram sepenuhnya opsional: tanpa
+          menghubungkannya, fess tetap terbit normal di FnC saja.
         </p>
 
         <!-- Meta Instagram Integration Card -->
@@ -161,8 +164,8 @@
                 <span v-else class="onb-badge onb-badge-idle">Opsional</span>
               </div>
               <p class="onb-ig-app-desc">
-                Hanya jika kamu ingin fess yang disetujui ikut diposting otomatis ke
-                Instagram Feed &amp; Reels base. Tanpa koneksi, fess tetap live di FnC.
+                Hanya jika kamu ingin fess yang disetujui ikut diposting otomatis ke Instagram Feed
+                &amp; Reels base. Tanpa koneksi, fess tetap live di FnC.
               </p>
             </div>
           </div>
@@ -186,19 +189,11 @@
             </div>
 
             <div class="onb-ig-connected-actions">
-              <button
-                type="button"
-                class="onb-ig-action-btn disconnect"
-                @click="disconnectIg"
-              >
+              <button type="button" class="onb-ig-action-btn disconnect" @click="disconnectIg">
                 <Unlink :size="13" />
                 <span>Putuskan</span>
               </button>
-              <button
-                type="button"
-                class="onb-ig-action-btn reconnect"
-                @click="reconnectIg"
-              >
+              <button type="button" class="onb-ig-action-btn reconnect" @click="reconnectIg">
                 <RefreshCw :size="13" />
                 <span>Ganti Akun</span>
               </button>
@@ -226,8 +221,8 @@
             </button>
 
             <p class="onb-ig-oauth-hint">
-              Opsional. Kamu akan memilih akun Instagram profesional base langsung di
-              halaman resmi Meta. Tanpa koneksi, fess tetap terbit normal di FnC.
+              Opsional. Kamu akan memilih akun Instagram profesional base langsung di halaman resmi
+              Meta. Tanpa koneksi, fess tetap terbit normal di FnC.
             </p>
 
             <div class="onb-ig-perks">
@@ -258,9 +253,15 @@
 
         <div class="onb-summary">
           <div class="onb-summary-title">Ringkasan Base</div>
-          <div class="onb-summary-row"><span>Nama</span><strong>{{ form.name }}</strong></div>
-          <div class="onb-summary-row"><span>Handle</span><strong>{{ normalizedHandle }}</strong></div>
-          <div class="onb-summary-row"><span>Kategori</span><strong>{{ form.category }}</strong></div>
+          <div class="onb-summary-row">
+            <span>Nama</span><strong>{{ form.name }}</strong>
+          </div>
+          <div class="onb-summary-row">
+            <span>Handle</span><strong>{{ normalizedHandle }}</strong>
+          </div>
+          <div class="onb-summary-row">
+            <span>Kategori</span><strong>{{ form.category }}</strong>
+          </div>
           <div class="onb-summary-row">
             <span>Instagram</span>
             <strong :class="{ 'text-meta-verified': igConnected }">
@@ -279,7 +280,12 @@
           <button type="button" class="onb-btn ghost" :disabled="isSubmitting" @click="goBack">
             Kembali
           </button>
-          <button type="button" class="onb-btn primary" :disabled="isSubmitting" @click="submitOnboarding">
+          <button
+            type="button"
+            class="onb-btn primary"
+            :disabled="isSubmitting"
+            @click="submitOnboarding"
+          >
             {{ isSubmitting ? 'Membuat base…' : 'Buat Base & Masuk Dashboard' }}
           </button>
         </div>
@@ -430,7 +436,7 @@ function saveDraft() {
       JSON.stringify({
         step: 3,
         form: { ...form },
-      })
+      }),
     );
   } catch {
     // Session storage not available
@@ -978,7 +984,14 @@ onMounted(async () => {
   width: 44px;
   height: 44px;
   border-radius: 13px;
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   color: #fff;
   display: flex;
   align-items: center;
@@ -1149,7 +1162,14 @@ onMounted(async () => {
   gap: 8px;
   padding: 12px 18px;
   border-radius: 14px;
-  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  background: linear-gradient(
+    45deg,
+    #f09433 0%,
+    #e6683c 25%,
+    #dc2743 50%,
+    #cc2366 75%,
+    #bc1888 100%
+  );
   color: #ffffff;
   border: none;
   font-family: inherit;
@@ -1215,8 +1235,12 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Mobile: wizard tetap di dalam frame, tombol mudah dijangkau ───────── */

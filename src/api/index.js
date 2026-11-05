@@ -81,8 +81,7 @@ export const api = {
     client.post(`/fesses/${fessId}/comments`, parentId ? { text, parent_id: parentId } : { text }),
   updateComment: (fessId, commentId, text) =>
     client.patch(`/fesses/${fessId}/comments/${commentId}`, { text }),
-  deleteComment: (fessId, commentId) =>
-    client.delete(`/fesses/${fessId}/comments/${commentId}`),
+  deleteComment: (fessId, commentId) => client.delete(`/fesses/${fessId}/comments/${commentId}`),
 
   /* NOTIFICATIONS */
   getNotifications: (params) => client.get('/notifications', { params }),

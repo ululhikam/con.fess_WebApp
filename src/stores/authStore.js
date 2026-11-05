@@ -203,10 +203,13 @@ export const useAuthStore = defineStore('auth', {
       }
 
       // setTimeout dibatasi ±24,8 hari; JWT kita hanya 1 hari.
-      expiryTimer = window.setTimeout(() => {
-        expiryTimer = null;
-        if (this.token === token) this.expireSession('expired');
-      }, Math.min(delay, 2_147_483_647));
+      expiryTimer = window.setTimeout(
+        () => {
+          expiryTimer = null;
+          if (this.token === token) this.expireSession('expired');
+        },
+        Math.min(delay, 2_147_483_647),
+      );
     },
 
     /** Dipanggil App saat mount: cek token tersimpan + muat profil terbaru. */
@@ -233,9 +236,7 @@ export const useAuthStore = defineStore('auth', {
         // ignore
       }
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('auth:session-ended', { detail: { reason } })
-        );
+        window.dispatchEvent(new CustomEvent('auth:session-ended', { detail: { reason } }));
       }
     },
 

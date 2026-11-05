@@ -28,8 +28,8 @@
             <ConsoleStatusBadge status="Super Admin" />
             <span>Akses platform</span>
           </div>
-          Operasi base dikelola Base Admin. Konsol ini fokus pada keuangan,
-          pengguna, keamanan, dan integrasi platform.
+          Operasi base dikelola Base Admin. Konsol ini fokus pada keuangan, pengguna, keamanan, dan
+          integrasi platform.
         </div>
       </aside>
 
