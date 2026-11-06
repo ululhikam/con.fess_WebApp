@@ -200,6 +200,9 @@ export const api = {
     client.patch(`/admin/payments/packages/${encodeURIComponent(code)}`, payload),
   setAdminPaymentPackageStatus: (code, payload) =>
     client.post(`/admin/payments/packages/${encodeURIComponent(code)}/status`, payload),
+  /* ADMIN — mode gateway pembayaran (Core API vs Snap) */
+  getAdminPaymentGateway: () => client.get('/admin/payments/gateway'),
+  updateAdminPaymentGateway: (payload) => client.patch('/admin/payments/gateway', payload),
   /* ADMIN — kupon promo top-up (Super Admin, re-auth untuk setiap perubahan) */
   getAdminCoupons: () => client.get('/admin/payments/coupons'),
   createAdminCoupon: (payload) => client.post('/admin/payments/coupons', payload),

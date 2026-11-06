@@ -131,8 +131,52 @@
               <span class="live-dot" aria-hidden="true"></span>
             </div>
 
+            <!-- Snap popup (Midtrans) -->
+            <div v-if="instructions?.type === 'snap'" class="instruction-block instruction-snap">
+              <div class="instruction-head">
+                <span class="instruction-icon" aria-hidden="true"><ShieldCheck :size="18" /></span>
+                <div>
+                  <p class="instruction-title">Selesaikan pembayaran di Snap</p>
+                  <p class="instruction-desc">
+                    Midtrans membuka jendela pembayaran aman. Metode
+                    {{ activeOrder.payment_method_label || 'yang kamu pilih' }} sudah dikunci di
+                    sana.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="topup-primary-btn snap-open-btn"
+                :disabled="snapOpening"
+                @click="openSnapPopup"
+              >
+                <Loader2 v-if="snapOpening" :size="16" class="spin" />
+                <ExternalLink v-else :size="16" />
+                {{ snapOpening ? 'Membuka jendela pembayaran...' : 'Buka jendela pembayaran' }}
+              </button>
+              <p v-if="snapError" class="instruction-desc instruction-desc--warning">
+                {{ snapError }}
+              </p>
+              <a
+                v-if="safeSnapRedirect"
+                :href="safeSnapRedirect"
+                class="snap-redirect-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Tidak bisa membuka jendela? Lanjutkan di halaman Midtrans
+              </a>
+              <p class="instruction-footnote">
+                Status diverifikasi server setelah pembayaran. Kamu bisa menutup jendela Snap kapan
+                saja.
+              </p>
+            </div>
+
             <!-- QRIS -->
-            <div v-if="instructions?.type === 'qris'" class="instruction-block instruction-qris">
+            <div
+              v-else-if="instructions?.type === 'qris'"
+              class="instruction-block instruction-qris"
+            >
               <div class="instruction-head">
                 <span class="instruction-icon" aria-hidden="true"><QrCode :size="18" /></span>
                 <div>
@@ -764,6 +808,8 @@ const activeOrder = ref(null);
 const creating = ref(false);
 const checking = ref(false);
 const createError = ref('');
+const snapOpening = ref(false);
+const snapError = ref('');
 const history = ref([]);
 const historyLoading = ref(false);
 const historyError = ref('');
@@ -777,6 +823,7 @@ const couponError = ref('');
 
 let pollTimer = null;
 let clockTimer = null;
+let snapScriptPromise = null;
 const notifiedPaidOrders = new Set();
 
 const packages = computed(() => config.value?.packages || []);
@@ -866,6 +913,7 @@ const ewalletLabel = computed(() => {
 });
 const qrImageUrl = computed(() => safeImageUrl(instructions.value?.qr_url || ''));
 const safeDeeplink = computed(() => safeExternalUrl(instructions.value?.url || ''));
+const safeSnapRedirect = computed(() => safeExternalUrl(instructions.value?.redirect_url || ''));
 const statusTone = computed(() => toneForStatus(activeOrder.value?.status));
 const statusLabel = computed(() => statusText(activeOrder.value?.status));
 const inactiveCopy = computed(() => {
@@ -1230,6 +1278,10 @@ async function createOrder() {
     setActiveOrder(response.order);
     nextTick(scrollToPaymentPanel);
     loadHistory();
+    if (response.order?.instructions?.type === 'snap') {
+      await nextTick();
+      openSnapPopup();
+    }
   } catch (error) {
     const message = errorMessage(error);
     createError.value = message;
@@ -1266,6 +1318,93 @@ async function checkActiveOrder(silent = false) {
   }
 }
 
+/**
+ * snap.js dimuat sekali per halaman. Client Key aman dipublikasikan; Server Key
+ * tetap hanya ada di backend. Bila script gagal dimuat, pemanggil memakai
+ * `redirect_url` sebagai jalur cadangan.
+ */
+function loadSnapScript(src, clientKey) {
+  if (window.snap?.pay) return Promise.resolve(window.snap);
+  if (!src) return Promise.reject(new Error('Snap tidak tersedia'));
+  if (snapScriptPromise) return snapScriptPromise;
+
+  snapScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.dataset.clientKey = clientKey;
+    script.dataset.fncSnap = 'true';
+    script.onload = () => {
+      if (window.snap?.pay) {
+        resolve(window.snap);
+      } else {
+        snapScriptPromise = null;
+        reject(new Error('Snap gagal dimuat'));
+      }
+    };
+    script.onerror = () => {
+      snapScriptPromise = null;
+      reject(new Error('Snap gagal dimuat'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return snapScriptPromise;
+}
+
+function redirectToSnap() {
+  if (!safeSnapRedirect.value) return false;
+  window.location.assign(safeSnapRedirect.value);
+  return true;
+}
+
+async function openSnapPopup() {
+  const data = instructions.value;
+  if (!data || data.type !== 'snap' || !data.token || snapOpening.value) return;
+
+  snapError.value = '';
+  if (!data.client_key) {
+    if (!redirectToSnap()) {
+      snapError.value =
+        'Jendela pembayaran belum tersedia. Muat ulang halaman atau hubungi dukungan.';
+    }
+    return;
+  }
+
+  snapOpening.value = true;
+  let finished = false;
+  try {
+    const snap = await loadSnapScript(data.script_url, data.client_key);
+    snap.pay(data.token, {
+      onSuccess: () => {
+        finished = true;
+        checkActiveOrder(true);
+      },
+      onPending: () => {
+        finished = true;
+        checkActiveOrder(true);
+      },
+      onError: () => {
+        finished = true;
+        snapError.value = 'Pembayaran gagal diproses Snap. Coba lagi atau pilih metode lain.';
+        checkActiveOrder(true);
+      },
+      onClose: () => {
+        if (!finished) {
+          snapError.value =
+            'Jendela pembayaran ditutup sebelum selesai. Buka lagi untuk melanjutkan.';
+        }
+      },
+    });
+  } catch {
+    if (!redirectToSnap()) {
+      snapError.value = 'Jendela pembayaran gagal dimuat. Periksa koneksi lalu coba lagi.';
+    }
+  } finally {
+    snapOpening.value = false;
+  }
+}
+
 async function openOrder(orderId) {
   if (!orderId) return;
   createError.value = '';
@@ -1295,6 +1434,7 @@ function resetOrder() {
   stopPolling();
   activeOrder.value = null;
   createError.value = '';
+  snapError.value = '';
   requestKey.value = '';
 }
 
@@ -2673,6 +2813,26 @@ onBeforeUnmount(() => {
 .instruction-desc--warning {
   margin-top: 10px;
   color: var(--warning-text);
+}
+
+.instruction-snap .snap-open-btn {
+  width: 100%;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.snap-redirect-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--shell-text-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.snap-redirect-link:hover {
+  color: var(--shell-text);
 }
 
 .instruction-footnote {
