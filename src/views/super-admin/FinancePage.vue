@@ -724,6 +724,95 @@
         <section class="pc-card">
           <div class="pc-card__head">
             <div>
+              <h2 class="pc-card__title">Metode pembayaran</h2>
+              <p class="pc-card__desc">
+                Pilih metode yang tampil di halaman top-up. Metode yang dinonaktifkan juga ditolak
+                server, jadi request lama tidak bisa memakainya. Order yang sudah dibuat tetap
+                menampilkan instruksinya.
+              </p>
+            </div>
+            <div class="pc-card__actions">
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="methodsLoading"
+                @click="loadPaymentMethods"
+              >
+                <RefreshCw :size="12" :class="{ 'pc-spin': methodsLoading }" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                class="pc-btn pc-btn--primary pc-btn--sm"
+                :disabled="!methods || methodsLoading"
+                @click="openMethodsDialog"
+              >
+                <KeyRound :size="12" />
+                Ubah metode
+              </button>
+            </div>
+          </div>
+
+          <div class="pc-card__body">
+            <p v-if="methodsLoading && !methods" class="pc-card__desc">Memuat metode…</p>
+            <div v-else-if="methodsError" class="pc-callout pc-callout--danger">
+              <AlertTriangle :size="16" />
+              <div>
+                <strong>Metode pembayaran gagal dimuat.</strong>
+                {{ methodsError }}
+              </div>
+            </div>
+            <template v-else-if="methods">
+              <div class="payment-method-summary">
+                <span class="pc-badge pc-badge--lime"> {{ methods.enabled_count }} aktif </span>
+                <span v-if="methods.disabled_count" class="pc-badge pc-badge--neutral">
+                  {{ methods.disabled_count }} nonaktif
+                </span>
+                <span class="pc-badge pc-badge--blue">
+                  Bayar maks. {{ methods.expiry_minutes }} menit
+                </span>
+              </div>
+
+              <ul class="method-grid">
+                <li
+                  v-for="method in methods.methods"
+                  :key="method.code"
+                  class="method-chip"
+                  :class="{ 'is-off': !method.enabled }"
+                >
+                  <span class="method-chip__dot" aria-hidden="true"></span>
+                  <span class="method-chip__label">{{ method.label }}</span>
+                  <span class="method-chip__state">
+                    {{ method.enabled ? 'Aktif' : 'Nonaktif' }}
+                  </span>
+                </li>
+              </ul>
+
+              <p class="pc-help">
+                Batas waktu pembayaran {{ methods.expiry_minutes }} menit berlaku untuk semua metode
+                dan dikirim ke Midtrans, bukan hanya hitungan di layar. Order yang telat dibayar
+                tetap dikreditkan setelah settlement terverifikasi.
+              </p>
+
+              <div class="gateway-meta" style="margin-top: 12px">
+                <div>
+                  <dt>Sumber</dt>
+                  <dd>
+                    {{ methods.source === 'database' ? 'Database' : 'Default (semua aktif)' }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Terakhir diubah</dt>
+                  <dd>{{ methods.updated_at ? formatDateTime(methods.updated_at) : '—' }}</dd>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <section class="pc-card">
+          <div class="pc-card__head">
+            <div>
               <h2 class="pc-card__title">Paket top-up CTF</h2>
               <p class="pc-card__desc">
                 Nominal dan jumlah CTF bisa diubah tanpa deploy. Order yang sudah dibuat memakai
@@ -1536,6 +1625,77 @@
     </ConsoleDialog>
 
     <ConsoleDialog
+      v-model="methodsDialog.open"
+      title="Ubah metode pembayaran"
+      subtitle="Berlaku untuk order top-up berikutnya; order lama tetap menampilkan instruksinya"
+      eyebrow="Metode pembayaran · re-auth"
+      confirm-label="Simpan metode"
+      tone="primary"
+      :loading="methodsDialog.loading"
+      :confirm-disabled="!methodsCanSubmit"
+      :error="methodsDialog.error"
+      @confirm="submitMethods"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <span class="pc-label">Metode yang tampil ke pengguna</span>
+          <ul class="method-picker">
+            <li v-for="method in methods?.methods || []" :key="method.code">
+              <button
+                type="button"
+                class="method-picker__item"
+                :class="{ 'is-active': methodsDialog.enabled.includes(method.code) }"
+                @click="toggleMethod(method.code)"
+              >
+                <span class="method-picker__mark" aria-hidden="true">
+                  <CheckCircle2 v-if="methodsDialog.enabled.includes(method.code)" :size="14" />
+                </span>
+                <span class="method-picker__body">
+                  <strong>{{ method.label }}</strong>
+                  <span class="method-picker__desc">{{ method.description }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <p class="pc-help">
+            Minimal satu metode harus aktif. Metode yang tidak dicentang hilang dari picker dan
+            ditolak server untuk order baru.
+          </p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="methods-reason">Alasan perubahan</label>
+          <textarea
+            id="methods-reason"
+            v-model="methodsDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: QRIS dan GoPay belum aktif di production."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="methods-password">Kata sandi Super Admin</label>
+          <input
+            id="methods-password"
+            v-model="methodsDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div class="pc-callout pc-callout--warning">
+        <AlertTriangle :size="15" />
+        <div>
+          Batas waktu pembayaran {{ methods?.expiry_minutes ?? 10 }} menit berlaku untuk semua
+          metode dan ikut dikirim ke Midtrans, jadi VA/QRIS tidak bisa dibayar setelahnya.
+        </div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
       v-model="packageDialog.open"
       :title="packageDialog.mode === 'create' ? 'Tambah paket top-up' : 'Ubah paket top-up'"
       :subtitle="
@@ -2221,6 +2381,19 @@ const gatewayDialog = reactive({
   error: '',
 });
 
+const methods = ref(null);
+const methodsLoading = ref(false);
+const methodsError = ref('');
+
+const methodsDialog = reactive({
+  open: false,
+  enabled: [],
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
 const coupons = ref([]);
 const couponSource = ref('database');
 const couponsLoading = ref(false);
@@ -2414,6 +2587,26 @@ const gatewayCanSubmit = computed(() => {
 });
 
 /* -------------------------------------------------------------------------
+ * Metode pembayaran yang tampil ke pengguna
+ * ---------------------------------------------------------------------- */
+const methodsCanSubmit = computed(() => {
+  if (!methods.value) return false;
+  if (!methodsChanged.value) return false;
+  if (!methodsDialog.enabled.length) return false;
+  if (methodsDialog.reason.trim().length < 5) return false;
+  return Boolean(methodsDialog.password.trim());
+});
+
+const methodsChanged = computed(() => {
+  if (!methods.value) return false;
+  const current = new Set(
+    methods.value.methods.filter((method) => method.enabled).map((method) => method.code),
+  );
+  if (current.size !== methodsDialog.enabled.length) return true;
+  return methodsDialog.enabled.some((code) => !current.has(code));
+});
+
+/* -------------------------------------------------------------------------
  * Paket top-up CTF (bisa diubah tanpa deploy; order lama pakai snapshot)
  * ---------------------------------------------------------------------- */
 const packageDraft = computed(() => {
@@ -2564,6 +2757,7 @@ function ensureTab(tab) {
   if (tab !== 'payments' || tabLoaded.payments) return;
   tabLoaded.payments = true;
   loadGateway();
+  loadPaymentMethods();
   loadSystemSettings();
   loadPackages();
   loadCoupons();
@@ -2640,6 +2834,7 @@ async function refreshPage() {
     await Promise.all([
       loadWorkspace(),
       loadGateway(),
+      loadPaymentMethods(),
       loadPackages(),
       loadCoupons(),
       loadPaymentOrders(),
@@ -2805,6 +3000,59 @@ function openGatewayDialog() {
   gatewayDialog.error = '';
   gatewayDialog.loading = false;
   gatewayDialog.open = true;
+}
+
+async function loadPaymentMethods() {
+  methodsLoading.value = true;
+  methodsError.value = '';
+  try {
+    methods.value = await api.getAdminPaymentMethods();
+  } catch (err) {
+    methodsError.value = err?.message || 'Gagal memuat metode pembayaran.';
+  } finally {
+    methodsLoading.value = false;
+  }
+}
+
+function openMethodsDialog() {
+  if (!methods.value) return;
+  methodsDialog.enabled = methods.value.methods
+    .filter((method) => method.enabled)
+    .map((method) => method.code);
+  methodsDialog.reason = '';
+  methodsDialog.password = '';
+  methodsDialog.error = '';
+  methodsDialog.loading = false;
+  methodsDialog.open = true;
+}
+
+function toggleMethod(code) {
+  const index = methodsDialog.enabled.indexOf(code);
+  if (index >= 0) methodsDialog.enabled.splice(index, 1);
+  else methodsDialog.enabled.push(code);
+}
+
+async function submitMethods() {
+  if (!methodsCanSubmit.value) return;
+  methodsDialog.loading = true;
+  methodsDialog.error = '';
+  try {
+    const result = await api.updateAdminPaymentMethods({
+      enabled: methodsDialog.enabled,
+      reason: methodsDialog.reason.trim(),
+      password: methodsDialog.password,
+    });
+    methods.value = result;
+    methodsDialog.open = false;
+    toast.success(
+      `Metode pembayaran disimpan. ${result?.enabled_count ?? 0} metode aktif untuk order baru.`,
+    );
+    loadSystemSettings();
+  } catch (err) {
+    methodsDialog.error = err?.message || 'Metode pembayaran gagal disimpan.';
+  } finally {
+    methodsDialog.loading = false;
+  }
 }
 
 async function submitGateway() {
@@ -3210,6 +3458,135 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.payment-method-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.method-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.method-chip.is-off {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.method-chip__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime-primary);
+}
+
+.method-chip.is-off .method-chip__dot {
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+
+.method-chip__label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.method-chip__state {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.method-chip.is-off .method-chip__state {
+  color: var(--warning-text);
+}
+
+.method-picker {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.method-picker__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.method-picker__item.is-active {
+  border-color: rgba(205, 242, 43, 0.45);
+  background: rgba(205, 242, 43, 0.07);
+  color: var(--text-main);
+}
+
+.method-picker__mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--lime-text);
+}
+
+.method-picker__item.is-active .method-picker__mark {
+  border-color: rgba(205, 242, 43, 0.55);
+  background: rgba(205, 242, 43, 0.14);
+}
+
+.method-picker__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.method-picker__body strong {
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.method-picker__desc {
+  font-size: 10.5px;
+  line-height: 1.5;
 }
 
 .gateway-summary__main {
