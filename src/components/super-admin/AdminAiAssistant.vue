@@ -323,6 +323,18 @@ function refreshFields() {
 
 let observer = null;
 
+/**
+ * Penanda di `<body>` selama panel terbuka.
+ *
+ * Dipakai CSS global (`super-admin.css`) untuk menggeser dialog formulir ke
+ * kiri sebesar lebar panel, sehingga tombol Batal/Simpan tidak pernah tertutup
+ * dan panel AI tetap bisa dipakai di halaman yang sama.
+ */
+function syncBodyFlag(value) {
+  if (typeof document === 'undefined') return;
+  document.body.classList.toggle('ai-assist-open', Boolean(value));
+}
+
 onMounted(() => {
   // Perubahan DOM (dialog dibuka/ditutup) tidak punya event Vue yang bisa
   // ditangkap dari layout induk, jadi dipantau lewat MutationObserver ringan.
@@ -334,19 +346,26 @@ onMounted(() => {
 onBeforeUnmount(() => {
   observer?.disconnect();
   observer = null;
+  syncBodyFlag(false);
 });
 
 watch(open, (value) => {
+  syncBodyFlag(value);
   if (value) fields.value = collectFields();
 });
 </script>
 
 <style scoped>
+/*
+ * Asisten harus berada DI ATAS dialog formulir: `.pc-modal-backdrop` memakai
+ * z-index 340 dan glass modal universal 1400. Panel memakai 1500 — lebih tinggi
+ * dari keduanya, tetapi tetap di bawah `AppDialogHost` (3000) dan toast (5000).
+ */
 .ai-assist {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  z-index: 60;
+  z-index: 1500;
 }
 
 .ai-assist__fab {
@@ -372,6 +391,13 @@ watch(open, (value) => {
   background: var(--bg-surface);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
   overflow: hidden;
+}
+
+/* Di layar sempit panel tinggi dan menempel di bawah agar tidak menutupi dialog. */
+@media (max-width: 899px) {
+  .ai-assist__panel {
+    max-height: 46vh;
+  }
 }
 
 .ai-assist__head {
