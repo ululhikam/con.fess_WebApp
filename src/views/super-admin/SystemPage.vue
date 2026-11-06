@@ -236,6 +236,18 @@
                       : 'Belum'
                   "
                 />
+                <span>Mode gateway</span>
+                <ConsoleStatusBadge
+                  :status="settings.integrations.midtrans.gateway_mode"
+                  :label="
+                    settings.integrations.midtrans.gateway_mode === 'snap'
+                      ? 'Snap popup'
+                      : 'Core API'
+                  "
+                  :tone="
+                    settings.integrations.midtrans.gateway_mode === 'snap' ? 'success' : 'blue'
+                  "
+                />
                 <span>Merchant ID</span>
                 <ConsoleStatusBadge
                   :status="settings.integrations.midtrans.merchant_id_configured ? 'true' : 'false'"

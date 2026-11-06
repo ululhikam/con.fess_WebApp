@@ -638,6 +638,92 @@
         <section class="pc-card">
           <div class="pc-card__head">
             <div>
+              <h2 class="pc-card__title">Gateway pembayaran</h2>
+              <p class="pc-card__desc">
+                Core API menampilkan VA/QRIS langsung di halaman top-up. Snap membuka popup
+                Midtrans. Order yang sudah dibuat tetap memakai mode saat order dibuat.
+              </p>
+            </div>
+            <div class="pc-card__actions">
+              <button
+                type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="gatewayLoading"
+                @click="loadGateway"
+              >
+                <RefreshCw :size="12" :class="{ 'pc-spin': gatewayLoading }" />
+                Refresh
+              </button>
+              <button
+                type="button"
+                class="pc-btn pc-btn--primary pc-btn--sm"
+                :disabled="!gateway || gatewayLoading"
+                @click="openGatewayDialog"
+              >
+                <KeyRound :size="12" />
+                Ubah mode
+              </button>
+            </div>
+          </div>
+
+          <div class="pc-card__body">
+            <p v-if="gatewayLoading && !gateway" class="pc-card__desc">Memuat mode gateway…</p>
+            <div v-else-if="gatewayError" class="pc-callout pc-callout--danger">
+              <AlertTriangle :size="16" />
+              <div>
+                <strong>Mode gateway gagal dimuat.</strong>
+                {{ gatewayError }}
+              </div>
+            </div>
+            <template v-else-if="gateway">
+              <div class="gateway-summary">
+                <div class="gateway-summary__main">
+                  <span
+                    class="pc-badge"
+                    :class="gateway.mode === 'snap' ? 'pc-badge--success' : 'pc-badge--blue'"
+                  >
+                    {{ gateway.mode === 'snap' ? 'Snap popup' : 'Core API' }}
+                  </span>
+                  <strong class="gateway-summary__title">{{ gatewayModeTitle }}</strong>
+                  <p class="pc-card__desc">{{ gatewayModeDescription }}</p>
+                </div>
+                <dl class="gateway-meta">
+                  <div>
+                    <dt>Sumber</dt>
+                    <dd>{{ gateway.source === 'database' ? 'Database' : 'Default' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Client Key</dt>
+                    <dd>{{ gateway.snap_client_key_configured ? 'Terpasang' : 'Belum ada' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Environment</dt>
+                    <dd>{{ gateway.midtrans_is_production ? 'Production' : 'Sandbox' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Terakhir diubah</dt>
+                    <dd>{{ gateway.updated_at ? formatDateTime(gateway.updated_at) : '—' }}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div
+                v-if="gateway.mode === 'snap' && !gateway.snap_popup_ready"
+                class="pc-callout pc-callout--warning"
+                style="margin-top: 12px"
+              >
+                <AlertTriangle :size="15" />
+                <div>
+                  Client Key belum tersedia, jadi popup tidak bisa dibuka. Pembayaran tetap berjalan
+                  lewat redirect ke halaman Snap.
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <section class="pc-card">
+          <div class="pc-card__head">
+            <div>
               <h2 class="pc-card__title">Paket top-up CTF</h2>
               <p class="pc-card__desc">
                 Nominal dan jumlah CTF bisa diubah tanpa deploy. Order yang sudah dibuat memakai
@@ -1376,6 +1462,80 @@
     </ConsoleDialog>
 
     <ConsoleDialog
+      v-model="gatewayDialog.open"
+      title="Ubah mode gateway"
+      subtitle="Berlaku untuk order top-up berikutnya; order lama tetap memakai mode saat dibuat"
+      eyebrow="Gateway pembayaran · re-auth"
+      confirm-label="Simpan mode"
+      tone="primary"
+      :loading="gatewayDialog.loading"
+      :confirm-disabled="!gatewayCanSubmit"
+      :error="gatewayDialog.error"
+      @confirm="submitGateway"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <span class="pc-label">Mode gateway</span>
+          <div class="gateway-choice-grid">
+            <button
+              v-for="option in gateway?.options || []"
+              :key="option.value"
+              type="button"
+              class="gateway-choice"
+              :class="{ 'is-active': gatewayDialog.mode === option.value }"
+              @click="gatewayDialog.mode = option.value"
+            >
+              <span class="gateway-choice__head">
+                <strong>{{ option.label }}</strong>
+                <CheckCircle2 v-if="gatewayDialog.mode === option.value" :size="15" />
+              </span>
+              <span class="gateway-choice__desc">{{ option.description }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="gateway-reason">Alasan perubahan</label>
+          <textarea
+            id="gateway-reason"
+            v-model="gatewayDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: kanal Core API production belum aktif, sementara pakai Snap."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="gateway-password">Kata sandi Super Admin</label>
+          <input
+            id="gateway-password"
+            v-model="gatewayDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+
+      <div
+        class="pc-callout"
+        :class="gatewayDialog.mode === 'snap' ? 'pc-callout--warning' : 'pc-callout--lime'"
+      >
+        <AlertTriangle v-if="gatewayDialog.mode === 'snap'" :size="15" />
+        <CheckCircle2 v-else :size="15" />
+        <div v-if="gatewayDialog.mode === 'snap'">
+          Pastikan Notification URL Midtrans sudah diarahkan ke
+          <code>/api/payments/midtrans/notification</code> sebelum mode ini dipakai. Setelah aktif,
+          uji top-up terkecil dan pastikan popup menampilkan metode yang dipilih.
+        </div>
+        <div v-else>
+          Core API adalah flow lama: VA, QRIS, dan deeplink ditampilkan langsung di halaman top-up.
+          Mode ini hanya berhasil bila kanal Core API aktif di Midtrans.
+        </div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
       v-model="packageDialog.open"
       :title="packageDialog.mode === 'create' ? 'Tambah paket top-up' : 'Ubah paket top-up'"
       :subtitle="
@@ -1984,6 +2144,9 @@ const eventsLoading = ref(false);
 const eventsError = ref('');
 
 const systemSettings = ref(null);
+const gateway = ref(null);
+const gatewayLoading = ref(false);
+const gatewayError = ref('');
 const tabLoaded = reactive({ payments: false });
 
 const supportOpen = ref(false);
@@ -2043,6 +2206,15 @@ const packageStatusDialog = reactive({
   open: false,
   pkg: null,
   nextActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+const gatewayDialog = reactive({
+  open: false,
+  mode: 'core_api',
   reason: '',
   password: '',
   loading: false,
@@ -2222,6 +2394,26 @@ const priceCanSubmit = computed(
 );
 
 /* -------------------------------------------------------------------------
+ * Mode gateway pembayaran (Core API vs Snap popup)
+ * ---------------------------------------------------------------------- */
+const gatewayModeTitle = computed(() =>
+  gateway.value?.mode === 'snap' ? 'Snap popup Midtrans' : 'Core API Midtrans',
+);
+
+const gatewayModeDescription = computed(() =>
+  gateway.value?.mode === 'snap'
+    ? 'Transaksi baru dibuat lewat Snap. Pengguna membayar di popup Midtrans, dengan metode yang dipilih tetap dibatasi oleh enabled_payments.'
+    : 'Transaksi baru dibuat lewat Core API. VA, QRIS, dan deeplink ditampilkan langsung di halaman top-up.',
+);
+
+const gatewayCanSubmit = computed(() => {
+  if (!gateway.value) return false;
+  if (gatewayDialog.mode === gateway.value.mode) return false;
+  if (gatewayDialog.reason.trim().length < 5) return false;
+  return Boolean(gatewayDialog.password.trim());
+});
+
+/* -------------------------------------------------------------------------
  * Paket top-up CTF (bisa diubah tanpa deploy; order lama pakai snapshot)
  * ---------------------------------------------------------------------- */
 const packageDraft = computed(() => {
@@ -2371,6 +2563,7 @@ function setTab(tab) {
 function ensureTab(tab) {
   if (tab !== 'payments' || tabLoaded.payments) return;
   tabLoaded.payments = true;
+  loadGateway();
   loadSystemSettings();
   loadPackages();
   loadCoupons();
@@ -2446,6 +2639,7 @@ async function refreshPage() {
   if (activeTab.value === 'payments') {
     await Promise.all([
       loadWorkspace(),
+      loadGateway(),
       loadPackages(),
       loadCoupons(),
       loadPaymentOrders(),
@@ -2589,6 +2783,53 @@ function effectiveCtfPrice(pkg) {
   const ctf = Number(pkg?.ctf_amount) || 0;
   if (!ctf) return '—';
   return `Rp${formatNumber(Math.round(amount / ctf))}`;
+}
+
+async function loadGateway() {
+  gatewayLoading.value = true;
+  gatewayError.value = '';
+  try {
+    gateway.value = await api.getAdminPaymentGateway();
+  } catch (err) {
+    gatewayError.value = err?.message || 'Gagal memuat mode gateway pembayaran.';
+  } finally {
+    gatewayLoading.value = false;
+  }
+}
+
+function openGatewayDialog() {
+  if (!gateway.value) return;
+  gatewayDialog.mode = gateway.value.mode === 'snap' ? 'core_api' : 'snap';
+  gatewayDialog.reason = '';
+  gatewayDialog.password = '';
+  gatewayDialog.error = '';
+  gatewayDialog.loading = false;
+  gatewayDialog.open = true;
+}
+
+async function submitGateway() {
+  if (!gatewayCanSubmit.value) return;
+  gatewayDialog.loading = true;
+  gatewayDialog.error = '';
+  try {
+    const result = await api.updateAdminPaymentGateway({
+      mode: gatewayDialog.mode,
+      reason: gatewayDialog.reason.trim(),
+      password: gatewayDialog.password,
+    });
+    gateway.value = result;
+    gatewayDialog.open = false;
+    toast.success(
+      result?.mode === 'snap'
+        ? 'Gateway diubah ke Snap popup. Order berikutnya memakai Snap.'
+        : 'Gateway diubah ke Core API. Order berikutnya memakai Core API.',
+    );
+    loadSystemSettings();
+  } catch (err) {
+    gatewayDialog.error = err?.message || 'Mode gateway gagal disimpan.';
+  } finally {
+    gatewayDialog.loading = false;
+  }
 }
 
 async function loadPackages() {
@@ -2963,7 +3204,93 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
+.gateway-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gateway-summary__main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 540px;
+}
+
+.gateway-summary__title {
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.gateway-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 10px 18px;
+  margin: 0;
+}
+
+.gateway-meta dt {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gateway-meta dd {
+  margin: 2px 0 0;
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gateway-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gateway-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gateway-choice.is-active {
+  border-color: rgba(205, 242, 43, 0.45);
+  background: rgba(205, 242, 43, 0.07);
+  color: var(--text-main);
+}
+
+.gateway-choice__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.gateway-choice__desc {
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
 @media (max-width: 680px) {
+  .gateway-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
   .pc-card__head {
     flex-direction: column;
   }
