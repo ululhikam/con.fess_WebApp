@@ -578,6 +578,21 @@
   line-height: 1.5;
 }
 
+/* Nilai yang ditampilkan sebagai jawaban (bukan petunjuk), mis. total CTF. */
+.pc-help--value {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Input di dalam sel tabel: lebih ringkas dari input form biasa. */
+.pc-input--sm {
+  min-height: 28px;
+  width: 90px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
 .pc-checkbox {
   display: flex;
   align-items: center;

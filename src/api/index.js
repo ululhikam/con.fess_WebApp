@@ -200,6 +200,11 @@ export const api = {
     client.patch(`/admin/payments/packages/${encodeURIComponent(code)}`, payload),
   setAdminPaymentPackageStatus: (code, payload) =>
     client.post(`/admin/payments/packages/${encodeURIComponent(code)}/status`, payload),
+  /* ADMIN — harga massal semua paket (satu harga per CTF + bonus per paket) */
+  previewAdminPaymentPackagesPricing: (payload) =>
+    client.post('/admin/payments/packages/pricing/preview', payload),
+  updateAdminPaymentPackagesPricing: (payload) =>
+    client.patch('/admin/payments/packages/pricing', payload),
   /* ADMIN — mode gateway pembayaran (Core API vs Snap) */
   getAdminPaymentGateway: () => client.get('/admin/payments/gateway'),
   updateAdminPaymentGateway: (payload) => client.patch('/admin/payments/gateway', payload),
@@ -214,6 +219,12 @@ export const api = {
   setAdminCouponStatus: (code, payload) =>
     client.post(`/admin/payments/coupons/${encodeURIComponent(code)}/status`, payload),
   getAdminSystemSettings: () => client.get('/admin/system/settings'),
+  /* ADMIN — blast notifikasi sistem (in-app) ke pengguna */
+  previewAdminBroadcast: (payload) =>
+    client.post('/admin/notifications/broadcast/preview', payload),
+  sendAdminBroadcast: (payload) => client.post('/admin/notifications/broadcast', payload),
+  /* ADMIN — asisten AI konsol (saran saja, tidak menyimpan apa pun) */
+  assistAdminAi: (payload) => client.post('/admin/ai/assist', payload),
 };
 
 /** Re-export error class for catch handling. */

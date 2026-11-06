@@ -831,6 +831,15 @@
               </button>
               <button
                 type="button"
+                class="pc-btn pc-btn--ghost pc-btn--sm"
+                :disabled="packageSource === 'fallback' || !packages.length"
+                @click="openPricingDialog"
+              >
+                <Tags :size="12" />
+                Harga massal
+              </button>
+              <button
+                type="button"
                 class="pc-btn pc-btn--primary pc-btn--sm"
                 :disabled="packageSource === 'fallback'"
                 @click="openPackageDialog()"
@@ -1817,6 +1826,117 @@
     </ConsoleDialog>
 
     <ConsoleDialog
+      v-model="pricingDialog.open"
+      title="Harga massal semua paket"
+      subtitle="Satu harga per CTF untuk seluruh katalog — nominal rupiah paket tidak diubah"
+      eyebrow="Harga massal · re-auth"
+      confirm-label="Terapkan ke semua paket"
+      tone="primary"
+      :loading="pricingDialog.loading"
+      :confirm-disabled="!pricingCanSubmit"
+      :error="pricingDialog.error"
+      @confirm="submitPricing"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field">
+          <label class="pc-label" for="pricing-per-ctf">Harga per CTF (Rp)</label>
+          <input
+            id="pricing-per-ctf"
+            v-model="pricingDialog.pricePerCtf"
+            class="pc-input"
+            inputmode="numeric"
+            placeholder="750"
+          />
+          <p class="pc-help">
+            Minimal Rp100. Jumlah CTF tiap paket dihitung
+            <code>floor(harga paket ÷ harga per CTF) + bonus</code>.
+          </p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label">Total CTF sesudah perubahan</label>
+          <p class="pc-help pc-help--value">
+            {{ formatNumber(pricingTotals.next) }} CTF
+            <span v-if="pricingTotals.diff !== 0">
+              ({{ pricingTotals.diff > 0 ? '+' : '−'
+              }}{{ formatNumber(Math.abs(pricingTotals.diff)) }} dari
+              {{ formatNumber(pricingTotals.previous) }})
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div class="pc-table-wrap">
+        <table class="pc-table pc-table--compact">
+          <thead>
+            <tr>
+              <th>Paket</th>
+              <th>Harga</th>
+              <th>CTF dasar</th>
+              <th>Bonus CTF</th>
+              <th>CTF baru</th>
+              <th>Sebelumnya</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in pricingRows" :key="row.code">
+              <td>
+                <span class="pc-table__primary">{{ row.name }}</span>
+                <span class="pc-table__sub pc-mono">{{ row.code }}</span>
+              </td>
+              <td class="pc-table__number">{{ formatIdr(row.amountIdr) }}</td>
+              <td class="pc-table__number">{{ formatNumber(row.baseCtf) }}</td>
+              <td>
+                <input
+                  v-model="pricingDialog.bonus[row.code]"
+                  class="pc-input pc-input--sm"
+                  inputmode="numeric"
+                  :aria-label="`Bonus CTF untuk ${row.name}`"
+                  placeholder="0"
+                />
+              </td>
+              <td class="pc-table__number">{{ formatNumber(row.ctfAmount) }}</td>
+              <td class="pc-table__number pc-muted">{{ formatNumber(row.previousCtf) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="pricingBlocked.length" class="pc-callout pc-callout--warning">
+        <AlertTriangle :size="15" />
+        <div>
+          Harga per CTF terlalu tinggi untuk
+          <strong>{{ pricingBlocked.join(', ') }}</strong> — paket itu akan mendapat 0 CTF. Turunkan
+          harga per CTF atau tambah bonusnya.
+        </div>
+      </div>
+
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="pricing-reason">Alasan perubahan</label>
+          <textarea
+            id="pricing-reason"
+            v-model="pricingDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: menyesuaikan harga dasar CTF menjadi Rp750."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="pricing-password">Kata sandi Super Admin</label>
+          <input
+            id="pricing-password"
+            v-model="pricingDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+    </ConsoleDialog>
+
+    <ConsoleDialog
       v-model="packageStatusDialog.open"
       :title="packageStatusDialog.nextActive ? 'Aktifkan paket' : 'Nonaktifkan paket'"
       :subtitle="
@@ -2240,6 +2360,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Tags,
   Ticket,
   Wallet,
   XCircle,
@@ -2366,6 +2487,23 @@ const packageStatusDialog = reactive({
   open: false,
   pkg: null,
   nextActive: true,
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+});
+
+/**
+ * Harga massal: satu harga per CTF + bonus per paket.
+ *
+ * Perhitungan di layar memakai rumus yang sama dengan server
+ * (`floor(nominal / hargaPerCtf) + bonus`) supaya pratinjau langsung terlihat;
+ * server tetap menghitung ulang dan menolak bila ada yang tidak valid.
+ */
+const pricingDialog = reactive({
+  open: false,
+  pricePerCtf: '',
+  bonus: {},
   reason: '',
   password: '',
   loading: false,
@@ -2654,6 +2792,97 @@ const packageStatusCanSubmit = computed(
     Boolean(packageStatusDialog.password.trim()) &&
     packageStatusDialog.reason.trim().length >= 5,
 );
+
+/* -------------------------------------------------------------------------
+ * Harga massal: satu harga per CTF untuk semua paket + bonus per paket
+ * ---------------------------------------------------------------------- */
+const pricingPerCtf = computed(() => digits(pricingDialog.pricePerCtf));
+
+/** Baris pratinjau: dihitung lokal agar admin langsung melihat hasilnya. */
+const pricingRows = computed(() =>
+  packages.value.map((pkg) => {
+    const bonus = digits(pricingDialog.bonus[pkg.code]);
+    const baseCtf = pricingPerCtf.value ? Math.floor(pkg.amount_idr / pricingPerCtf.value) : 0;
+    return {
+      code: pkg.code,
+      name: pkg.name,
+      amountIdr: pkg.amount_idr,
+      baseCtf,
+      bonusCtf: bonus,
+      ctfAmount: pricingPerCtf.value ? baseCtf + bonus : 0,
+      previousCtf: pkg.ctf_amount,
+    };
+  }),
+);
+
+/** Paket yang akan menerima 0 CTF — penyebab tombol simpan dimatikan. */
+const pricingBlocked = computed(() =>
+  pricingPerCtf.value
+    ? pricingRows.value.filter((row) => row.ctfAmount < 1).map((row) => row.name)
+    : [],
+);
+
+const pricingTotals = computed(() => {
+  const next = pricingRows.value.reduce((sum, row) => sum + row.ctfAmount, 0);
+  const previous = pricingRows.value.reduce((sum, row) => sum + row.previousCtf, 0);
+  return { next, previous, diff: next - previous };
+});
+
+const pricingCanSubmit = computed(() => {
+  if (!pricingPerCtf.value || pricingPerCtf.value < 100) return false;
+  if (!packages.value.length) return false;
+  if (pricingBlocked.value.length) return false;
+  if (pricingDialog.reason.trim().length < 5) return false;
+  return Boolean(pricingDialog.password.trim());
+});
+
+function openPricingDialog() {
+  // Bonus awal = selisih CTF paket sekarang di atas harga dasar, sehingga admin
+  // melihat bonus yang sudah berjalan dan tidak perlu menghitung dari nol.
+  const cheapest = packages.value.reduce(
+    (best, pkg) => (!best || pkg.amount_idr < best.amount_idr ? pkg : best),
+    null,
+  );
+  const suggested = cheapest
+    ? Math.max(1, Math.round(cheapest.amount_idr / Math.max(1, cheapest.ctf_amount)))
+    : 750;
+
+  pricingDialog.pricePerCtf = String(suggested);
+  pricingDialog.bonus = Object.fromEntries(packages.value.map((pkg) => [pkg.code, '0']));
+  pricingDialog.reason = '';
+  pricingDialog.password = '';
+  pricingDialog.error = '';
+  pricingDialog.loading = false;
+  pricingDialog.open = true;
+}
+
+async function submitPricing() {
+  if (!pricingCanSubmit.value) return;
+  pricingDialog.loading = true;
+  pricingDialog.error = '';
+  try {
+    const result = await api.updateAdminPaymentPackagesPricing({
+      price_per_ctf: pricingPerCtf.value,
+      packages: packages.value.map((pkg) => ({
+        code: pkg.code,
+        bonus_ctf: digits(pricingDialog.bonus[pkg.code]),
+      })),
+      reason: pricingDialog.reason.trim(),
+      password: pricingDialog.password,
+    });
+    toast.success(
+      result?.changed
+        ? `Harga massal diterapkan: ${formatNumber(result.changed)} paket diperbarui.`
+        : 'Harga massal disimpan, tidak ada paket yang berubah.',
+    );
+    pricingDialog.open = false;
+    await loadPackages();
+  } catch (err) {
+    pricingDialog.error = err?.message || 'Harga massal gagal disimpan.';
+  } finally {
+    pricingDialog.loading = false;
+  }
+}
 
 /* -------------------------------------------------------------------------
  * Kupon promo (diskon mengurangi harga bayar, bukan jumlah CTF)

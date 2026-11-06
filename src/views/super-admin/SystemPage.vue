@@ -497,12 +497,120 @@
           </div>
         </section>
       </div>
+
+      <section class="pc-card">
+        <div class="pc-card__head">
+          <div>
+            <h2 class="pc-card__title">Blast notifikasi sistem</h2>
+            <p class="pc-card__desc">
+              Kirim pengumuman in-app ke banyak pengguna sekaligus. Notifikasi muncul di lonceng
+              Activity dengan tipe &ldquo;Notifikasi Sistem&rdquo;.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="pc-btn pc-btn--primary pc-btn--sm"
+            @click="openBroadcastDialog"
+          >
+            <Megaphone :size="12" />
+            Tulis pengumuman
+          </button>
+        </div>
+        <div class="pc-card__body">
+          <div class="pc-callout">
+            <Info :size="15" />
+            <div>
+              Tidak ada email: notifikasi hanya tampil di aplikasi. Akun yang sedang diblokir tidak
+              menerima blast. Setiap pengiriman wajib konfirmasi kata sandi + alasan dan tercatat di
+              audit.
+            </div>
+          </div>
+        </div>
+      </section>
     </template>
+
+    <ConsoleDialog
+      v-model="broadcastDialog.open"
+      title="Blast notifikasi sistem"
+      subtitle="Notifikasi in-app ke pengguna terpilih — tanpa email"
+      eyebrow="Notifikasi · re-auth"
+      confirm-label="Kirim notifikasi"
+      :loading="broadcastDialog.loading"
+      :confirm-disabled="!broadcastCanSubmit"
+      :error="broadcastDialog.error"
+      @confirm="submitBroadcast"
+    >
+      <div class="pc-dialog-grid">
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="broadcast-title">Judul</label>
+          <input
+            id="broadcast-title"
+            v-model="broadcastDialog.title"
+            class="pc-input"
+            maxlength="80"
+            placeholder="mis. Fitur baru: kartu template"
+          />
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="broadcast-body">Isi pengumuman</label>
+          <textarea
+            id="broadcast-body"
+            v-model="broadcastDialog.body"
+            class="pc-textarea"
+            maxlength="400"
+            placeholder="Jelaskan perubahan yang perlu diketahui pengguna."
+          />
+          <p class="pc-help">{{ broadcastDialog.body.length }}/400 karakter.</p>
+        </div>
+        <div class="pc-field">
+          <label class="pc-label" for="broadcast-audience">Penerima</label>
+          <select
+            id="broadcast-audience"
+            v-model="broadcastDialog.audience"
+            class="pc-select"
+            @change="refreshBroadcastPreview"
+          >
+            <option v-for="option in AUDIENCES" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+          <p class="pc-help">
+            <template v-if="broadcastDialog.previewLoading">Menghitung penerima…</template>
+            <template v-else-if="broadcastDialog.preview !== null">
+              {{ formatNumber(broadcastDialog.preview) }} akun aktif akan menerima notifikasi.
+            </template>
+            <template v-else>Jumlah penerima belum tersedia.</template>
+          </p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="broadcast-reason">Alasan pengiriman</label>
+          <textarea
+            id="broadcast-reason"
+            v-model="broadcastDialog.reason"
+            class="pc-textarea"
+            maxlength="500"
+            placeholder="Contoh: mengumumkan rilis fitur baru."
+          />
+          <p class="pc-help">Minimal 5 karakter. Alasan tersimpan di audit.</p>
+        </div>
+        <div class="pc-field pc-field--full">
+          <label class="pc-label" for="broadcast-password">Kata sandi Super Admin</label>
+          <input
+            id="broadcast-password"
+            v-model="broadcastDialog.password"
+            class="pc-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Konfirmasi kata sandi"
+          />
+        </div>
+      </div>
+    </ConsoleDialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -514,19 +622,98 @@ import {
   KeyRound,
   LockKeyhole,
   Mail,
+  Megaphone,
   PlugZap,
   RefreshCw,
   Server,
   ShieldCheck,
 } from 'lucide-vue-next';
 import { api } from '../../api';
+import { toast } from '../../composables/useToast';
+import ConsoleDialog from '../../components/super-admin/ConsoleDialog.vue';
 import ConsolePageHeader from '../../components/super-admin/ConsolePageHeader.vue';
 import ConsoleStatusBadge from '../../components/super-admin/ConsoleStatusBadge.vue';
-import { formatDateTime, relativeTime } from '../../utils/console';
+import { formatDateTime, formatNumber, relativeTime } from '../../utils/console';
 
 const settings = ref(null);
 const loading = ref(false);
 const error = ref('');
+
+/* ---------------------------------------------------------------------------
+ * Blast notifikasi sistem (in-app). Saran hanya dikirim setelah admin
+ * memastikan jumlah penerima lewat pratinjau.
+ * ------------------------------------------------------------------------ */
+const AUDIENCES = [
+  { value: 'users', label: 'Semua pengguna' },
+  { value: 'base_admins', label: 'Base Admin saja' },
+  { value: 'all', label: 'Semua akun aktif (termasuk admin)' },
+];
+
+const broadcastDialog = reactive({
+  open: false,
+  title: '',
+  body: '',
+  audience: 'users',
+  reason: '',
+  password: '',
+  loading: false,
+  error: '',
+  preview: null,
+  previewLoading: false,
+});
+
+const broadcastCanSubmit = computed(() => {
+  if (broadcastDialog.title.trim().length < 3) return false;
+  if (broadcastDialog.body.trim().length < 5) return false;
+  if (broadcastDialog.reason.trim().length < 5) return false;
+  return Boolean(broadcastDialog.password.trim());
+});
+
+async function openBroadcastDialog() {
+  broadcastDialog.title = '';
+  broadcastDialog.body = '';
+  broadcastDialog.audience = 'users';
+  broadcastDialog.reason = '';
+  broadcastDialog.password = '';
+  broadcastDialog.error = '';
+  broadcastDialog.loading = false;
+  broadcastDialog.preview = null;
+  broadcastDialog.open = true;
+  await refreshBroadcastPreview();
+}
+
+async function refreshBroadcastPreview() {
+  broadcastDialog.previewLoading = true;
+  try {
+    const result = await api.previewAdminBroadcast({ audience: broadcastDialog.audience });
+    broadcastDialog.preview = result?.recipients ?? 0;
+  } catch {
+    broadcastDialog.preview = null;
+  } finally {
+    broadcastDialog.previewLoading = false;
+  }
+}
+
+async function submitBroadcast() {
+  if (!broadcastCanSubmit.value) return;
+  broadcastDialog.loading = true;
+  broadcastDialog.error = '';
+  try {
+    const result = await api.sendAdminBroadcast({
+      title: broadcastDialog.title.trim(),
+      body: broadcastDialog.body.trim(),
+      audience: broadcastDialog.audience,
+      reason: broadcastDialog.reason.trim(),
+      password: broadcastDialog.password,
+    });
+    toast.success(result?.message || 'Notifikasi berhasil dikirim.');
+    broadcastDialog.open = false;
+  } catch (err) {
+    broadcastDialog.error = err?.message || 'Blast notifikasi gagal dikirim.';
+  } finally {
+    broadcastDialog.loading = false;
+  }
+}
 
 function jobStatusLabel(status) {
   return (

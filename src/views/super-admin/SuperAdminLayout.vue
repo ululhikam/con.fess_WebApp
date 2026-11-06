@@ -37,6 +37,8 @@
         <router-view />
       </main>
     </div>
+
+    <AdminAiAssistant />
   </div>
 </template>
 
@@ -51,6 +53,7 @@ import {
   Wallet,
 } from 'lucide-vue-next';
 import AdminTopNav from '../../components/admin/AdminTopNav.vue';
+import AdminAiAssistant from '../../components/super-admin/AdminAiAssistant.vue';
 import ConsoleStatusBadge from '../../components/super-admin/ConsoleStatusBadge.vue';
 
 const route = useRoute();
