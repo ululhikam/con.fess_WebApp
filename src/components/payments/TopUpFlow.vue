@@ -459,6 +459,11 @@
                   </div>
                 </div>
 
+                <p v-if="!methodGroups.length" class="method-empty">
+                  <AlertTriangle :size="14" />
+                  Belum ada metode pembayaran yang aktif. Hubungi admin base atau coba lagi nanti.
+                </p>
+
                 <div v-for="group in methodGroups" :key="group.key" class="method-group">
                   <div class="method-group-head">
                     <span class="method-group-icon" aria-hidden="true">
@@ -612,7 +617,7 @@
                 <button
                   type="button"
                   class="topup-primary-btn pay-btn"
-                  :disabled="creating || !selectedPackage"
+                  :disabled="creating || !selectedPackage || !selectedMethod"
                   @click="createOrder"
                 >
                   <Loader2 v-if="creating" :size="16" class="spin" />
@@ -655,7 +660,7 @@
             <button
               type="button"
               class="topup-primary-btn"
-              :disabled="creating || !selectedPackage"
+              :disabled="creating || !selectedPackage || !selectedMethod"
               @click="createOrder"
             >
               <Loader2 v-if="creating" :size="15" class="spin" />
@@ -2134,6 +2139,24 @@ onBeforeUnmount(() => {
   color: var(--shell-text-muted);
   font-size: 10.5px;
   line-height: 1.5;
+}
+
+.method-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--shell-border);
+  border-radius: 12px;
+  color: var(--shell-text-muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.method-empty svg {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .method-footnote svg {
