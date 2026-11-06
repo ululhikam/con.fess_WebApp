@@ -578,6 +578,21 @@
   line-height: 1.5;
 }
 
+/* Nilai yang ditampilkan sebagai jawaban (bukan petunjuk), mis. total CTF. */
+.pc-help--value {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Input di dalam sel tabel: lebih ringkas dari input form biasa. */
+.pc-input--sm {
+  min-height: 28px;
+  width: 90px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
 .pc-checkbox {
   display: flex;
   align-items: center;
@@ -1066,6 +1081,32 @@
   padding: 18px;
   background: rgba(3, 5, 10, 0.74);
   backdrop-filter: blur(5px);
+}
+
+/*
+ * Saat panel asisten AI terbuka, geser dialog ke kiri sebesar lebar panel
+ * (390px + jarak tepi) agar footer Batal/Simpan tidak tertutup. Di layar sempit
+ * pergeseran dilepas dan panel asisten tampil sebagai overlay penuh.
+ */
+@media (min-width: 900px) {
+  body.ai-assist-open .pc-modal-backdrop {
+    padding-right: 424px;
+  }
+}
+
+/*
+ * Di layar sempit panel asisten tidak bisa digeser ke samping, jadi dialog
+ * dipendekkan dan ditaruh di atas supaya footer-nya tetap bisa dijangkau.
+ */
+@media (max-width: 899px) {
+  body.ai-assist-open .pc-modal-backdrop {
+    place-items: start center;
+    padding: 12px;
+  }
+
+  body.ai-assist-open .pc-modal {
+    max-height: 46vh;
+  }
 }
 
 .pc-modal {
