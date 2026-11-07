@@ -1648,27 +1648,58 @@
       <div class="pc-dialog-grid">
         <div class="pc-field pc-field--full">
           <span class="pc-label">Metode yang tampil ke pengguna</span>
+          <p class="pc-help">
+            Urutan di sini menentukan urutan di halaman top-up. Geser dengan tombol panah; metode
+            teratas tampil paling atas.
+          </p>
           <ul class="method-picker">
-            <li v-for="method in methods?.methods || []" :key="method.code">
+            <li v-for="(code, index) in methodsDialog.order" :key="code" class="method-picker__row">
+              <span class="method-picker__index" aria-hidden="true">{{ index + 1 }}</span>
               <button
                 type="button"
                 class="method-picker__item"
-                :class="{ 'is-active': methodsDialog.enabled.includes(method.code) }"
-                @click="toggleMethod(method.code)"
+                :class="{ 'is-active': methodsDialog.enabled.includes(code) }"
+                :aria-pressed="methodsDialog.enabled.includes(code)"
+                @click="toggleMethod(code)"
               >
                 <span class="method-picker__mark" aria-hidden="true">
-                  <CheckCircle2 v-if="methodsDialog.enabled.includes(method.code)" :size="14" />
+                  <CheckCircle2 v-if="methodsDialog.enabled.includes(code)" :size="14" />
                 </span>
                 <span class="method-picker__body">
-                  <strong>{{ method.label }}</strong>
-                  <span class="method-picker__desc">{{ method.description }}</span>
+                  <strong>{{ methodLabel(code) }}</strong>
+                  <span class="method-picker__desc">
+                    {{ methodDescription(code) }}
+                    <template v-if="methodMinAmount(code)">
+                      · minimal Rp{{ formatNumber(methodMinAmount(code)) }}
+                    </template>
+                  </span>
                 </span>
               </button>
+              <span class="method-picker__move">
+                <button
+                  type="button"
+                  class="small-icon-btn"
+                  :disabled="index === 0"
+                  :aria-label="`Naikkan ${methodLabel(code)}`"
+                  @click="moveMethod(code, -1)"
+                >
+                  <ChevronUp :size="14" />
+                </button>
+                <button
+                  type="button"
+                  class="small-icon-btn"
+                  :disabled="index === methodsDialog.order.length - 1"
+                  :aria-label="`Turunkan ${methodLabel(code)}`"
+                  @click="moveMethod(code, 1)"
+                >
+                  <ChevronDown :size="14" />
+                </button>
+              </span>
             </li>
           </ul>
           <p class="pc-help">
             Minimal satu metode harus aktif. Metode yang tidak dicentang hilang dari picker dan
-            ditolak server untuk order baru.
+            ditolak server untuk order baru. Metode VA bank butuh transaksi minimal Rp10.000.
           </p>
         </div>
         <div class="pc-field pc-field--full">
@@ -2345,8 +2376,10 @@ import {
   BadgeCheck,
   Banknote,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CircleDollarSign,
   Eye,
   Info,
@@ -2526,6 +2559,8 @@ const methodsError = ref('');
 const methodsDialog = reactive({
   open: false,
   enabled: [],
+  /** Urutan tampil seluruh katalog (kode), dari atas ke bawah. */
+  order: [],
   reason: '',
   password: '',
   loading: false,
@@ -2741,7 +2776,13 @@ const methodsChanged = computed(() => {
     methods.value.methods.filter((method) => method.enabled).map((method) => method.code),
   );
   if (current.size !== methodsDialog.enabled.length) return true;
-  return methodsDialog.enabled.some((code) => !current.has(code));
+  if (methodsDialog.enabled.some((code) => !current.has(code))) return true;
+  // Urutan juga bagian dari perubahan: admin boleh hanya menggeser posisi.
+  const currentOrder = methods.value.methods.map((method) => method.code);
+  return (
+    currentOrder.length !== methodsDialog.order.length ||
+    currentOrder.some((code, index) => code !== methodsDialog.order[index])
+  );
 });
 
 /* -------------------------------------------------------------------------
@@ -3248,6 +3289,8 @@ function openMethodsDialog() {
   methodsDialog.enabled = methods.value.methods
     .filter((method) => method.enabled)
     .map((method) => method.code);
+  // Server sudah mengirim `methods` dalam urutan tampil yang berlaku.
+  methodsDialog.order = methods.value.methods.map((method) => method.code);
   methodsDialog.reason = '';
   methodsDialog.password = '';
   methodsDialog.error = '';
@@ -3261,6 +3304,32 @@ function toggleMethod(code) {
   else methodsDialog.enabled.push(code);
 }
 
+/** Metadata metode dari view admin (dipakai dialog urutan). */
+function methodMeta(code) {
+  return methods.value?.methods?.find((method) => method.code === code) || null;
+}
+
+function methodLabel(code) {
+  return methodMeta(code)?.label || code;
+}
+
+function methodDescription(code) {
+  return methodMeta(code)?.description || '';
+}
+
+function methodMinAmount(code) {
+  return Number(methodMeta(code)?.min_amount_idr || 0);
+}
+
+/** Geser satu metode ke atas (-1) atau ke bawah (+1) dalam urutan tampil. */
+function moveMethod(code, direction) {
+  const index = methodsDialog.order.indexOf(code);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= methodsDialog.order.length) return;
+  const [moved] = methodsDialog.order.splice(index, 1);
+  methodsDialog.order.splice(target, 0, moved);
+}
+
 async function submitMethods() {
   if (!methodsCanSubmit.value) return;
   methodsDialog.loading = true;
@@ -3268,6 +3337,7 @@ async function submitMethods() {
   try {
     const result = await api.updateAdminPaymentMethods({
       enabled: methodsDialog.enabled,
+      order: methodsDialog.order,
       reason: methodsDialog.reason.trim(),
       password: methodsDialog.password,
     });
@@ -3761,6 +3831,40 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.method-picker__row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.method-picker__index {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.method-picker__row .method-picker__item {
+  flex: 1 1 auto;
+}
+
+.method-picker__move {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.method-picker__move .small-icon-btn {
+  height: 20px;
+  min-height: 20px;
 }
 
 .method-picker__item {

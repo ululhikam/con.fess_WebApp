@@ -479,9 +479,13 @@
                       type="button"
                       role="radio"
                       :aria-checked="selectedMethod === method.code"
+                      :aria-disabled="!methodAllowed(method)"
                       class="method-row"
-                      :class="{ selected: selectedMethod === method.code }"
-                      @click="selectedMethod = method.code"
+                      :class="{
+                        selected: selectedMethod === method.code,
+                        'method-row--locked': !methodAllowed(method),
+                      }"
+                      @click="pickMethod(method)"
                     >
                       <span
                         class="method-icon"
@@ -499,17 +503,31 @@
                       </span>
                       <span class="method-text">
                         <strong>{{ method.label }}</strong>
-                        <small>{{ method.description }}</small>
+                        <small v-if="!methodAllowed(method)" class="method-min">
+                          Min. Rp{{ formatNumber(method.min_amount_idr) }} — paket ini belum cukup
+                        </small>
+                        <small v-else>{{ method.description }}</small>
                       </span>
                       <span
                         class="method-radio"
                         :class="{ checked: selectedMethod === method.code }"
                       >
                         <Check v-if="selectedMethod === method.code" :size="12" />
+                        <Lock v-else-if="!methodAllowed(method)" :size="11" />
                       </span>
                     </button>
                   </div>
                 </div>
+
+                <p v-if="hasLockedMethods" class="method-notice" role="status">
+                  <AlertTriangle :size="14" />
+                  <span>
+                    <strong>{{ lockedMethodLabels }}</strong> butuh transaksi minimal Rp{{
+                      formatNumber(minLockedAmount)
+                    }}. Paket {{ selectedPackage?.name || 'yang dipilih' }} belum mencapai batas itu
+                    — pilih paket yang lebih besar, atau bayar dengan QRIS/e-wallet.
+                  </span>
+                </p>
 
                 <p class="method-footnote">
                   <ShieldCheck :size="14" />
@@ -617,7 +635,9 @@
                 <button
                   type="button"
                   class="topup-primary-btn pay-btn"
-                  :disabled="creating || !selectedPackage || !selectedMethod"
+                  :disabled="
+                    creating || !selectedPackage || !selectedMethod || selectedMethodBlocked
+                  "
                   @click="createOrder"
                 >
                   <Loader2 v-if="creating" :size="16" class="spin" />
@@ -660,7 +680,7 @@
             <button
               type="button"
               class="topup-primary-btn"
-              :disabled="creating || !selectedPackage || !selectedMethod"
+              :disabled="creating || !selectedPackage || !selectedMethod || selectedMethodBlocked"
               @click="createOrder"
             >
               <Loader2 v-if="creating" :size="15" class="spin" />
@@ -873,17 +893,66 @@ const balance = computed(() => Number(authStore.user?.balance || 0));
 const balanceDisplay = computed(() => formatNumber(balance.value));
 
 const methodGroups = computed(() => {
-  const groups = [
-    { key: 'qris', label: 'QRIS', methods: [] },
-    { key: 'va', label: 'Transfer bank / Virtual Account', methods: [] },
-    { key: 'ewallet', label: 'E-wallet', methods: [] },
-  ];
+  const labels = {
+    qris: 'QRIS',
+    va: 'Transfer bank / Virtual Account',
+    ewallet: 'E-wallet',
+  };
+  // Urutan grup mengikuti kemunculan pertama metode dalam daftar yang sudah
+  // diurutkan Super Admin, jadi metode yang dinaikkan admin ikut naik grupnya.
+  const groups = [];
   for (const method of methods.value) {
-    const group = groups.find((item) => item.key === method.group);
-    if (group) group.methods.push(method);
+    let group = groups.find((item) => item.key === method.group);
+    if (!group) {
+      group = { key: method.group, label: labels[method.group] || 'Metode lain', methods: [] };
+      groups.push(group);
+    }
+    group.methods.push(method);
   }
-  return groups.filter((group) => group.methods.length);
+  return groups;
 });
+
+/** Nominal minimum metode; 0 berarti tidak ada batas khusus. */
+function methodMinAmount(method) {
+  return Number(method?.min_amount_idr || 0);
+}
+
+/**
+ * Metode bisa dipakai untuk paket yang sedang dipilih? VA bank menolak
+ * transaksi di bawah Rp10.000 (batas Midtrans), jadi tombolnya dinonaktifkan
+ * dan alasannya ditampilkan. Server tetap memvalidasi ulang.
+ */
+function methodAllowed(method) {
+  const min = methodMinAmount(method);
+  if (!min) return true;
+  return Number(selectedPackage.value?.amountIdr || 0) >= min;
+}
+
+const lockedMethods = computed(() => methods.value.filter((method) => !methodAllowed(method)));
+const hasLockedMethods = computed(() => lockedMethods.value.length > 0);
+const lockedMethodLabels = computed(() =>
+  lockedMethods.value.map((method) => method.label).join(', '),
+);
+const minLockedAmount = computed(() => {
+  const mins = lockedMethods.value.map(methodMinAmount).filter((value) => value > 0);
+  return mins.length ? Math.min(...mins) : 0;
+});
+
+/** Pilih metode; metode yang terkunci tidak bisa dipilih (alasannya di-toast). */
+function pickMethod(method) {
+  if (!methodAllowed(method)) {
+    toast.warning(
+      `${method.label} minimal transaksi Rp${formatNumber(methodMinAmount(method))}. ` +
+        'Pilih paket yang lebih besar atau gunakan QRIS/e-wallet.',
+    );
+    return;
+  }
+  selectedMethod.value = method.code;
+}
+
+const selectedMethodBlocked = computed(
+  () => Boolean(selectedMethodData.value) && !methodAllowed(selectedMethodData.value),
+);
 
 const instructions = computed(() => activeOrder.value?.instructions || null);
 const activeMethod = computed(
@@ -1203,9 +1272,10 @@ async function loadConfig() {
     if (!available.some((pkg) => pkg.code === selectedPackageCode.value)) {
       selectedPackageCode.value = available[0]?.code || '';
     }
-    const availableMethods = response?.methods || [];
-    if (!availableMethods.some((method) => method.code === selectedMethod.value)) {
-      selectedMethod.value = availableMethods[0]?.code || '';
+    // Metode yang dipilih sebelumnya bisa saja sudah dinonaktifkan admin atau
+    // tidak memenuhi batas minimum paket yang sedang dipilih.
+    if (!methodUsableForSelection(selectedMethod.value)) {
+      selectedMethod.value = firstUsableMethod() || '';
     }
 
     const queryOrderId =
@@ -1217,6 +1287,16 @@ async function loadConfig() {
   } finally {
     configLoading.value = false;
   }
+}
+
+/** Metode ada di katalog aktif dan lolos batas minimum paket terpilih. */
+function methodUsableForSelection(code) {
+  const method = methods.value.find((item) => item.code === code);
+  return Boolean(method) && methodAllowed(method);
+}
+
+function firstUsableMethod() {
+  return methods.value.find((method) => methodAllowed(method))?.code || '';
 }
 
 async function loadHistory() {
@@ -1265,6 +1345,16 @@ function clearCoupon(resetInput = true) {
 
 async function createOrder() {
   if (!canTopUp.value || !selectedPackage.value || !selectedMethod.value || creating.value) return;
+  // Jaring pengaman terakhir: metode terkunci tidak boleh dikirim ke server.
+  if (selectedMethodBlocked.value) {
+    const method = selectedMethodData.value;
+    const message =
+      `${method?.label || 'Metode ini'} minimal transaksi ` +
+      `Rp${formatNumber(methodMinAmount(method))}. Pilih paket yang lebih besar dulu.`;
+    createError.value = message;
+    toast.warning(message);
+    return;
+  }
   creating.value = true;
   createError.value = '';
 
@@ -1467,6 +1557,15 @@ function onVisibilityChange() {
 watch([selectedPackageCode, selectedMethod], () => {
   requestKey.value = '';
   createError.value = '';
+});
+
+// Ganti paket bisa membuat metode terpilih tidak lagi memenuhi batas minimum
+// (mis. VA dengan paket Rp5.000). Pindahkan ke metode yang masih valid supaya
+// tombol bayar tidak pernah mengirim kombinasi yang pasti ditolak server.
+watch(selectedPackageCode, () => {
+  if (selectedMethod.value && !methodUsableForSelection(selectedMethod.value)) {
+    selectedMethod.value = firstUsableMethod() || '';
+  }
 });
 
 // Potongan kupon bergantung pada harga paket, jadi ganti paket = lepas kupon.
@@ -2064,6 +2163,49 @@ onBeforeUnmount(() => {
   border-color: var(--shell-accent);
   background: color-mix(in srgb, var(--shell-accent) 8%, var(--wallet-inset));
   box-shadow: 0 0 0 1px var(--shell-accent);
+}
+
+/* Metode yang nominalnya belum memenuhi batas minimum (VA bank Rp10.000). */
+.method-row--locked {
+  cursor: not-allowed;
+  opacity: 0.62;
+  background: var(--wallet-inset);
+}
+
+.method-row--locked:hover {
+  border-color: var(--shell-border);
+}
+
+.method-row--locked .method-icon {
+  filter: grayscale(0.55);
+}
+
+.method-text .method-min {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.method-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  color: var(--warning-text);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.method-notice svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.method-notice strong {
+  font-weight: 700;
 }
 
 .method-icon {
